@@ -38,8 +38,9 @@ TRANSLATEABLE_TYPES = typ.Union[rdflib.Variable,
                                 rdflib.Literal,
                                 ]
 
-VARIABLE_LOCATOR: typ.TypeAlias = Callable[[typ.Union[durable.engine.Closure, None]], TRANSLATEABLE_TYPES]
-CLOSURE_BINDINGS: typ.TypeAlias = MutableMapping[rdflib.Variable, VARIABLE_LOCATOR]
+VARIABLE_LOCATOR: "typ.TypeAlias" = Callable[[typ.Union[durable.engine.Closure, None]], TRANSLATEABLE_TYPES]
+CLOSURE_BINDINGS: "typ.TypeAlias" = MutableMapping[rdflib.Variable, VARIABLE_LOCATOR]
+
 BINDING = MutableMapping[rdflib.Variable, TRANSLATEABLE_TYPES]
 
 class notFulfilledCondition(Exception):
