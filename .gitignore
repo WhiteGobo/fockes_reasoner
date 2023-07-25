@@ -1,0 +1,3 @@
+.mypy_cache
+.benchmarks
+*/__pycache__

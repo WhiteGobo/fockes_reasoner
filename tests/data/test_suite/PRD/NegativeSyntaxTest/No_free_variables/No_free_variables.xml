@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<NegativeSyntaxTest id="No_free_variables"
+    src="http://www.w3.org/2005/rules/test/repository/tc/No_free_variables" xmlns="http://www.w3.org/2009/10/rif-test#">
+    <status>Approved</status>
+    <dialect>PRD</dialect>
+    <dialect>Core</dialect>
+    <purpose>All free variables in the rule must be quantified with Forall</purpose>
+    <description>The variable "price" is not included in the variable list of the Forall &lt;!-- desc=on hold pending resolution of http://lists.w3.org/Archives/Public/public-rif-wg/2008Sep/0013.html--&gt;</description>
+    <InputDocument>
+        <Normative syntax="RIF/XML">
+            <name>No_free_variables-input.rif</name>
+        </Normative>
+        <Presentation syntax="RIFPRD-PS"><![CDATA[
+Document(
+
+   Prefix(eg <http://example.org/example#>)
+
+   Group
+   (
+     Forall ?buyer ?item ?seller (
+	If eg:Sell(?seller ?item ?buyer ?price)
+	Then eg:Buy(?buyer ?item ?seller)
+     )
+   )
+ )
+]]></Presentation>
+    </InputDocument>
+</NegativeSyntaxTest>

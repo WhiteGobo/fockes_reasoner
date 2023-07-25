@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<NegativeSyntaxTest id="Core_NonSafeness"
+    src="http://www.w3.org/2005/rules/test/repository/tc/Core_NonSafeness" xmlns="http://www.w3.org/2009/10/rif-test#">
+    <status>Approved</status>
+    <dialect>PRD</dialect>
+    <dialect>Core</dialect>
+    <purpose>Test that non-safe formulas are not accepted.</purpose>
+    <description>The variable ?z is not bound, and consequently ?y is not bound.</description>
+    <InputDocument>
+        <Normative syntax="RIF/XML">
+            <name>Core_NonSafeness-input.rif</name>
+        </Normative>
+        <Presentation syntax="RIFPRD-PS"><![CDATA[
+Document( 
+    Prefix(ex <http://example.org/example#>) 
+    Prefix(pred <http://www.w3.org/2007/rif-builtin-predicate#>) 
+    Group( 
+      Forall ?y ?z (
+	    If And(
+	            External ( pred:numeric-not-equal( ?y ?z ) )
+		    External(pred:numeric-greater-than(?z 0))
+	    ) Then Do (
+		    Assert (ex:p(?y))
+	    )
+      )
+    ) 
+  )
+]]></Presentation>
+    </InputDocument>
+</NegativeSyntaxTest>

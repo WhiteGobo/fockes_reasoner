@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE Document [
+  <!ENTITY rif  "http://www.w3.org/2007/rif#">
+  <!ENTITY xs   "http://www.w3.org/2001/XMLSchema#">
+  <!ENTITY rdf  "http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+]>
+
+<Document xmlns="http://www.w3.org/2007/rif#">
+  <payload>
+    <Group>
+      <sentence>
+        <Forall>
+          <declare>
+            <Var>y</Var>
+          </declare>
+          <declare>
+            <Var>z</Var>
+          </declare>
+          <formula>
+            <Implies>
+              <if>
+                <And>
+                  <formula>
+                    <External>
+                      <content>
+                        <Atom>
+                          <op>
+                            <Const type="http://www.w3.org/2007/rif#iri">http://www.w3.org/2007/rif-builtin-predicate#numeric-not-equal</Const>
+                          </op>
+                          <args ordered="yes">
+                            <Var>y</Var>
+                            <Var>z</Var>
+                          </args>
+                        </Atom>
+                      </content>
+                    </External>
+                  </formula>
+                  <formula>
+                    <External>
+                      <content>
+                        <Atom>
+                          <op>
+                            <Const type="http://www.w3.org/2007/rif#iri">http://www.w3.org/2007/rif-builtin-predicate#numeric-greater-than</Const>
+                          </op>
+                          <args ordered="yes">
+                            <Var>z</Var>
+                            <Const type="http://www.w3.org/2001/XMLSchema#integer">0</Const>
+                          </args>
+                        </Atom>
+                      </content>
+                    </External>
+                  </formula>
+                </And>
+              </if>
+              <then>
+                <Do>
+                  <actions ordered="yes">
+                    <Assert>
+                      <target>
+                        <Atom>
+                          <op>
+                            <Const type="http://www.w3.org/2007/rif#iri">http://example.org/example#p</Const>
+                          </op>
+                          <args ordered="yes">
+                            <Var>y</Var>
+                          </args>
+                        </Atom>
+                      </target>
+                    </Assert>
+                  </actions>
+                </Do>
+              </then>
+            </Implies>
+          </formula>
+        </Forall>
+      </sentence>
+    </Group>
+  </payload>
+</Document>
