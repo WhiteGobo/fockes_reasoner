@@ -1,10 +1,14 @@
 DOCS=docs
+PYTHON ?= python3
+PYTHON_TEST=python3 -m pytest
+PYTEST_OPT=--log-level=INFO
+MYPY ?= mypy
 
 default: test
 
 .PHONY: test
 test:
-	pytest --log-cli-level=INFO tests -k RIFimport
+	$(PYTHON_TEST) $(PYTEST_OPT) tests -k RIFimport
 	#pytest --log-cli-level=DEBUG tests -k simpleReasoning
 	#pytest --log-cli-level=DEBUG tests -k positiveEntailment -x
 	#pytest tests
@@ -16,7 +20,7 @@ documentation:
 	cd $(DOCS) && env SPHINXOPTS=-a $(MAKE) html
 
 mypy:
-	mypy fockes_reasoner
+	$(MYPY) fockes_reasoner
 
 clean:
 	cd $(DOCS) && env SPHINXOPTS=-a $(MAKE) clean
