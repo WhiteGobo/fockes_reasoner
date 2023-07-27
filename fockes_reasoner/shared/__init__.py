@@ -9,6 +9,7 @@ focke = rdflib.Namespace("http://example.com/internaldata#")
 rif2internal = rdflib.Namespace("http://example.com/builtin#")
 RIF = rdflib.Namespace("http://www.w3.org/2007/rif#")
 from rdflib import XSD
+from rdflib import RDF
 
 
 import pyparsing as pp

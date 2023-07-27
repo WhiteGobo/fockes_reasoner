@@ -18,6 +18,7 @@ from . import rif_to_internal as rif2internal
 from . import internal_dataobjects as internal
 from .durable_reasoner import durable_abc as dur_abc
 from .shared import focke, string2rdflib, rdflib2string
+from . import models
 
 class graph_transformer:
     """parses information equal to rdflib.Graph.
@@ -28,7 +29,29 @@ class graph_transformer:
     maingroup: typ.Any
     failures: list[str]
     """A list of the failures intercept by durable rules"""
+    standard_symbols_for_export = [
+            focke.Group,
+            focke.action,
+            focke.forall,
+            focke.frame_pattern,
+            focke.member_pattern,
+            focke.subclass_pattern,
+            focke.external_pattern,
+            focke.frame_condition,
+            focke.member_condition,
+            focke.subclass_condition,
+            focke.external_condition,
+            focke.execute,
+            focke.assert_frame,
+            focke.assert_member,
+            focke.assert_subclass,
+            focke.assert_external,
+            ]
+    """Standard symbols for export. This will not be here anymore because
+    this is a basic class for other purposes, than translate rif to internal.
+    """
     _symbols_for_export: set[str]
+    """Will be initialized with standard_symbols_for_export"""
 
     def __init__(self, maingroup: typ.Any, rulename: typ.Union[str, None]=None):
         """
@@ -39,7 +62,8 @@ class graph_transformer:
             rulename = str(uuid.uuid4())
         elif not rulename:
             raise SyntaxError("rulename cant be ''")
-        self._symbols_for_export = set()
+        self._symbols_for_export = set(rdflib2string(x) for x
+                                       in self.standard_symbols_for_export)
         self.maingroup = maingroup
         self.ruleset = self._init_ruleset(rulename)
 
@@ -101,26 +125,10 @@ class graph_transformer:
         raise Exception()
 
     def __iter__(self) -> Iterable:
-        logger.critical(", ".join(repr(x) for x  in self._symbols_for_export))
-        for fact in rls.get_facts(self.rulename):
-            #logger.critical(repr(fact))
-            if fact[dur_abc.FACTTYPE] == dur_abc.FRAME:
-                if fact[dur_abc.FRAME_SLOTKEY] in self._symbols_for_export:
-                    #Here the model should translate the frame to a rdf axiom
-                    s = string2rdflib(fact[dur_abc.FRAME_OBJ])
-                    p = string2rdflib(fact[dur_abc.FRAME_SLOTKEY])
-                    o = string2rdflib(fact[dur_abc.FRAME_SLOTVALUE])
-                    yield (s, p, o)
-            elif fact[dur_abc.FACTTYPE] == dur_abc.LIST:
-                #logger.info("found list: %s" % fact[dur_abc.LIST_ID])
-                if fact[dur_abc.LIST_ID] in self._symbols_for_export:
-                    #logger.info("found list for export: %s" % fact[dur_abc.LIST_ID])
-                    g = rdflib.Graph()
-                    b = string2rdflib(fact[dur_abc.LIST_ID])
-                    q = [string2rdflib(x) for x in fact[dur_abc.LIST_MEMBERS]]
-                    rdflib.collection.Collection(g, b, q)
-                    for ax in g:
-                        yield ax
+        expo_model = models.filtered_rdf_export()
+        return expo_model.export(rls.get_facts(self.rulename), #type: ignore[no-any-return]
+                                 self._symbols_for_export,
+                                 self._symbols_for_export)
 
 
     def __repr__(self) -> str:

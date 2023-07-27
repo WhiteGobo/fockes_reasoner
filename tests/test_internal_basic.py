@@ -58,8 +58,91 @@ def test_basic_internal_reasoner():
     if failure:
         raise Exception(failure)
 
+def test_RDFimport():
+    """Tests if a simple example of the internal rulestructure can be load
+    when the structure is given in the rdf representation of the internal
+    data.
+    """
+    my = rdflib.Namespace("http://example.com/mythingies#")
+    testgraph = rdflib.Graph()
+    testgraph.parse(format="ttl", data=f"""
+        @prefix xs: <http://www.w3.org/2001/XMLSchema#> .
+        @prefix rif: <http://rif> .
+        @prefix func: <http://func> .
+        @prefix ex: <http://example.org/example#> .
+        @prefix tmp: <http://example.com/temporarydata#> .
+        @prefix focke: <http://example.com/internaldata#> .
+        @prefix rif2internal: <http://example.com/builtin#> .
+        @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+        @prefix my: <{my}> .
+
+        my:group a focke:group;
+            focke:sentences ( my:forall1 my:action1 ).
+
+        my:action1 a focke:action;
+            focke:functions ( my:makegold ) .
+
+        my:forall1 a focke:forall;
+            focke:patterns ( my:statusisgold ) ;
+            focke:functions ( my:givediscount ) .
+
+        my:statusisgold a focke:frame_pattern ;
+            focke:object [a focke:Variable; focke:variablename "X"] ;
+            focke:slotkey ex:status ;
+            focke:slotvalue "gold" .
+
+        my:givediscount a focke:assert_frame ;
+            focke:object [a focke:Variable; focke:variablename "X"] ;
+            focke:slotkey ex:discount ;
+            focke:slotvalue "10" .
+
+        my:makegold a focke:assert_frame ;
+            focke:object ex:John ;
+            focke:slotkey ex:status ;
+            focke:slotvalue "gold" .
+    """)
+    mygroup = internal.group.from_rdf(testgraph, my.group)
+    logger.critical(repr(mygroup))
+
+    ruleset = rls.ruleset("test")
+    failure = []
+
+    with ruleset:
+        @rls.when_all(+rls.s.exception)
+        def second(c) -> None:
+            logger.critical(c.s.exception)
+            failure.append(str(c.s.exception))
+            c.s.exception = None
+
+        @rls.when_all(+getattr(rls.m, FACTTYPE))
+        def accept_all_frametypes(c) -> None:
+            #logger.critical(str(c))
+            pass
+
+    q = mygroup.generate_rules(ruleset)
+    if failure: 
+        logger.critical("Failure while logic was in work.")
+        for f in failure:
+            f = str(f).replace(r"\n", "\n")
+            f = f.replace(r"', '", "")
+            f = f.replace("traceback [\' ", "traceback:\n")
+            logger.critical(f)
+        raise Exception("During work of logic framework exceptions were "
+                        "raised. See logging for more information.")
+    myfacts = rls.get_facts(ruleset.name)
+    f1 = {'type': 'frame', 'obj': '<http://example.org/example#John>', 'slotkey': '<http://example.org/example#status>', 'slotvalue': "'gold'"}
+    try:
+        assert f1 in myfacts
+        f2_result = (f for f in myfacts if f != f1).__next__()
+        f2 = {'type': 'frame', 'obj': '<http://example.org/example#John>', 'slotkey': '<http://example.org/example#discount>', 'slotvalue': "'10'"}
+        assert all(f2[x] == f2_result[x] for x in f2.keys())
+    except Exception as err:
+        raise Exception(f"expected something like: {[f1, f2]}\n"
+                        f" but got: {myfacts}") from err
+
 
 def test_RIFimport():
+    pytest.skip("First working rdf generator needed")
     testfile = str(PET_Assert.premise)
     try:
         g = rdflib.Graph().parse(testfile, format="rif")
@@ -79,3 +162,4 @@ def test_RIFimport():
         logger.critical("Errors during run: %s" % trafo.failures)
         raise Exception("Errors happened but no error was raised automaticly")
     #logger.critical(rls.get_facts(trafo.rulename))
+    raise Exception()

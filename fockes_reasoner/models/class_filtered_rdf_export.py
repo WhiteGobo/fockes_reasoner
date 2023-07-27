@@ -4,7 +4,7 @@ import rdflib
 from ..durable_reasoner import durable_abc as dur_abc
 from ..shared import focke, string2rdflib, rdflib2string
 
-class internal_export(model_abc.export_model):
+class filtered_rdf_export(model_abc.export_model):
     def export(self, factiterator: Iterable[Mapping[str, str]],
                objects_for_export: Container[str] = [],
                predicates_for_export: Iterable[str] = []) -> Iterator[tuple]:

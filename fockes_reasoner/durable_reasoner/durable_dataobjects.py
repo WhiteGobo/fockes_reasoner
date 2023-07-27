@@ -35,6 +35,8 @@ class rule_generator(dur_abc.rule, abc.ABC):
         ...
 
 class group(dur_abc.group):
+    """is equal to focke:group
+    """
     sentences: Iterable[typ.Union[rule_generator, "group"]]
     def generate_rules(self, ruleset: rls.ruleset, **kwargs: typ.Any) -> None:
         logger.debug("kwargs %r" %kwargs)

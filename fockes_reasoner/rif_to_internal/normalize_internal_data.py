@@ -14,7 +14,7 @@ This module provides a python implementation of this ruleset.
 
       (* rif2internal:combinePattern *)
       Group(
-        (* rif2internal:combinePatternFormulas*)
+        (* rif2internal:combinePatternFormulas *)
         Forall ?first ?first_pattern such that And(
           ?first[rdf:first -> ?first_formula]
           ?first[rdf:rest -> rdf:nil]
@@ -22,6 +22,7 @@ This module provides a python implementation of this ruleset.
         )(
           Assert( ?first[tmp:concat_pattern -> ?first_pattern] )
         )
+
         Forall ?formulas ?first ?second ?first_formula ?second_formula ?conc_pattern ?first_pattern ?second_pattern such that And(
           ?first[rdf:first -> ?first_formula]
           ?first[rdf:rest -> ?second]
@@ -32,6 +33,7 @@ This module provides a python implementation of this ruleset.
           ?conc_pattern = func:concate(?first_formula, ?second_pattern)
           ?first[tmp:concat_pattern -> ?conc_pattern]
         )
+
         Forall ?rule ?formulas ?formulas_pattern ?action ?action_pattern such that And(
           ?rule # rif:Forall
           ?rule[rif:formulas -> ?formulas]
@@ -56,11 +58,10 @@ def _create_initializeConcatePattern() -> internal.rule:
     var_first = rdflib.Variable("first")
     var_first_pattern = rdflib.Variable("first_pattern")
     patterns = [
-            internal.frame_pattern(RDF.first, RDF.first, RDF.first),
-            #internal.frame_pattern(var_first, RDF.first, var_first_pattern),
-            #internal.frame_pattern(var_first, RDF.rest, RDF.nil),
-            #internal.frame_pattern(var_first, tmpdata.pattern,
-            #                       var_first_pattern),
+            internal.frame_pattern(var_first, RDF.first, var_first_pattern),
+            internal.frame_pattern(var_first, RDF.rest, RDF.nil),
+            internal.frame_pattern(var_first, tmpdata.pattern,
+                                   var_first_pattern),
             ]
     actions = [internal.assert_frame(var_first, tmpdata.concat_pattern,
                                      var_first_pattern)]
