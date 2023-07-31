@@ -9,7 +9,7 @@ import typing as typ
 from .durable_reasoner import durable_abc as dur_abc
 from .durable_reasoner import durable_dataobjects as dur_obj
 from .durable_reasoner.durable_abc import TRANSLATEABLE_TYPES
-from .shared import focke, RDF
+from .shared import focke, RDF, rdflib2string
 
 from rdflib import Variable, URIRef, BNode, Literal
 def _transform_complex(
@@ -109,8 +109,8 @@ class create_new(dur_abc.function):
 
     def __call__(self, c: durable.engine.Closure,
                  bindings: dur_abc.BINDING = {},
-                 ) -> None:
-        raise Exception()
+                 external_resolution: typ.Any = {}) -> None:
+        bindings[self.variable] = rdflib2string(rdflib.BNode())
 
 class rule(dur_obj.forall):
     patterns: tuple[dur_abc.pattern, ...]
