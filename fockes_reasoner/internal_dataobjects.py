@@ -101,6 +101,17 @@ class action(dur_obj.action):
                                           "rule {x} with types {foundtype}")
         return cls(functions)
 
+class create_new(dur_abc.function):
+    variable: rdflib.Variable
+    """Variable that will be bound to a new node"""
+    def __init__(self, variable: rdflib.Variable):
+        self.variable = variable
+
+    def __call__(self, c: durable.engine.Closure,
+                 bindings: dur_abc.BINDING = {},
+                 ) -> None:
+        raise Exception()
+
 class rule(dur_obj.forall):
     patterns: tuple[dur_abc.pattern, ...]
     functions: tuple[dur_abc.function, ...]

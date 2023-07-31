@@ -102,7 +102,7 @@ def test_RDFimport():
             focke:slotvalue "gold" .
     """)
     mygroup = internal.group.from_rdf(testgraph, my.group)
-    logger.critical(repr(mygroup))
+    logger.debug(repr(mygroup))
 
     ruleset = rls.ruleset("test")
     failure = []
@@ -110,8 +110,11 @@ def test_RDFimport():
     with ruleset:
         @rls.when_all(+rls.s.exception)
         def second(c) -> None:
-            logger.critical(c.s.exception)
-            failure.append(str(c.s.exception))
+            f = str(c.s.exception).replace(r"\n", "\n")
+            f = f.replace(r"', '", "")
+            f = f.replace("traceback [\' ", "traceback:\n")
+            logger.error(f)
+            failure.append(f)
             c.s.exception = None
 
         @rls.when_all(+getattr(rls.m, FACTTYPE))
@@ -121,12 +124,6 @@ def test_RDFimport():
 
     q = mygroup.generate_rules(ruleset)
     if failure: 
-        logger.critical("Failure while logic was in work.")
-        for f in failure:
-            f = str(f).replace(r"\n", "\n")
-            f = f.replace(r"', '", "")
-            f = f.replace("traceback [\' ", "traceback:\n")
-            logger.critical(f)
         raise Exception("During work of logic framework exceptions were "
                         "raised. See logging for more information.")
     myfacts = rls.get_facts(ruleset.name)
@@ -142,7 +139,6 @@ def test_RDFimport():
 
 
 def test_RIFimport():
-    pytest.skip("First working rdf generator needed")
     testfile = str(PET_Assert.premise)
     try:
         g = rdflib.Graph().parse(testfile, format="rif")
@@ -162,4 +158,5 @@ def test_RIFimport():
         logger.critical("Errors during run: %s" % trafo.failures)
         raise Exception("Errors happened but no error was raised automaticly")
     #logger.critical(rls.get_facts(trafo.rulename))
+    logger.info(trafo._symbols_for_export)
     raise Exception()
