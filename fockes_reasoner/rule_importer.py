@@ -17,18 +17,12 @@ import uuid
 from . import rif_to_internal as rif2internal
 from . import internal_dataobjects as internal
 from .durable_reasoner import durable_abc as dur_abc
-from .shared import focke, string2rdflib, rdflib2string
+from .shared import focke, string2rdflib, rdflib2string, act, func
 from . import models
 
-class graph_transformer:
-    """parses information equal to rdflib.Graph.
-    Information that is produced can be extracted via __iter__ or serialize.
+class _builtin_functions:
+    """Enables all functionability for external functions.
     """
-    ruleset: rls.ruleset
-    """Durable Ruleset used logic"""
-    maingroup: typ.Any
-    failures: list[str]
-    """A list of the failures intercept by durable rules"""
     standard_symbols_for_export = [
             focke.Group,
             #focke.action,
@@ -53,19 +47,9 @@ class graph_transformer:
     _symbols_for_export: set[str]
     """Will be initialized with standard_symbols_for_export"""
 
-    def __init__(self, maingroup: typ.Any, rulename: typ.Union[str, None]=None):
-        """
-        :TODO: changed automatic rulename assignment
-        """
-        self.failures = []
-        if rulename is None:
-            rulename = str(uuid.uuid4())
-        elif not rulename:
-            raise SyntaxError("rulename cant be ''")
+    def __init__(self) -> None:
         self._symbols_for_export = set(rdflib2string(x) for x
                                        in self.standard_symbols_for_export)
-        self.maingroup = maingroup
-        self.ruleset = self._init_ruleset(rulename)
 
     def _label_for_export(
             self,
@@ -87,10 +71,90 @@ class graph_transformer:
 
     @property
     def external_resolution(self) -> Mapping[typ.Union[rdflib.URIRef, rdflib.BNode], Callable]:
-        return {focke.export: self._label_for_export}
+        return {focke.export: self._label_for_export,
+                act.print: self._print_string,
+                func.sublist: self._get_sublist,
+                }
+
+    def _get_sublist(
+            self,
+            bindings: MutableMapping,
+            args: Iterable[typ.Union[str, dur_abc.TRANSLATEABLE_TYPES]],
+            ) -> rdflib.BNode:
+        t_args = [bindings.get(x,x) for x in args]
+        targetedlist = t_args[0]
+        start = int(t_args[1])
+        try:
+            end = int(t_args[2])
+        except IndexError:
+            end = None
+        for fact in rls.get_facts(self.rulename):#type: ignore[attr-defined]
+            if fact[dur_abc.FACTTYPE] == dur_abc.LIST:
+                if fact[dur_abc.LIST_ID] == targetedlist:
+                    if end is None:
+                        newlist = fact[dur_abc.LIST_MEMBERS][start:]
+                    else:
+                        newlist = fact[dur_abc.LIST_MEMBERS][start:end]
+                    return self._make_list({}, newlist)
+        raise Exception("couldnt find targeted list %s" % targetedlist)
+
+    def _make_list(
+            self,
+            bindings: MutableMapping,
+            args: Iterable[typ.Union[str, dur_abc.TRANSLATEABLE_TYPES]],
+            ) -> rdflib.BNode:
+        newid = rdflib.BNode()
+        elems = [bindings.get(x,x) for x in args]
+        newfact = {dur_abc.FACTTYPE: dur_abc.LIST,
+                   dur_abc.LIST_ID: newid,
+                   dur_abc.LIST_MEMBERS: elems,
+                   }
+        rls.assert_fact(self.rulename, newfact) #type: ignore[attr-defined]
+        return newid
+
+    def _print_string(
+            self,
+            bindings: MutableMapping,
+            args: Iterable[typ.Union[str, dur_abc.TRANSLATEABLE_TYPES]],
+            ) -> None:
+        """
+        :TODO: replace raised Exception with exception that stops the program
+        :TODO: replace print with logger with standardoutput stdout
+        """
+        try:
+            arg = (bindings.get(x,x) for x in args).__next__()
+            #assert arg.datatype == xs.string
+        except (StopIteration, AssertionError) as err:
+            raise Exception("act:print must have exactly one argument "
+                            "with type xs:string.") from err
+        print(str(arg))
 
     def register_external_function(self, func: Callable) -> None:
         raise NotImplementedError()
+
+class graph_transformer(_builtin_functions):
+    """parses information equal to rdflib.Graph.
+    Information that is produced can be extracted via __iter__ or serialize.
+    """
+    ruleset: rls.ruleset
+    """Durable Ruleset used logic"""
+    maingroup: typ.Any
+    failures: list[str]
+    """A list of the failures intercept by durable rules"""
+
+    def __init__(self, maingroup: typ.Any, rulename: typ.Union[str, None]=None):
+        """
+        :TODO: changed automatic rulename assignment
+        """
+        super().__init__()
+        self.failures = []
+        if rulename is None:
+            rulename = str(uuid.uuid4())
+        elif not rulename:
+            raise SyntaxError("rulename cant be ''")
+        self.maingroup = maingroup
+        self.ruleset = self._init_ruleset(rulename)
+
 
     def _init_ruleset(self, rulename: str) -> rls.ruleset:
         ruleset = dur_reasoner.get_standard_ruleset(rulename,
@@ -127,7 +191,6 @@ class graph_transformer:
     def __iter__(self) -> Iterable:
         expo_model = models.filtered_rdf_export()
         return expo_model.export(rls.get_facts(self.rulename), #type: ignore[no-any-return]
-                                 self._symbols_for_export,
                                  self._symbols_for_export)
 
 

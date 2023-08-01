@@ -145,6 +145,7 @@ def test_RIFimport():
     except rdflib.plugin.PluginException:
         pytest.skip("Need rdflib parser plugin to load RIF-file")
 
+    logger.info(g.serialize())
     trafo = rule_importer.create_RIF2internal_transformer()
     #trafo.parse(testfile, format="rif")
     trafo.load_from_graph(g)
