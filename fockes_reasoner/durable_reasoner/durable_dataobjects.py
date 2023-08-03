@@ -2,6 +2,7 @@ import abc
 import typing as typ
 from collections.abc import Iterable, Callable, Mapping
 import rdflib
+from rdflib import URIRef, BNode, Literal, Variable
 import logging
 logger = logging.getLogger(__name__)
 import durable.lang as rls
@@ -146,22 +147,48 @@ class external_condition(dur_abc.external_condition):
     ...
 
 #EXTERNAL_CALL = Callable[[Iterable[TRANSLATEABLE_TYPES]],
-EXTERNAL_CALL = Callable[...,
-                         typ.Union[None, TRANSLATEABLE_TYPES, bool]]
+EXTERNAL = Callable[[dur_abc.BINDING, Iterable[TRANSLATEABLE_TYPES]], TRANSLATEABLE_TYPES]
+EXTERNAL_CALL = Callable[[dur_abc.BINDING, Iterable[TRANSLATEABLE_TYPES]], None]
 
-class execute(dur_abc.execute):
-    op: typ.Union[rdflib.URIRef, rdflib.BNode]
-    args: tuple[TRANSLATEABLE_TYPES, ...]
+class external(dur_abc.external):
+    const: typ.Union[rdflib.URIRef, rdflib.BNode]
+    terms: tuple[typ.Union[TRANSLATEABLE_TYPES, "external"], ...]
 
     def __call__(self, c: typ.Union[durable.engine.Closure, str],
                  bindings: dur_abc.BINDING = {},
-                 external_resolution: Mapping[typ.Union[rdflib.URIRef, rdflib.BNode], EXTERNAL_CALL] = {},
-                 ) -> typ.Union[None, TRANSLATEABLE_TYPES, bool]:
+                 external_resolution: Mapping[typ.Union[rdflib.URIRef, rdflib.BNode], EXTERNAL] = {},
+                 ) -> TRANSLATEABLE_TYPES:
+        try:
+            func = external_resolution[self.const]
+        except KeyError as err:
+            raise KeyError("Tried to call not provided external function: %r" % self.const) from err
+        args: list[TRANSLATEABLE_TYPES] = []
+        for x in self.terms:
+            if isinstance(x, (URIRef, BNode, Literal, Variable)):
+                args.append(x)
+            else:
+                args.append(x(bindings))
+        return func(bindings, args)
+
+class execute(dur_abc.execute):
+    op: typ.Union[rdflib.URIRef, rdflib.BNode]
+    args: tuple[typ.Union[TRANSLATEABLE_TYPES, external], ...]
+
+    def __call__(self, c: typ.Union[durable.engine.Closure, str],
+                 bindings: dur_abc.BINDING = {},
+                 external_resolution: Mapping[typ.Union[rdflib.URIRef, rdflib.BNode], EXTERNAL] = {},
+                 ) -> None:
         try:
             func = external_resolution[self.op]
         except KeyError as err:
             raise KeyError("Tried to call not provided external function: %r" % self.op) from err
-        return func(bindings, self.args)
+        args: list[TRANSLATEABLE_TYPES] = []
+        for x in self.args:
+            if isinstance(x, (URIRef, BNode, Literal, Variable)):
+                args.append(x)
+            else:
+                args.append(x(bindings))
+        func(bindings, args)
 
 class assert_frame(dur_abc.assert_frame):
     def __call__(self, c: typ.Union[durable.engine.Closure, str],

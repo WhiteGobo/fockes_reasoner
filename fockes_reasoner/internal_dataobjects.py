@@ -6,6 +6,7 @@ import logging
 logger = logging.getLogger(__name__)
 from collections.abc import Iterable, Mapping
 import typing as typ
+from typing import Union
 from .durable_reasoner import durable_abc as dur_abc
 from .durable_reasoner import durable_dataobjects as dur_obj
 from .durable_reasoner.durable_abc import TRANSLATEABLE_TYPES
@@ -205,10 +206,18 @@ class subclass_condition(dur_obj.subclass_condition):
 class external_condition(dur_obj.external_condition):
     ...
 
+class external(dur_obj.external):
+    def __init__(self, const: typ.Union[rdflib.URIRef, rdflib.BNode],
+                 terms: Iterable[Union[TRANSLATEABLE_TYPES, dur_obj.external]]):
+        self.const = const
+        self.terms = tuple(terms)
+
+    def __repr__(self) -> str:
+        return "%s:%r%r" % (type(self).__name__, self.const, self.terms)
 
 class execute(dur_obj.execute):
     def __init__(self, op: typ.Union[rdflib.URIRef, rdflib.BNode],
-                 args: Iterable[TRANSLATEABLE_TYPES]):
+                 args: Iterable[Union[TRANSLATEABLE_TYPES, dur_obj.external]]):
         self.op = op
         self.args = tuple(args)
 

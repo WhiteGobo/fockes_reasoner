@@ -177,15 +177,28 @@ class external_condition(condition):
 class framework_bridge(contextless_function):
     """Every function, which handles the framework is a subtype to this."""
 
-class execute(framework_bridge):
-    op: TRANSLATEABLE_TYPES
-    args: tuple[TRANSLATEABLE_TYPES, ...]
+
+class external(framework_bridge):
+    const: TRANSLATEABLE_TYPES
+    terms: tuple[typ.Union[TRANSLATEABLE_TYPES, "external"], ...]
 
     @abc.abstractmethod
     def __call__(self, c: typ.Union[durable.engine.Closure, str],
                  bindings: BINDING = {},
                  external_resolution: Mapping[typ.Union[rdflib.URIRef, rdflib.BNode], typ.Any] = {},
-                 ) -> typ.Union[None, TRANSLATEABLE_TYPES, bool]:
+                 ) -> typ.Union[TRANSLATEABLE_TYPES, bool]:
+        ...
+
+
+class execute(framework_bridge):
+    op: TRANSLATEABLE_TYPES
+    args: tuple[typ.Union[TRANSLATEABLE_TYPES, external], ...]
+
+    @abc.abstractmethod
+    def __call__(self, c: typ.Union[durable.engine.Closure, str],
+                 bindings: BINDING = {},
+                 external_resolution: Mapping[typ.Union[rdflib.URIRef, rdflib.BNode], typ.Any] = {},
+                 ) -> None:
         ...
 
     #fact_type: str = EXECUTE

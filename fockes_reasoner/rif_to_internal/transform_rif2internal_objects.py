@@ -31,7 +31,7 @@ from collections.abc import Iterable
 import rdflib
 from rdflib import Variable, Literal
 from .. import internal_dataobjects as internal
-from ..internal_dataobjects import frame_pattern, create_new, execute, assert_frame
+from ..internal_dataobjects import frame_pattern, create_new, execute, assert_frame, external
 from ..shared import tmpdata, focke, rif2internal, RIF, RDF, act, func
 
 def _create_internalGroups() -> internal.rule:
@@ -85,13 +85,13 @@ def _create_collectRules() -> Iterable[internal.rule]:
             ]
     actions1 = [
             create_new(var_transrulelist),
-            create_new(var_workqueue),
             assert_frame(var_transrulelist, RDF.type, tmpdata.transrulelist),
             assert_frame(var_transrulelist, tmpdata.rulesfrom, var_rulelist),
             assert_frame(var_group, tmpdata.sentences, var_transrulelist),
             assert_frame(var_transrulelist, tmpdata.workqueue, var_workqueue),
-            execute(func.sublist, [var_rulelist, Literal(0)]),
             execute(focke.export, [var_transrulelist]),
+            execute(focke.export,
+                    [external(func.sublist, [var_rulelist, Literal(1)])]),
             ]
     yield internal.rule(patterns1, actions1)
     patterns2 = [
