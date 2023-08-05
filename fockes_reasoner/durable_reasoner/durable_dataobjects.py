@@ -10,6 +10,7 @@ import durable.engine
 from . import durable_abc as dur_abc
 from .durable_abc import TRANSLATEABLE_TYPES
 from ..shared import rdflib2string, string2rdflib
+import traceback
 
 class value_locator:
     factname: str
@@ -68,10 +69,13 @@ class forall(rule_generator, dur_abc.rule):
                    for i, p in enumerate(self.patterns)]
         assert patterns
         with ruleset:
-            @rls.when_all(*patterns)
+            @rls.when_all(rls.m.machinestate == "running",
+                          *patterns)
             def myfunction(c: durable.engine.Closure) -> None:
                 bindings: dur_abc.BINDING = self._generate_bindings(c)
+                logger.critical("starting function for %r" % self)
                 for func in self.functions:
+                    logger.critical("act %r" % func)
                     func(c, bindings, **kwargs)
 
     def _generate_bindings(self, c:durable.engine.Closure) -> dur_abc.BINDING:
@@ -161,14 +165,23 @@ class external(dur_abc.external):
         try:
             func = external_resolution[self.const]
         except KeyError as err:
-            raise KeyError("Tried to call not provided external function: %r" % self.const) from err
+            raise KeyError("Tried to call not provided external function: %r" % self.const, external_resolution.keys()) from err
         args: list[TRANSLATEABLE_TYPES] = []
         for x in self.terms:
             if isinstance(x, (URIRef, BNode, Literal, Variable)):
                 args.append(x)
             else:
-                args.append(x(bindings))
-        return func(bindings, args)
+                args.append(x(c, bindings, external_resolution))
+        try:
+            return func(bindings, args)
+        except Exception as err:
+            err_message = traceback.format_exc()
+            logger.critical(err_message)
+            logger.critical("happened when calling %r (bindings: %r)"
+                            % (self, bindings))
+            raise Exception("happened when calling %r (bindings: %r)"
+                            % (self, bindings)) from err
+
 
 class execute(dur_abc.execute):
     op: typ.Union[rdflib.URIRef, rdflib.BNode]
@@ -187,8 +200,51 @@ class execute(dur_abc.execute):
             if isinstance(x, (URIRef, BNode, Literal, Variable)):
                 args.append(x)
             else:
-                args.append(x(bindings))
+                args.append(x(c, bindings, external_resolution))
         func(bindings, args)
+
+
+class bind(dur_abc.bind):
+    var: rdflib.Variable
+    target: typ.Union[TRANSLATEABLE_TYPES, external]
+
+    def __call__(self, c: typ.Union[durable.engine.Closure, str],
+                 bindings: dur_abc.BINDING = {},
+                 external_resolution: Mapping[typ.Union[rdflib.URIRef, rdflib.BNode], EXTERNAL] = {},
+                 ) -> None:
+        if isinstance(self.target, Variable):
+            bindings[self.var] = bindings[self.target]
+        elif isinstance(self.target, (URIRef, BNode, Literal)):
+            bindings[self.var] = rdflib2string(self.target)
+        else:
+            bindings[self.var] = rdflib2string(self.target(c, bindings, external_resolution))
+
+class modify_frame(dur_abc.modify_frame):
+    def __call__(self, c: typ.Union[durable.engine.Closure, str],
+                 bindings: dur_abc.BINDING = {}) -> None:
+        fact = {"type":self.fact_type}
+        for label, x, in [
+                (self.label_obj, self.obj),
+                (self.label_slotkey, self.slotkey),
+                (self.label_slotvalue, self.slotvalue),
+                ]:
+            if isinstance(x, rdflib.Variable):
+                fact[label] = bindings[x]
+            elif isinstance(x, (URIRef, BNode, Literal)):
+                fact[label] = rdflib2string(x)
+            else:
+                bindings[self.var]\
+                        = rdflib2string(x(c, bindings, external_resolution))
+        filt = lambda f: all((f[self.label_obj] == self.obj,
+                              f[self.label_slotkey] == self.slotkey))
+        if isinstance(c, str):
+            facts = rls.get_facts(c)
+            rls.retract_fact(c, (f for f in facts if filt(f)).__next__())
+            rls.assert_fact(c, fact)
+        else:
+            facts = c.get_facts()
+            c.retract_fact((f for f in facts if filt(f)).__next__())
+            c.assert_fact(fact)
 
 class assert_frame(dur_abc.assert_frame):
     def __call__(self, c: typ.Union[durable.engine.Closure, str],
