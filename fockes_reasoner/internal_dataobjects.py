@@ -224,6 +224,34 @@ class execute(dur_obj.execute):
     def __repr__(self) -> str:
         return "%s:%r%r" % (type(self).__name__, self.op, self.args)
 
+class bind(dur_obj.bind):
+    def __init__(self, var: rdflib.Variable,
+                 target: Union[TRANSLATEABLE_TYPES, dur_obj.external]):
+        self.var = var
+        self.target = target
+
+    def __repr__(self) -> str:
+        return "%s:%r%r" % (type(self).__name__, self.var, self.target)
+
+
+class modify_frame(dur_obj.modify_frame):
+    def __init__(self, obj: TRANSLATEABLE_TYPES, slotkey: TRANSLATEABLE_TYPES,
+                 slotvalue: TRANSLATEABLE_TYPES):
+        self.obj = obj
+        self.slotkey = slotkey
+        self.slotvalue = slotvalue
+
+    def __call__(self, c: typ.Union[durable.engine.Closure, str],
+                 bindings: dur_abc.BINDING = {},
+                 external_resolution: typ.Any = {}) -> None:
+        """
+        :TODO: Remove this and make a functioning solution with typecontrol
+        """
+        super().__call__(c, bindings=bindings)
+
+    def __repr__(self) -> str:
+        return f"%s({self.obj}[{self.slotkey}->{self.slotvalue}])"\
+                % type(self).__name__
 
 class assert_frame(dur_obj.assert_frame):
     def __init__(self, obj: TRANSLATEABLE_TYPES, slotkey: TRANSLATEABLE_TYPES,

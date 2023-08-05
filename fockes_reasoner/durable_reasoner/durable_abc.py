@@ -205,16 +205,42 @@ class execute(framework_bridge):
     #label_op: str = "op"
     #label_args: str = "args"
 
+
+class bind(framework_bridge):
+    var: rdflib.Variable
+    target: typ.Union[TRANSLATEABLE_TYPES, external]
+
+    @abc.abstractmethod
+    def __call__(self, c: typ.Union[durable.engine.Closure, str],
+                 bindings: BINDING = {},
+                 external_resolution: Mapping[typ.Union[rdflib.URIRef, rdflib.BNode], typ.Any] = {},
+                 ) -> None:
+        ...
+
+
 class assert_frame(framework_bridge):
     """If you :term:`assert` a :term:`frame` use this."""
     obj: TRANSLATEABLE_TYPES
     slotkey: TRANSLATEABLE_TYPES
-    slotvalue: TRANSLATEABLE_TYPES
+    slotvalue: typ.Union[TRANSLATEABLE_TYPES, external]
 
     fact_type: str = FRAME
     label_obj: str = FRAME_OBJ
     label_slotkey: str = FRAME_SLOTKEY
     label_slotvalue: str = FRAME_SLOTVALUE
+
+
+class modify_frame(framework_bridge):
+    """If you :term:`modify` a :term:`frame` use this."""
+    obj: TRANSLATEABLE_TYPES
+    slotkey: TRANSLATEABLE_TYPES
+    slotvalue: typ.Union[TRANSLATEABLE_TYPES, external]
+
+    fact_type: str = FRAME
+    label_obj: str = FRAME_OBJ
+    label_slotkey: str = FRAME_SLOTKEY
+    label_slotvalue: str = FRAME_SLOTVALUE
+
 
 class assert_member(framework_bridge):
     """If you :term:`assert` a frame use this."""

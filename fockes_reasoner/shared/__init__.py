@@ -65,5 +65,8 @@ def rdflib2string(identifier: SUPPORTED_TRANSLATEABLE) -> str:
 def string2rdflib(string: str) -> SUPPORTED_TRANSLATEABLE:
     """Translates from rdflib to strings. Inverse to rdflib2string
     """
-    return rdf_identifier.parse_string(string)[0]# type: ignore[no-any-return]
+    try:
+        return rdf_identifier.parse_string(string)[0]# type: ignore[no-any-return]
+    except Exception as err:
+        raise Exception("happend with %r" % string) from err
 

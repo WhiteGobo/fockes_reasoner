@@ -31,7 +31,7 @@ from collections.abc import Iterable
 import rdflib
 from rdflib import Variable, Literal
 from .. import internal_dataobjects as internal
-from ..internal_dataobjects import frame_pattern, create_new, execute, assert_frame, external
+from ..internal_dataobjects import frame_pattern, create_new, execute, assert_frame, external, bind, modify_frame
 from ..shared import tmpdata, focke, rif2internal, RIF, RDF, act, func
 
 def _create_internalGroups() -> internal.rule:
@@ -88,19 +88,33 @@ def _create_collectRules() -> Iterable[internal.rule]:
             assert_frame(var_transrulelist, RDF.type, tmpdata.transrulelist),
             assert_frame(var_transrulelist, tmpdata.rulesfrom, var_rulelist),
             assert_frame(var_group, tmpdata.sentences, var_transrulelist),
+            #execute(act.print, [var_workqueue]),
+            bind(var_workqueue,
+                 external(func.sublist, [var_rulelist, Literal(0)])),
             assert_frame(var_transrulelist, tmpdata.workqueue, var_workqueue),
             execute(focke.export, [var_transrulelist]),
-            execute(focke.export,
-                    [external(func.sublist, [var_rulelist, Literal(1)])]),
+            execute(focke.export, [var_workqueue]),
+            #execute(act.print, [Literal("my helperprint")]),
+            #execute(act.print, [var_workqueue]),
             ]
     yield internal.rule(patterns1, actions1)
     patterns2 = [
-            frame_pattern(var_group, tmpdata.rulesfrom, var_rulelist),
-            #frame_pattern(var_transrulelist, tmpdata.l, var_l),
+            frame_pattern(var_group, RDF.type, rif2internal.Group),
+            frame_pattern(var_group, tmpdata.sentences, var_transrulelist),
+            frame_pattern(var_transrulelist, tmpdata.workqueue, var_workqueue)
             ]
-    #actions2 = [
-    #        ]
-    #yield internal.rule(patterns2, actions2)
+    actions2 = [
+            bind(var_transrulelist,
+                 external(func.append,
+                          [var_transrulelist,
+                           external(func.get, [var_workqueue, Literal(0)])]),
+                 ),
+            modify_frame(var_group, tmpdata.sentences, var_transrulelist),
+            assert_frame(var_transrulelist,
+                         tmpdata.workqueue,
+                         external(func.sublist, [var_workqueue, Literal(1)])),
+            ]
+    yield internal.rule(patterns2, actions2)
     patterns = [
             internal.frame_pattern(var_group, RDF.type, rif2internal.group),
             internal.frame_pattern(var_rule, RDF.type, rif2internal.forall),

@@ -74,7 +74,36 @@ class _builtin_functions:
         return {focke.export: self._label_for_export,
                 act.print: self._print_string,
                 func.sublist: self._get_sublist,
+                func.append: self._append,
+                func.get: self.__get,
                 }
+
+    def __get(
+            self,
+            bindings: MutableMapping,
+            args: Iterable[typ.Union[str, dur_abc.TRANSLATEABLE_TYPES]],
+            ) -> rdflib.BNode:
+        mylist, index = (bindings.get(x,x) for x in args)
+        for fact in rls.get_facts(self.rulename):#type: ignore[attr-defined]
+            if fact.get(dur_abc.FACTTYPE) == dur_abc.LIST:
+                if fact[dur_abc.LIST_ID] == targetedlist:
+                    return fact[dur_abc.LIST_MEMBERS][int(index)]
+        raise Exception("couldnt find targeted list %r" % targetedlist)
+
+    def _append(
+            self,
+            bindings: MutableMapping,
+            args: Iterable[typ.Union[str, dur_abc.TRANSLATEABLE_TYPES]],
+            ) -> rdflib.BNode:
+        t_args = [bindings.get(x,x) for x in args]
+        mylist = t_args[0]
+        newelements = t_args[1:]
+        for fact in rls.get_facts(self.rulename):#type: ignore[attr-defined]
+            if fact.get(dur_abc.FACTTYPE) == dur_abc.LIST:
+                if fact[dur_abc.LIST_ID] == targetedlist:
+                    newlist = fact[dur_abc.LIST_MEMBERS] + newelements
+                    return self._make_list({}, newlist)
+        raise Exception("couldnt find targeted list %r" % targetedlist)
 
     def _get_sublist(
             self,
@@ -89,14 +118,14 @@ class _builtin_functions:
         except IndexError:
             end = None
         for fact in rls.get_facts(self.rulename):#type: ignore[attr-defined]
-            if fact[dur_abc.FACTTYPE] == dur_abc.LIST:
+            if fact.get(dur_abc.FACTTYPE) == dur_abc.LIST:
                 if fact[dur_abc.LIST_ID] == targetedlist:
                     if end is None:
                         newlist = fact[dur_abc.LIST_MEMBERS][start:]
                     else:
                         newlist = fact[dur_abc.LIST_MEMBERS][start:end]
                     return self._make_list({}, newlist)
-        raise Exception("couldnt find targeted list %s" % targetedlist)
+        raise Exception("couldnt find targeted list %r" % targetedlist)
 
     def _make_list(
             self,
@@ -106,7 +135,7 @@ class _builtin_functions:
         newid = rdflib.BNode()
         elems = [bindings.get(x,x) for x in args]
         newfact = {dur_abc.FACTTYPE: dur_abc.LIST,
-                   dur_abc.LIST_ID: newid,
+                   dur_abc.LIST_ID: rdflib2string(newid),
                    dur_abc.LIST_MEMBERS: elems,
                    }
         rls.assert_fact(self.rulename, newfact) #type: ignore[attr-defined]
@@ -182,7 +211,20 @@ class graph_transformer(_builtin_functions):
         mygroup.generate_rules(self.ruleset,
                                external_resolution=self.external_resolution)
         if self.failures:
-            raise Exception("Something went wrong", self.failures)
+            raise Exception("Loading of data produced an error.",
+                            self.failures)
+
+    def run(self, t=None) -> None:
+        if t is None:
+            rls.assert_fact(self.rulename, {"machinestate": "running"})
+            rls.retract_fact(self.rulename, {"machinestate": "running"})
+        else:
+            raise NotImplementedError()
+        if self.failures:
+            raise Exception("Rules produced an error.", self.failures)
+
+    def _get_internal_info(self) -> Iterable:
+        return rls.get_facts(self.rulename) #type: ignore[no-any-return]
 
     def serialize(self) -> str:
         rls.get_facts(self.rulename)

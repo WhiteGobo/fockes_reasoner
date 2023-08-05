@@ -148,16 +148,32 @@ def test_RIFimport():
     logger.info(g.serialize())
     trafo = rule_importer.create_RIF2internal_transformer()
     #trafo.parse(testfile, format="rif")
-    trafo.load_from_graph(g)
+    try:
+        trafo.load_from_graph(g)
+    except Exception:
+        logger.info("internal information during loading: %s"
+                    % "\n".join(str(x) for x in trafo._get_internal_info()))
+        raise
+    #logger.info("internal information after loading: %s"
+    #                % "\n".join(str(x) for x in trafo._get_internal_info()))
+    try:
+        trafo.run()
+    except Exception:
+        #logger.info("internal information during running: %s"
+        #            % "\n".join(str(x) for x in trafo._get_internal_info()))
+        raise
     logger.info("symbols labeled for export: %s" % trafo._symbols_for_export)
-    g = rdflib.Graph()
-    for ax in trafo:
-        g.add(ax)
+    try:
+        g = rdflib.Graph()
+        for ax in trafo:
+            g.add(ax)
+    except Exception:
+        #logger.info("internal information during export: %s"
+        #            % "\n".join(str(x) for x in trafo._get_internal_info()))
+        raise
     #logger.info("asdfqwer %s" % list(trafo))
     logger.info(g.serialize())
-    if trafo.failures:
-        logger.critical("Errors during run: %s" % trafo.failures)
-        raise Exception("Errors happened but no error was raised automaticly")
-    #logger.critical(rls.get_facts(trafo.rulename))
-    logger.info(trafo._symbols_for_export)
+    #logger.info(trafo._symbols_for_export)
+    #logger.info("internal information during export: %s"
+    #            % "\n".join(str(x) for x in trafo._get_internal_info()))
     raise Exception()
