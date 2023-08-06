@@ -87,7 +87,9 @@ class forall(rule_generator, dur_abc.rule):
                     except FailedAction:
                         raise
                     except Exception as err:
-                        logger.critical(traceback.format_exc())
+                        logger.critical(f"Failure in rule {self}\nFailed at "
+                                        "func %r with message:\n%s"
+                                        % (func, traceback.format_exc()))
                         raise FailedAction(func) from err
 
     def _generate_bindings(self, c:durable.engine.Closure) -> dur_abc.BINDING:

@@ -88,7 +88,10 @@ class _builtin_functions:
         for fact in rls.get_facts(self.rulename):#type: ignore[attr-defined]
             if fact.get(dur_abc.FACTTYPE) == dur_abc.LIST:
                 if fact[dur_abc.LIST_ID] == mylist:
-                    return fact[dur_abc.LIST_MEMBERS][int(index)]
+                    try:
+                        return fact[dur_abc.LIST_MEMBERS][int(index)]
+                    except IndexError as err:
+                        raise IndexError("Cant retrieve element %r from list %r" % (index, fact[dur_abc.LIST_MEMBERS])) from err
         raise Exception("couldnt find targeted list %r" % targetedlist)
 
     def _append(
