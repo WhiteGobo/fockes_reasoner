@@ -84,13 +84,14 @@ def _create_collectRules() -> Iterable[internal.rule]:
             frame_pattern(var_origgroup, RIF.sentences, var_rulelist),
             ]
     actions1 = [
-            create_new(var_transrulelist),
+            bind(var_workqueue,
+                 external(func.sublist, [var_rulelist, Literal(0)])),
+            bind(var_transrulelist,
+                 external(getattr(func, "make-list"), [])),
             assert_frame(var_transrulelist, RDF.type, tmpdata.transrulelist),
             assert_frame(var_transrulelist, tmpdata.rulesfrom, var_rulelist),
             assert_frame(var_group, tmpdata.sentences, var_transrulelist),
             #execute(act.print, [var_workqueue]),
-            bind(var_workqueue,
-                 external(func.sublist, [var_rulelist, Literal(0)])),
             assert_frame(var_transrulelist, tmpdata.workqueue, var_workqueue),
             execute(focke.export, [var_transrulelist]),
             execute(focke.export, [var_workqueue]),

@@ -76,6 +76,7 @@ class _builtin_functions:
                 func.sublist: self._get_sublist,
                 func.append: self._append,
                 func.get: self.__get,
+                getattr(func, "make-list"): self._make_list,
                 }
 
     def __get(
@@ -86,7 +87,7 @@ class _builtin_functions:
         mylist, index = (bindings.get(x,x) for x in args)
         for fact in rls.get_facts(self.rulename):#type: ignore[attr-defined]
             if fact.get(dur_abc.FACTTYPE) == dur_abc.LIST:
-                if fact[dur_abc.LIST_ID] == targetedlist:
+                if fact[dur_abc.LIST_ID] == mylist:
                     return fact[dur_abc.LIST_MEMBERS][int(index)]
         raise Exception("couldnt find targeted list %r" % targetedlist)
 
@@ -96,7 +97,7 @@ class _builtin_functions:
             args: Iterable[typ.Union[str, dur_abc.TRANSLATEABLE_TYPES]],
             ) -> rdflib.BNode:
         t_args = [bindings.get(x,x) for x in args]
-        mylist = t_args[0]
+        targetedlist = t_args[0]
         newelements = t_args[1:]
         for fact in rls.get_facts(self.rulename):#type: ignore[attr-defined]
             if fact.get(dur_abc.FACTTYPE) == dur_abc.LIST:

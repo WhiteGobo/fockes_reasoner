@@ -12,6 +12,12 @@ from .durable_abc import TRANSLATEABLE_TYPES
 from ..shared import rdflib2string, string2rdflib
 import traceback
 
+class FailedAction(Exception):
+    """Exception thrown within the machine, when an action fails."""
+    def __init__(self, func, *args):
+        super().__init__("Failed at action. See logging for more "
+                         "details. Function: %r" % func, *args)
+
 class value_locator:
     factname: str
     """Name of the fact, where the variable is defined"""
@@ -75,8 +81,12 @@ class forall(rule_generator, dur_abc.rule):
                 bindings: dur_abc.BINDING = self._generate_bindings(c)
                 logger.critical("starting function for %r" % self)
                 for func in self.functions:
-                    logger.critical("act %r" % func)
-                    func(c, bindings, **kwargs)
+                    try:
+                        logger.critical("act %r" % func)
+                        func(c, bindings, **kwargs)
+                    except Exception as err:
+                        logger.critical(traceback.format_exc())
+                        raise FailedAction(func) from err
 
     def _generate_bindings(self, c:durable.engine.Closure) -> dur_abc.BINDING:
         return {v: loc(c) for v, loc in self._closure_bindings.items()}

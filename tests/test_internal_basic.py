@@ -159,8 +159,8 @@ def test_RIFimport():
     try:
         trafo.run()
     except Exception:
-        #logger.info("internal information during running: %s"
-        #            % "\n".join(str(x) for x in trafo._get_internal_info()))
+        logger.info("internal information during running: %s"
+                    % "\n".join(str(x) for x in trafo._get_internal_info()))
         raise
     logger.info("symbols labeled for export: %s" % trafo._symbols_for_export)
     try:
