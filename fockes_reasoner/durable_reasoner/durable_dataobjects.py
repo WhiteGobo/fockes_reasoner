@@ -84,6 +84,8 @@ class forall(rule_generator, dur_abc.rule):
                     try:
                         logger.critical("act %r" % func)
                         func(c, bindings, **kwargs)
+                    except FailedAction:
+                        raise
                     except Exception as err:
                         logger.critical(traceback.format_exc())
                         raise FailedAction(func) from err
@@ -182,15 +184,7 @@ class external(dur_abc.external):
                 args.append(x)
             else:
                 args.append(x(c, bindings, external_resolution))
-        try:
-            return func(bindings, args)
-        except Exception as err:
-            err_message = traceback.format_exc()
-            logger.critical(err_message)
-            logger.critical("happened when calling %r (bindings: %r)"
-                            % (self, bindings))
-            raise Exception("happened when calling %r (bindings: %r)"
-                            % (self, bindings)) from err
+        return func(bindings, args)
 
 
 class execute(dur_abc.execute):
@@ -243,22 +237,34 @@ class modify_frame(dur_abc.modify_frame):
             elif isinstance(x, (URIRef, BNode, Literal)):
                 fact[label] = rdflib2string(x)
             else:
-                bindings[self.var]\
-                        = rdflib2string(x(c, bindings, external_resolution))
-        filt = lambda f: all((f[self.label_obj] == self.obj,
-                              f[self.label_slotkey] == self.slotkey))
+                newnode = x(c, bindings, external_resolution)
+                fact[label] = rdflib2string(newnode)
+        def retract_first_frame(facts):
+            """Get first frame with given obj and slotkey"""
+            for f in facts:
+                try:
+                    if f[self.label_obj] == self.obj\
+                            and f[self.label_slotkey] == self.slotkey:
+                        return f
+                except KeyError:
+                    pass
+            return None
         if isinstance(c, str):
-            facts = rls.get_facts(c)
-            rls.retract_fact(c, (f for f in facts if filt(f)).__next__())
+            f = retract_first_frame(rls.get_facts(c))
+            if f is not None:
+                rls.retract_fact(c, f)
             rls.assert_fact(c, fact)
         else:
-            facts = c.get_facts()
-            c.retract_fact((f for f in facts if filt(f)).__next__())
+            f = retract_first_frame(c.get_facts())
+            if f is not None:
+                c.retract_fact(f)
             c.assert_fact(fact)
 
 class assert_frame(dur_abc.assert_frame):
     def __call__(self, c: typ.Union[durable.engine.Closure, str],
-                 bindings: dur_abc.BINDING = {}) -> None:
+                 bindings: dur_abc.BINDING = {},
+                 external_resolution: Mapping[typ.Union[rdflib.URIRef, rdflib.BNode], EXTERNAL] = {},
+                 ) -> None:
         fact = {"type":self.fact_type}
         for label, x, in [
                 (self.label_obj, self.obj),
@@ -267,8 +273,11 @@ class assert_frame(dur_abc.assert_frame):
                 ]:
             if isinstance(x, rdflib.Variable):
                 fact[label] = bindings[x]
-            else:
+            elif isinstance(x, (URIRef, BNode, Literal)):
                 fact[label] = rdflib2string(x)
+            else:
+                newnode = x(c, bindings, external_resolution)
+                fact[label] = rdflib2string(newnode)
         if isinstance(c, str):
             rls.assert_fact(c, fact)
         else:
