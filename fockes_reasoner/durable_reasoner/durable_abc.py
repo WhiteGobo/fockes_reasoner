@@ -32,11 +32,7 @@ in RDF.
 LIST_MEMBERS: ATOMLABEL = "member"
 """:term:`list` enlist all their members under this label."""
 
-TRANSLATEABLE_TYPES = typ.Union[rdflib.Variable,
-                                rdflib.URIRef,
-                                rdflib.BNode,
-                                rdflib.Literal,
-                                ]
+from ..shared import TRANSLATEABLE_TYPES
 
 VARIABLE_LOCATOR: "typ.TypeAlias" = Callable[[typ.Union[durable.engine.Closure, None]], TRANSLATEABLE_TYPES]
 CLOSURE_BINDINGS: "typ.TypeAlias" = MutableMapping[rdflib.Variable, VARIABLE_LOCATOR]
@@ -183,6 +179,8 @@ class framework_bridge(contextless_function):
 
 class implies(contextless_function):
     """A function that implements conditionals for rules."""
+    condition: "external"
+    functions: Iterable[function]
 
 class external(framework_bridge):
     const: TRANSLATEABLE_TYPES
@@ -192,7 +190,7 @@ class external(framework_bridge):
     def __call__(self, c: typ.Union[durable.engine.Closure, str],
                  bindings: BINDING = {},
                  external_resolution: Mapping[typ.Union[rdflib.URIRef, rdflib.BNode], typ.Any] = {},
-                 ) -> typ.Union[TRANSLATEABLE_TYPES, bool]:
+                 ) -> TRANSLATEABLE_TYPES:
         ...
 
 class execute(framework_bridge):
@@ -225,9 +223,9 @@ class bind(framework_bridge):
 
 class assert_frame(framework_bridge):
     """If you :term:`assert` a :term:`frame` use this."""
-    obj: TRANSLATEABLE_TYPES
-    slotkey: TRANSLATEABLE_TYPES
-    slotvalue: typ.Union[TRANSLATEABLE_TYPES, external]
+    #obj: TRANSLATEABLE_TYPES
+    #slotkey: TRANSLATEABLE_TYPES
+    #slotvalue: typ.Union[TRANSLATEABLE_TYPES, external]
 
     fact_type: str = FRAME
     label_obj: str = FRAME_OBJ
@@ -292,9 +290,6 @@ class binding(function):
     used_function: value_function
     variable_mapping: Sequence[rdflib.Variable]
 
-class implies:
-    condition: external
-    functions: Iterable[function]
 
 class rule:
     """internal implementation equal to a :term:`rule`."""

@@ -261,8 +261,10 @@ class retract_frame(dur_obj.retract_frame):
 
 
 class assert_frame(dur_obj.assert_frame):
-    def __init__(self, obj: TRANSLATEABLE_TYPES, slotkey: TRANSLATEABLE_TYPES,
-                 slotvalue: TRANSLATEABLE_TYPES):
+    def __init__(self, obj: typ.Union[TRANSLATEABLE_TYPES, dur_obj.external],
+                 slotkey: typ.Union[TRANSLATEABLE_TYPES, dur_obj.external],
+                 slotvalue: typ.Union[TRANSLATEABLE_TYPES, dur_obj.external],
+                 ):
         self.obj = obj
         self.slotkey = slotkey
         self.slotvalue = slotvalue

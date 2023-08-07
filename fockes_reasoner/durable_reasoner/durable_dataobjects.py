@@ -18,7 +18,7 @@ EXTERNAL_CALL = Callable[[dur_abc.BINDING, Iterable[TRANSLATEABLE_TYPES]], None]
 
 class FailedAction(Exception):
     """Exception thrown within the machine, when an action fails."""
-    def __init__(self, func, *args):
+    def __init__(self, func: typ.Any, *args: typ.Any) -> None:
         super().__init__("Failed at action. See logging for more "
                          "details. Function: %r" % func, *args)
 
@@ -81,11 +81,14 @@ class implies(dur_abc.implies):
 
     def __call__(self, c: typ.Union[durable.engine.Closure, str],
                  bindings: dur_abc.BINDING = {},
-                 external_resolution: Mapping[typ.Union[rdflib.URIRef, rdflib.BNode], EXTERNAL] = {},
+                 #external_resolution: Mapping[typ.Union[rdflib.URIRef, rdflib.BNode], EXTERNAL] = {},
+                 **kwargs: typ.Any
                  ) -> None:
-        if self.condition(c, bindings, external_resolution):
+        #if self.condition(c, bindings, external_resolution):
+        if self.condition(c, bindings, **kwargs):
             for act in self.functions:
-                act(c, bindings, external_resolution)
+                act(c, bindings, **kwargs)
+                #act(c, bindings, external_resolution)
 
     def __repr__(self) -> str:
         return f"%s:{self.condition}->{self.functions}" % type(self).__name__
@@ -279,7 +282,6 @@ class retract_frame(dur_abc.retract_frame):
             if all(f.get(x, None) == fact[x] for x in _slots):
                 match = f
                 break
-            print("compared", f, "\n", fact, "\n")
 
         if match is not None:
             if isinstance(c, str):
@@ -311,7 +313,8 @@ class modify_frame(dur_abc.modify_frame):
         _slotkey = bindings[self.slotkey]\
                 if isinstance(self.slotkey, rdflib.Variable)\
                 else rdflib2string(self.slotkey)
-        def retract_first_frame(facts):
+
+        def retract_first_frame(facts): #type: ignore[no-untyped-def]
             """Get first frame with given obj and slotkey"""
             for f in facts:
                 try:
@@ -333,6 +336,10 @@ class modify_frame(dur_abc.modify_frame):
             c.assert_fact(fact)
 
 class assert_frame(dur_abc.assert_frame):
+    obj: typ.Union[TRANSLATEABLE_TYPES, external]
+    slotkey: typ.Union[TRANSLATEABLE_TYPES, external]
+    slotvalue: typ.Union[TRANSLATEABLE_TYPES, external]
+
     def __call__(self, c: typ.Union[durable.engine.Closure, str],
                  bindings: dur_abc.BINDING = {},
                  external_resolution: Mapping[typ.Union[rdflib.URIRef, rdflib.BNode], EXTERNAL] = {},

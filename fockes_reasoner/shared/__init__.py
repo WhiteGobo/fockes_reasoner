@@ -28,19 +28,18 @@ myRDFLiteral = RDFLiteral.copy()
 myRDFLiteral.add_parse_action(_compile_RDFLiteral)
 rdf_identifier = iri | myRDFLiteral | bnode
 
-SUPPORTED_TRANSLATEABLE = typ.Union[rdflib.Literal,
-                                    rdflib.Variable,
-                                    rdflib.URIRef,
-                                    rdflib.BNode,
-                                    rdflib.IdentifiedNode
-                                    ]
+TRANSLATEABLE_TYPES = typ.Union[rdflib.Variable,
+                                rdflib.URIRef,
+                                rdflib.BNode,
+                                rdflib.Literal,
+                                ]
 
 import re
 class RifSyntaxError(SyntaxError):
     """Raise if RIF hasnt expected form"""
 
 
-def rdflib2string(identifier: SUPPORTED_TRANSLATEABLE) -> str:
+def rdflib2string(identifier: TRANSLATEABLE_TYPES) -> str:
     """Translates from rdflib to strings.
     Inverse to string2rdflib.
     """
@@ -61,7 +60,7 @@ def rdflib2string(identifier: SUPPORTED_TRANSLATEABLE) -> str:
     else:
         raise NotImplementedError(type(identifier), identifier)
 
-def string2rdflib(string: str) -> SUPPORTED_TRANSLATEABLE:
+def string2rdflib(string: str) -> TRANSLATEABLE_TYPES:
     """Translates from rdflib to strings. Inverse to rdflib2string
     """
     try:

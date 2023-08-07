@@ -7,6 +7,7 @@ internal information.
 from collections.abc import Iterable, Callable, Mapping, MutableMapping, Container
 import typing as typ
 import rdflib
+from rdflib import Variable
 import durable.lang as rls
 import durable.engine
 import logging
@@ -86,11 +87,12 @@ class _builtin_functions:
             self,
             bindings: dur_abc.BINDING,
             args: Iterable[typ.Union[str, dur_abc.TRANSLATEABLE_TYPES]],
-            ) -> rdflib.BNode:
-        mylist, = (bindings.get(x,x) for x in args)
+            ) -> rdflib.Literal:
+        targetedlist, = (bindings[x] if isinstance(x, Variable) else x
+                         for x in args)
         for fact in rls.get_facts(self.rulename):#type: ignore[attr-defined]
             if fact.get(dur_abc.FACTTYPE) == dur_abc.LIST:
-                if fact[dur_abc.LIST_ID] == mylist:
+                if fact[dur_abc.LIST_ID] == targetedlist:
                     return rdflib.Literal(len(fact[dur_abc.LIST_MEMBERS]))
         raise Exception("couldnt find targeted list %r" % targetedlist)
 
@@ -99,7 +101,8 @@ class _builtin_functions:
             bindings: dur_abc.BINDING,
             args: Iterable[typ.Union[str, dur_abc.TRANSLATEABLE_TYPES]],
             ) -> rdflib.Literal:
-        first, second = (string2rdflib(bindings[x]) if x in bindings else x
+        first, second = (string2rdflib(bindings[x]) if isinstance(x, Variable)
+                         else x
                          for x in args)
         return rdflib.Literal(float(first) == float(second))
 
@@ -116,13 +119,14 @@ class _builtin_functions:
             self,
             bindings: MutableMapping,
             args: Iterable[typ.Union[str, dur_abc.TRANSLATEABLE_TYPES]],
-            ) -> rdflib.BNode:
-        mylist, index = (bindings.get(x,x) for x in args)
+            ) -> dur_abc.TRANSLATEABLE_TYPES:
+        targetedlist, index = (bindings.get(x,x) for x in args)
         for fact in rls.get_facts(self.rulename):#type: ignore[attr-defined]
             if fact.get(dur_abc.FACTTYPE) == dur_abc.LIST:
-                if fact[dur_abc.LIST_ID] == mylist:
+                if fact[dur_abc.LIST_ID] == targetedlist:
                     try:
-                        return fact[dur_abc.LIST_MEMBERS][int(index)]
+                        return string2rdflib(\
+                                fact[dur_abc.LIST_MEMBERS][int(index)])
                     except IndexError as err:
                         raise IndexError("Cant retrieve element %r from list %r" % (index, fact[dur_abc.LIST_MEMBERS])) from err
         raise Exception("couldnt find targeted list %r" % targetedlist)
@@ -251,7 +255,7 @@ class graph_transformer(_builtin_functions):
             raise Exception("Loading of data produced an error.",
                             self.failures)
 
-    def run(self, t=None) -> None:
+    def run(self, t: typ.Union[int, None] = None) -> None:
         if t is None:
             rls.assert_fact(self.rulename, {"machinestate": "running"})
             rls.retract_fact(self.rulename, {"machinestate": "running"})
