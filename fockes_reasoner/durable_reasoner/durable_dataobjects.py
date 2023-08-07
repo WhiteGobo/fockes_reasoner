@@ -249,7 +249,9 @@ class bind(dur_abc.bind):
 
 class modify_frame(dur_abc.modify_frame):
     def __call__(self, c: typ.Union[durable.engine.Closure, str],
-                 bindings: dur_abc.BINDING = {}) -> None:
+                 bindings: dur_abc.BINDING = {},
+                 external_resolution: Mapping[typ.Union[rdflib.URIRef, rdflib.BNode], EXTERNAL] = {},
+                 ) -> None:
         fact = {"type":self.fact_type}
         for label, x, in [
                 (self.label_obj, self.obj),

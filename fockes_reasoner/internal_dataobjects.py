@@ -244,14 +244,6 @@ class modify_frame(dur_obj.modify_frame):
         self.slotkey = slotkey
         self.slotvalue = slotvalue
 
-    def __call__(self, c: typ.Union[durable.engine.Closure, str],
-                 bindings: dur_abc.BINDING = {},
-                 external_resolution: typ.Any = {}) -> None:
-        """
-        :TODO: Remove this and make a functioning solution with typecontrol
-        """
-        super().__call__(c, bindings=bindings)
-
     def __repr__(self) -> str:
         return f"%s({self.obj}[{self.slotkey}->{self.slotvalue}])"\
                 % type(self).__name__
