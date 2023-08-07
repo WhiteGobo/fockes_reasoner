@@ -265,13 +265,21 @@ class modify_frame(dur_abc.modify_frame):
             else:
                 newnode = x(c, bindings, external_resolution)
                 fact[label] = rdflib2string(newnode)
+        _obj = bindings[self.obj] if isinstance(self.obj, rdflib.Variable)\
+                else rdflib2string(self.obj)
+        _slotkey = bindings[self.slotkey]\
+                if isinstance(self.slotkey, rdflib.Variable)\
+                else rdflib2string(self.slotkey)
         def retract_first_frame(facts):
             """Get first frame with given obj and slotkey"""
             for f in facts:
                 try:
-                    if f[self.label_obj] == self.obj\
-                            and f[self.label_slotkey] == self.slotkey:
+                    if f[self.label_obj] == _obj\
+                            and f[self.label_slotkey] == _slotkey:
+                        print("found: qwertz", f)
                         return f
+                    else:
+                        print("compared: ", f, {self.label_obj:_obj, self.label_slotkey:_slotkey})
                 except KeyError:
                     pass
             return None
