@@ -54,21 +54,18 @@ class _builtin_functions:
 
     def _label_for_export(
             self,
-            bindings: MutableMapping,
-            args: Iterable[typ.Union[str, dur_abc.TRANSLATEABLE_TYPES]],
+            bindings: dur_abc.BINDING,
+            args: Iterable[dur_abc.TRANSLATEABLE_TYPES],
             ) -> None:
         """
         :TODO: integrate model to translate from internal datastructure
             to returned axioms.
         """
         logger.info("export got bindings %s and args %s" %(bindings, args))
-        t_args = [bindings.get(x,x) for x in args]
+        t_args = [bindings[x] if isinstance(x, Variable) else rdflib2string(x)
+                  for x in args]
         for x in t_args:
-            if isinstance(x,
-                          dur_abc.TRANSLATEABLE_TYPES): #type: ignore[arg-type]
-                self._symbols_for_export.add(rdflib2string(x))
-            else:
-                self._symbols_for_export.add(x)
+            self._symbols_for_export.add(x)
 
     @property
     def external_resolution(self) -> Mapping[typ.Union[rdflib.URIRef, rdflib.BNode], Callable]:
@@ -86,7 +83,7 @@ class _builtin_functions:
     def _count(
             self,
             bindings: dur_abc.BINDING,
-            args: Iterable[typ.Union[str, dur_abc.TRANSLATEABLE_TYPES]],
+            args: Iterable[dur_abc.TRANSLATEABLE_TYPES],
             ) -> rdflib.Literal:
         targetedlist, = (bindings[x] if isinstance(x, Variable) else x
                          for x in args)
@@ -99,7 +96,7 @@ class _builtin_functions:
     def _numeric_equal_to(
             self,
             bindings: dur_abc.BINDING,
-            args: Iterable[typ.Union[str, dur_abc.TRANSLATEABLE_TYPES]],
+            args: Iterable[dur_abc.TRANSLATEABLE_TYPES],
             ) -> rdflib.Literal:
         first, second = (string2rdflib(bindings[x]) if isinstance(x, Variable)
                          else x
@@ -108,19 +105,22 @@ class _builtin_functions:
 
     def _greater_than(
             self,
-            bindings: MutableMapping,
-            args: Iterable[typ.Union[str, dur_abc.TRANSLATEABLE_TYPES]],
+            bindings: dur_abc.BINDING,
+            args: Iterable[dur_abc.TRANSLATEABLE_TYPES],
             ) -> rdflib.Literal:
-        first, second = (string2rdflib(bindings[x]) if x in bindings else x
+        first, second = (string2rdflib(bindings[x]) if isinstance(x, Variable)
+                         else x
                          for x in args)
         return rdflib.Literal(first > second)
 
     def _get(
             self,
-            bindings: MutableMapping,
-            args: Iterable[typ.Union[str, dur_abc.TRANSLATEABLE_TYPES]],
+            bindings: dur_abc.BINDING,
+            args: Iterable[dur_abc.TRANSLATEABLE_TYPES],
             ) -> dur_abc.TRANSLATEABLE_TYPES:
-        targetedlist, index = (bindings.get(x,x) for x in args)
+        targetedlist, index = (string2rdflib(bindings[x])
+                               if isinstance(x, Variable) else x
+                               for x in args)
         for fact in rls.get_facts(self.rulename):#type: ignore[attr-defined]
             if fact.get(dur_abc.FACTTYPE) == dur_abc.LIST:
                 if fact[dur_abc.LIST_ID] == targetedlist:
@@ -133,10 +133,11 @@ class _builtin_functions:
 
     def _append(
             self,
-            bindings: MutableMapping,
-            args: Iterable[typ.Union[str, dur_abc.TRANSLATEABLE_TYPES]],
+            bindings: dur_abc.BINDING,
+            args: Iterable[dur_abc.TRANSLATEABLE_TYPES],
             ) -> rdflib.BNode:
-        t_args = [bindings.get(x,x) for x in args]
+        t_args = [string2rdflib(bindings[x]) if isinstance(x, Variable) else x
+                  for x in args]
         targetedlist = t_args[0]
         newelements = t_args[1:]
         for fact in rls.get_facts(self.rulename):#type: ignore[attr-defined]
@@ -148,10 +149,11 @@ class _builtin_functions:
 
     def _get_sublist(
             self,
-            bindings: MutableMapping,
-            args: Iterable[typ.Union[str, dur_abc.TRANSLATEABLE_TYPES]],
+            bindings: dur_abc.BINDING,
+            args: Iterable[dur_abc.TRANSLATEABLE_TYPES],
             ) -> rdflib.BNode:
-        t_args = [bindings.get(x,x) for x in args]
+        t_args = [string2rdflib(bindings[x]) if isinstance(x, Variable) else x
+                  for x in args]
         targetedlist = t_args[0]
         start = int(t_args[1])
         try:
@@ -170,11 +172,12 @@ class _builtin_functions:
 
     def _make_list(
             self,
-            bindings: MutableMapping,
-            args: Iterable[typ.Union[str, dur_abc.TRANSLATEABLE_TYPES]],
+            bindings: dur_abc.BINDING,
+            args: Iterable[dur_abc.TRANSLATEABLE_TYPES],
             ) -> rdflib.BNode:
         newid = rdflib.BNode()
-        elems = [bindings.get(x,x) for x in args]
+        elems = [string2rdflib(bindings[x]) if isinstance(x, Variable) else x
+                 for x in args]
         newfact = {dur_abc.FACTTYPE: dur_abc.LIST,
                    dur_abc.LIST_ID: rdflib2string(newid),
                    dur_abc.LIST_MEMBERS: elems,
@@ -184,19 +187,15 @@ class _builtin_functions:
 
     def _print_string(
             self,
-            bindings: MutableMapping,
-            args: Iterable[typ.Union[str, dur_abc.TRANSLATEABLE_TYPES]],
+            bindings: dur_abc.BINDING,
+            args: Iterable[dur_abc.TRANSLATEABLE_TYPES],
             ) -> None:
         """
         :TODO: replace raised Exception with exception that stops the program
         :TODO: replace print with logger with standardoutput stdout
         """
-        try:
-            arg = [str(bindings.get(x,x)) for x in args]
-            #assert arg.datatype == xs.string
-        except (StopIteration, AssertionError) as err:
-            raise Exception("act:print must have exactly one argument "
-                            "with type xs:string.") from err
+        arg = [string2rdflib(bindings[x]) if isinstance(x, Variable) else x
+               for x in args]
         print(" ".join(arg))
 
     def register_external_function(self, func: Callable) -> None:

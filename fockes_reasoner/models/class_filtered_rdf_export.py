@@ -21,7 +21,6 @@ class filtered_rdf_export(model_abc.export_model):
                     o = string2rdflib(fact[dur_abc.FRAME_SLOTVALUE])
                     yield (s, p, o)
                     lists_for_export.append(o)
-        print(lists_for_export)
         for fact in factiterator:
             if fact[dur_abc.FACTTYPE] == dur_abc.LIST:
                 if fact[dur_abc.LIST_ID] in lists_for_export:

@@ -168,8 +168,8 @@ def test_RIFimport():
         for ax in trafo:
             g.add(ax)
     except Exception:
-        #logger.info("internal information during export: %s"
-        #            % "\n".join(str(x) for x in trafo._get_internal_info()))
+        logger.info("internal information during export: %s"
+                    % "\n".join(str(x) for x in trafo._get_internal_info()))
         raise
     #logger.info("asdfqwer %s" % list(trafo))
     logger.info(g.serialize())
