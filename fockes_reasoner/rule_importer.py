@@ -118,9 +118,15 @@ class _builtin_functions:
             bindings: dur_abc.BINDING,
             args: Iterable[dur_abc.TRANSLATEABLE_TYPES],
             ) -> dur_abc.TRANSLATEABLE_TYPES:
-        targetedlist, index = (string2rdflib(bindings[x])
-                               if isinstance(x, Variable) else x
-                               for x in args)
+        x, y = iter(args)
+        if isinstance(x, Variable):
+            targetedlist = bindings[x]
+        else:
+            targetedlist = rdflib2string(x)
+        if isinstance(y, Variable):
+            index = string2rdflib(bindings[y])
+        else:
+            index = y
         for fact in rls.get_facts(self.rulename):#type: ignore[attr-defined]
             if fact.get(dur_abc.FACTTYPE) == dur_abc.LIST:
                 if fact[dur_abc.LIST_ID] == targetedlist:
@@ -136,7 +142,7 @@ class _builtin_functions:
             bindings: dur_abc.BINDING,
             args: Iterable[dur_abc.TRANSLATEABLE_TYPES],
             ) -> rdflib.BNode:
-        t_args = [string2rdflib(bindings[x]) if isinstance(x, Variable) else x
+        t_args = [bindings[x] if isinstance(x, Variable) else rdflib2string(x)
                   for x in args]
         targetedlist = t_args[0]
         newelements = t_args[1:]
@@ -152,12 +158,16 @@ class _builtin_functions:
             bindings: dur_abc.BINDING,
             args: Iterable[dur_abc.TRANSLATEABLE_TYPES],
             ) -> rdflib.BNode:
-        t_args = [string2rdflib(bindings[x]) if isinstance(x, Variable) else x
-                  for x in args]
-        targetedlist = t_args[0]
-        start = int(t_args[1])
+        _args = iter(args)
+        x = _args.__next__()
+        targetedlist = bindings[x] if isinstance(x, Variable)\
+                else rdflib2string(x)
+        t_args = [int(string2rdflib(bindings[x])) if isinstance(x, Variable)
+                  else int(x)
+                  for x in _args]
+        start = t_args[0]
         try:
-            end = int(t_args[2])
+            end = int(t_args[1])
         except IndexError:
             end = None
         for fact in rls.get_facts(self.rulename):#type: ignore[attr-defined]
