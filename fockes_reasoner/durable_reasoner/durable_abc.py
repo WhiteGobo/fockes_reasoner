@@ -116,6 +116,8 @@ class contextless_function(function):
     """All :term:`functions` used in a rule are a subclass of this.
     Everything that is used within the executable part of 
     the rule is a function.
+
+    :TODO: Remove this and just use function instead maybe?
     """
     @abc.abstractmethod
     def __call__(self, c: typ.Union[durable.engine.Closure, str],
@@ -175,8 +177,12 @@ class external_condition(condition):
     atoms: Sequence[TRANSLATEABLE_TYPES]
 
 class framework_bridge(contextless_function):
-    """Every function, which handles the framework is a subtype to this."""
+    """Every function, which handles the framework is a subtype to this.
+    All classes should be subclass to this, that are handling the framework
+    directly."""
 
+class implies(contextless_function):
+    """A function that implements conditionals for rules."""
 
 class external(framework_bridge):
     const: TRANSLATEABLE_TYPES
@@ -188,7 +194,6 @@ class external(framework_bridge):
                  external_resolution: Mapping[typ.Union[rdflib.URIRef, rdflib.BNode], typ.Any] = {},
                  ) -> typ.Union[TRANSLATEABLE_TYPES, bool]:
         ...
-
 
 class execute(framework_bridge):
     op: TRANSLATEABLE_TYPES
@@ -276,6 +281,10 @@ class binding(function):
     """
     used_function: value_function
     variable_mapping: Sequence[rdflib.Variable]
+
+class implies:
+    condition: external
+    functions: Iterable[function]
 
 class rule:
     """internal implementation equal to a :term:`rule`."""

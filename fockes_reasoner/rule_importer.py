@@ -17,7 +17,7 @@ import uuid
 from . import rif_to_internal as rif2internal
 from . import internal_dataobjects as internal
 from .durable_reasoner import durable_abc as dur_abc
-from .shared import focke, string2rdflib, rdflib2string, act, func
+from .shared import focke, string2rdflib, rdflib2string, act, func, pred
 from . import models
 
 class _builtin_functions:
@@ -75,11 +75,42 @@ class _builtin_functions:
                 act.print: self._print_string,
                 func.sublist: self._get_sublist,
                 func.append: self._append,
-                func.get: self.__get,
+                func.get: self._get,
+                func.count: self._count,
                 getattr(func, "make-list"): self._make_list,
+                getattr(pred, "numeric-greater-than"): self._greater_than,
+                getattr(pred, "numeric-equal"): self._numeric_equal_to,
                 }
 
-    def __get(
+    def _count(
+            self,
+            bindings: dur_abc.BINDING,
+            args: Iterable[typ.Union[str, dur_abc.TRANSLATEABLE_TYPES]],
+            ) -> rdflib.BNode:
+        mylist, = (bindings.get(x,x) for x in args)
+        for fact in rls.get_facts(self.rulename):#type: ignore[attr-defined]
+            if fact.get(dur_abc.FACTTYPE) == dur_abc.LIST:
+                if fact[dur_abc.LIST_ID] == mylist:
+                    return rdflib.Literal(len(fact[dur_abc.LIST_MEMBERS]))
+        raise Exception("couldnt find targeted list %r" % targetedlist)
+
+    def _numeric_equal_to(
+            self,
+            bindings: dur_abc.BINDING,
+            args: Iterable[typ.Union[str, dur_abc.TRANSLATEABLE_TYPES]],
+            ) -> rdflib.Literal:
+        first, second = (bindings.get(x,x) for x in args)
+        return rdflib.Literal(float(first) == float(second))
+
+    def _greater_than(
+            self,
+            bindings: MutableMapping,
+            args: Iterable[typ.Union[str, dur_abc.TRANSLATEABLE_TYPES]],
+            ) -> rdflib.Literal:
+        first, second = (bindings.get(x,x) for x in args)
+        return rdflib.Literal(first > second)
+
+    def _get(
             self,
             bindings: MutableMapping,
             args: Iterable[typ.Union[str, dur_abc.TRANSLATEABLE_TYPES]],
@@ -155,12 +186,12 @@ class _builtin_functions:
         :TODO: replace print with logger with standardoutput stdout
         """
         try:
-            arg = (bindings.get(x,x) for x in args).__next__()
+            arg = [str(bindings.get(x,x)) for x in args]
             #assert arg.datatype == xs.string
         except (StopIteration, AssertionError) as err:
             raise Exception("act:print must have exactly one argument "
                             "with type xs:string.") from err
-        print(str(arg))
+        print(" ".join(arg))
 
     def register_external_function(self, func: Callable) -> None:
         raise NotImplementedError()

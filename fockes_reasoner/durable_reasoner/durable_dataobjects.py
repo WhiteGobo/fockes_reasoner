@@ -12,6 +12,10 @@ from .durable_abc import TRANSLATEABLE_TYPES
 from ..shared import rdflib2string, string2rdflib
 import traceback
 
+#EXTERNAL_CALL = Callable[[Iterable[TRANSLATEABLE_TYPES]],
+EXTERNAL = Callable[[dur_abc.BINDING, Iterable[TRANSLATEABLE_TYPES]], TRANSLATEABLE_TYPES]
+EXTERNAL_CALL = Callable[[dur_abc.BINDING, Iterable[TRANSLATEABLE_TYPES]], None]
+
 class FailedAction(Exception):
     """Exception thrown within the machine, when an action fails."""
     def __init__(self, func, *args):
@@ -64,6 +68,28 @@ class action(rule_generator, dur_abc.action):
     def generate_rule(self, ruleset: rls.ruleset, **kwargs: typ.Any) -> None:
         for func in self.functions:
             func(ruleset.name, **kwargs)
+
+class implies(dur_abc.implies):
+    condition: dur_abc.external
+    functions: tuple[dur_abc.function, ...]
+
+    def __init__(self,
+                 condition: dur_abc.external,
+                 functions: Iterable[dur_abc.function]):
+        self.condition = condition
+        self.functions = tuple(functions)
+
+    def __call__(self, c: typ.Union[durable.engine.Closure, str],
+                 bindings: dur_abc.BINDING = {},
+                 external_resolution: Mapping[typ.Union[rdflib.URIRef, rdflib.BNode], EXTERNAL] = {},
+                 ) -> None:
+        if self.condition(c, bindings, external_resolution):
+            for act in self.functions:
+                act(c, bindings, external_resolution)
+
+    def __repr__(self) -> str:
+        return f"%s:{self.condition}->{self.functions}" % type(self).__name__
+
 
 class forall(rule_generator, dur_abc.rule):
     _closure_bindings: dur_abc.CLOSURE_BINDINGS
@@ -163,10 +189,6 @@ class subclass_condition(dur_abc.subclass_condition):
 
 class external_condition(dur_abc.external_condition):
     ...
-
-#EXTERNAL_CALL = Callable[[Iterable[TRANSLATEABLE_TYPES]],
-EXTERNAL = Callable[[dur_abc.BINDING, Iterable[TRANSLATEABLE_TYPES]], TRANSLATEABLE_TYPES]
-EXTERNAL_CALL = Callable[[dur_abc.BINDING, Iterable[TRANSLATEABLE_TYPES]], None]
 
 class external(dur_abc.external):
     const: typ.Union[rdflib.URIRef, rdflib.BNode]

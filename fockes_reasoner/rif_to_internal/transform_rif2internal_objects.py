@@ -31,8 +31,8 @@ from collections.abc import Iterable
 import rdflib
 from rdflib import Variable, Literal
 from .. import internal_dataobjects as internal
-from ..internal_dataobjects import frame_pattern, create_new, execute, assert_frame, external, bind, modify_frame
-from ..shared import tmpdata, focke, rif2internal, RIF, RDF, act, func
+from ..internal_dataobjects import frame_pattern, create_new, execute, assert_frame, external, bind, modify_frame, implies
+from ..shared import tmpdata, focke, rif2internal, RIF, RDF, act, func, pred
 
 def _create_internalGroups() -> internal.rule:
     var_obj = rdflib.Variable("obj")
@@ -78,6 +78,7 @@ def _create_collectRules() -> Iterable[internal.rule]:
     var_rulelist = rdflib.Variable("rulelist")
     var_transrulelist = rdflib.Variable("transrulelist")
     var_workqueue = rdflib.Variable("workqueue")
+    var_i = rdflib.Variable("i")
     patterns1 = [
             frame_pattern(var_group, RDF.type, rif2internal.Group),
             frame_pattern(var_origgroup, tmpdata.equals, var_group),
@@ -105,15 +106,31 @@ def _create_collectRules() -> Iterable[internal.rule]:
             frame_pattern(var_transrulelist, tmpdata.workqueue, var_workqueue)
             ]
     actions2 = [
+            execute(act.print, [Literal("brubru"), external(func.get, [var_workqueue, Literal(0)])]),
             bind(var_transrulelist,
                  external(func.append,
                           [var_transrulelist,
                            external(func.get, [var_workqueue, Literal(0)])]),
                  ),
-            modify_frame(var_group, tmpdata.sentences, var_transrulelist),
-            assert_frame(var_transrulelist,
-                         tmpdata.workqueue,
-                         external(func.sublist, [var_workqueue, Literal(1)])),
+            bind(var_i, external(func.count, [var_workqueue])),
+            implies(external(getattr(pred, "numeric-greater-than"),
+                             [var_i, Literal(1)]),
+                    [modify_frame(var_group, tmpdata.sentences,
+                                  var_transrulelist),
+                     assert_frame(var_transrulelist,
+                                  tmpdata.workqueue,
+                                  external(func.sublist,
+                                           [var_workqueue, Literal(1)])),
+                     ]),
+            implies(external(getattr(pred, "numeric-equal"),
+                             [var_i, Literal(1)]),
+                    [modify_frame(var_group, tmpdata.sentences,
+                                  var_transrulelist),
+                     assert_frame(var_transrulelist,
+                                  tmpdata.workqueue,
+                                  external(func.sublist,
+                                           [var_workqueue, Literal(1)])),
+                     ]),
             ]
     yield internal.rule(patterns2, actions2)
     patterns = [
