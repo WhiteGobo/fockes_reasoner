@@ -234,6 +234,16 @@ class assert_frame(framework_bridge):
     label_slotkey: str = FRAME_SLOTKEY
     label_slotvalue: str = FRAME_SLOTVALUE
 
+class retract_frame(framework_bridge):
+    """If you :term:`retract` a :term:`frame` use this."""
+    obj: TRANSLATEABLE_TYPES
+    slotkey: TRANSLATEABLE_TYPES
+    slotvalue: typ.Union[TRANSLATEABLE_TYPES, external]
+
+    fact_type: str = FRAME
+    label_obj: str = FRAME_OBJ
+    label_slotkey: str = FRAME_SLOTKEY
+    label_slotvalue: str = FRAME_SLOTVALUE
 
 class modify_frame(framework_bridge):
     """If you :term:`modify` a :term:`frame` use this."""

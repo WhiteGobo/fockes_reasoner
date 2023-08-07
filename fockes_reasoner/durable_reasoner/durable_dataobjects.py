@@ -247,6 +247,47 @@ class bind(dur_abc.bind):
         else:
             bindings[self.var] = rdflib2string(self.target(c, bindings, external_resolution))
 
+class retract_frame(dur_abc.retract_frame):
+    def __call__(self, c: typ.Union[durable.engine.Closure, str],
+                 bindings: dur_abc.BINDING = {},
+                 external_resolution: Mapping[typ.Union[rdflib.URIRef, rdflib.BNode], EXTERNAL] = {},
+                 ) -> None:
+        fact = {"type":self.fact_type}
+        for label, x, in [
+                (self.label_obj, self.obj),
+                (self.label_slotkey, self.slotkey),
+                (self.label_slotvalue, self.slotvalue),
+                ]:
+            if isinstance(x, rdflib.Variable):
+                fact[label] = bindings[x]
+            elif isinstance(x, (URIRef, BNode, Literal)):
+                fact[label] = rdflib2string(x)
+            else:
+                newnode = x(c, bindings, external_resolution)
+                fact[label] = rdflib2string(newnode)
+
+        if isinstance(c, str):
+            facts = rls.get_facts(c)
+        else:
+            facts =c.get_facts()
+
+        match = None
+        _slots = (self.label_obj, self.label_slotkey, self.label_slotvalue)
+        for f in facts:
+            #if f["type"] != self.fact_type:
+            #    continue
+            if all(f.get(x, None) == fact[x] for x in _slots):
+                match = f
+                break
+            print("compared", f, "\n", fact, "\n")
+
+        if match is not None:
+            if isinstance(c, str):
+                rls.retract_fact(c, f)
+            else:
+                c.retract_fact(f)
+
+
 class modify_frame(dur_abc.modify_frame):
     def __call__(self, c: typ.Union[durable.engine.Closure, str],
                  bindings: dur_abc.BINDING = {},
@@ -276,10 +317,7 @@ class modify_frame(dur_abc.modify_frame):
                 try:
                     if f[self.label_obj] == _obj\
                             and f[self.label_slotkey] == _slotkey:
-                        print("found: qwertz", f)
                         return f
-                    else:
-                        print("compared: ", f, {self.label_obj:_obj, self.label_slotkey:_slotkey})
                 except KeyError:
                     pass
             return None

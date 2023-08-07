@@ -31,7 +31,7 @@ from collections.abc import Iterable
 import rdflib
 from rdflib import Variable, Literal
 from .. import internal_dataobjects as internal
-from ..internal_dataobjects import frame_pattern, create_new, execute, assert_frame, external, bind, modify_frame, implies
+from ..internal_dataobjects import frame_pattern, create_new, execute, assert_frame, external, bind, modify_frame, implies, retract_frame
 from ..shared import tmpdata, focke, rif2internal, RIF, RDF, act, func, pred
 
 def _create_internalGroups() -> internal.rule:
@@ -77,6 +77,7 @@ def _create_collectRules() -> Iterable[internal.rule]:
     var_origrule = rdflib.Variable("origrule")
     var_rulelist = rdflib.Variable("rulelist")
     var_transrulelist = rdflib.Variable("transrulelist")
+    var_newtransrulelist = rdflib.Variable("newtransrulelist")
     var_workqueue = rdflib.Variable("workqueue")
     var_i = rdflib.Variable("i")
     patterns1 = [
@@ -102,22 +103,22 @@ def _create_collectRules() -> Iterable[internal.rule]:
     yield internal.rule(patterns1, actions1)
     patterns2 = [
             frame_pattern(var_group, RDF.type, rif2internal.Group),
-            frame_pattern(var_group, tmpdata.sentences, var_transrulelist),
+            frame_pattern(var_group, tmpdata.sentences, var_newtransrulelist),
             frame_pattern(var_transrulelist, tmpdata.workqueue, var_workqueue)
             ]
     actions2 = [
             execute(act.print, [Literal("brubru"), external(func.get, [var_workqueue, Literal(0)])]),
-            bind(var_transrulelist,
+            bind(var_newtransrulelist,
                  external(func.append,
-                          [var_transrulelist,
+                          [var_newtransrulelist,
                            external(func.get, [var_workqueue, Literal(0)])]),
                  ),
             bind(var_i, external(func.count, [var_workqueue])),
             implies(external(getattr(pred, "numeric-greater-than"),
                              [var_i, Literal(1)]),
                     [modify_frame(var_group, tmpdata.sentences,
-                                  var_transrulelist),
-                     assert_frame(var_transrulelist,
+                                  var_newtransrulelist),
+                     assert_frame(var_newtransrulelist,
                                   tmpdata.workqueue,
                                   external(func.sublist,
                                            [var_workqueue, Literal(1)])),
@@ -125,8 +126,10 @@ def _create_collectRules() -> Iterable[internal.rule]:
             implies(external(getattr(pred, "numeric-equal"),
                              [var_i, Literal(1)]),
                     [assert_frame(var_group, focke.sentences,
-                                  var_transrulelist),
-                     execute(focke.export, [var_transrulelist]),
+                                  var_newtransrulelist),
+                     retract_frame(var_group, tmpdata.sentences,
+                                   var_transrulelist),
+                     execute(focke.export, [var_newtransrulelist]),
                      ]),
             ]
     yield internal.rule(patterns2, actions2)

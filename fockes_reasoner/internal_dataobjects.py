@@ -248,6 +248,18 @@ class modify_frame(dur_obj.modify_frame):
         return f"%s({self.obj}[{self.slotkey}->{self.slotvalue}])"\
                 % type(self).__name__
 
+class retract_frame(dur_obj.retract_frame):
+    def __init__(self, obj: TRANSLATEABLE_TYPES, slotkey: TRANSLATEABLE_TYPES,
+                 slotvalue: TRANSLATEABLE_TYPES):
+        self.obj = obj
+        self.slotkey = slotkey
+        self.slotvalue = slotvalue
+
+    def __repr__(self) -> str:
+        return f"%s({self.obj}[{self.slotkey}->{self.slotvalue}])"\
+                % type(self).__name__
+
+
 class assert_frame(dur_obj.assert_frame):
     def __init__(self, obj: TRANSLATEABLE_TYPES, slotkey: TRANSLATEABLE_TYPES,
                  slotvalue: TRANSLATEABLE_TYPES):
