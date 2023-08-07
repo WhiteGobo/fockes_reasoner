@@ -124,12 +124,9 @@ def _create_collectRules() -> Iterable[internal.rule]:
                      ]),
             implies(external(getattr(pred, "numeric-equal"),
                              [var_i, Literal(1)]),
-                    [modify_frame(var_group, tmpdata.sentences,
+                    [assert_frame(var_group, focke.sentences,
                                   var_transrulelist),
-                     assert_frame(var_transrulelist,
-                                  tmpdata.workqueue,
-                                  external(func.sublist,
-                                           [var_workqueue, Literal(1)])),
+                     execute(focke.export, [var_transrulelist]),
                      ]),
             ]
     yield internal.rule(patterns2, actions2)
