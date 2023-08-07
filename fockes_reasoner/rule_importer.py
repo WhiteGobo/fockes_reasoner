@@ -61,11 +61,11 @@ class _builtin_functions:
         :TODO: integrate model to translate from internal datastructure
             to returned axioms.
         """
-        logger.info("export got bindings %s and args %s" %(bindings, args))
+        #logger.info("export got bindings %s and args %s" %(bindings, args))
         t_args = [bindings[x] if isinstance(x, Variable) else rdflib2string(x)
                   for x in args]
-        for x in t_args:
-            self._symbols_for_export.add(x)
+        logger.info("labeling for export: %r" % t_args)
+        self._symbols_for_export.update(t_args)
 
     @property
     def external_resolution(self) -> Mapping[typ.Union[rdflib.URIRef, rdflib.BNode], Callable]:
