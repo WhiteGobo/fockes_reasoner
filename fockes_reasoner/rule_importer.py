@@ -99,7 +99,8 @@ class _builtin_functions:
             bindings: dur_abc.BINDING,
             args: Iterable[typ.Union[str, dur_abc.TRANSLATEABLE_TYPES]],
             ) -> rdflib.Literal:
-        first, second = (bindings.get(x,x) for x in args)
+        first, second = (string2rdflib(bindings[x]) if x in bindings else x
+                         for x in args)
         return rdflib.Literal(float(first) == float(second))
 
     def _greater_than(
@@ -107,7 +108,8 @@ class _builtin_functions:
             bindings: MutableMapping,
             args: Iterable[typ.Union[str, dur_abc.TRANSLATEABLE_TYPES]],
             ) -> rdflib.Literal:
-        first, second = (bindings.get(x,x) for x in args)
+        first, second = (string2rdflib(bindings[x]) if x in bindings else x
+                         for x in args)
         return rdflib.Literal(first > second)
 
     def _get(
