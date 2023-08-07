@@ -95,8 +95,8 @@ def _create_collectRules() -> Iterable[internal.rule]:
             assert_frame(var_group, tmpdata.sentences, var_transrulelist),
             #execute(act.print, [var_workqueue]),
             assert_frame(var_transrulelist, tmpdata.workqueue, var_workqueue),
-            execute(focke.export, [var_transrulelist]),
-            execute(focke.export, [var_workqueue]),
+            #execute(focke.export, [var_transrulelist]),
+            #execute(focke.export, [var_workqueue]),
             #execute(act.print, [Literal("my helperprint")]),
             #execute(act.print, [var_workqueue]),
             ]
@@ -107,7 +107,6 @@ def _create_collectRules() -> Iterable[internal.rule]:
             frame_pattern(var_transrulelist, tmpdata.workqueue, var_workqueue)
             ]
     actions2 = [
-            execute(act.print, [Literal("brubru"), external(func.get, [var_workqueue, Literal(0)])]),
             bind(var_newtransrulelist,
                  external(func.append,
                           [var_newtransrulelist,
