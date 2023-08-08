@@ -71,9 +71,6 @@ def _create_internalDo() -> Iterable[internal.rule]:
             #internal.execute(focke.export, [var_obj, var_transList]),
             ]
     yield internal.rule(patterns1, actions1)
-    #rewrite this to a multi step algorithm. Choose a bnode as center
-    #hang in all information as frame unto this bnode
-    #create new bnode for next step and delete old bnode
     patterns2 = [
             frame_pattern(var_algo, tmpdata.actionsfrom, var_workqueue),
             frame_pattern(var_algo, tmpdata.actionsto, var_transList),
