@@ -149,7 +149,8 @@ class _builtin_functions:
         for fact in rls.get_facts(self.rulename):#type: ignore[attr-defined]
             if fact.get(dur_abc.FACTTYPE) == dur_abc.LIST:
                 if fact[dur_abc.LIST_ID] == targetedlist:
-                    newlist = fact[dur_abc.LIST_MEMBERS] + newelements
+                    _newlist = fact[dur_abc.LIST_MEMBERS] + newelements
+                    newlist = [string2rdflib(x) for x in _newlist]
                     return self._make_list({}, newlist)
         raise Exception("couldnt find targeted list %r" % targetedlist)
 
@@ -174,9 +175,10 @@ class _builtin_functions:
             if fact.get(dur_abc.FACTTYPE) == dur_abc.LIST:
                 if fact[dur_abc.LIST_ID] == targetedlist:
                     if end is None:
-                        newlist = fact[dur_abc.LIST_MEMBERS][start:]
+                        _newlist = fact[dur_abc.LIST_MEMBERS][start:]
                     else:
-                        newlist = fact[dur_abc.LIST_MEMBERS][start:end]
+                        _newlist = fact[dur_abc.LIST_MEMBERS][start:end]
+                    newlist = [string2rdflib(x) for x in _newlist]
                     return self._make_list({}, newlist)
         raise Exception("couldnt find targeted list %r" % targetedlist)
 
@@ -186,9 +188,10 @@ class _builtin_functions:
             args: Iterable[dur_abc.TRANSLATEABLE_TYPES],
             ) -> rdflib.BNode:
         newid = rdflib.BNode()
-        elems = [string2rdflib(bindings[x]) if isinstance(x, Variable) else x
+        elems = [bindings[x] if isinstance(x, Variable) else rdflib2string(x)
                  for x in args]
-        newfact = {dur_abc.FACTTYPE: dur_abc.LIST,
+        newfact: Mapping[str, typ.Union[str, list[str]]]\
+                = {dur_abc.FACTTYPE: dur_abc.LIST,
                    dur_abc.LIST_ID: rdflib2string(newid),
                    dur_abc.LIST_MEMBERS: elems,
                    }
