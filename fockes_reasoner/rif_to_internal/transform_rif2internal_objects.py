@@ -23,21 +23,54 @@ internalGroups = _create_internalGroups()
 """Create internal objects representing each group.
 """
 
-def _create_internalRules() -> internal.rule:
+def _create_internalRules() -> Iterable[internal.rule]:
     var_obj = rdflib.Variable("obj")
+    var_formulas = rdflib.Variable("formulas")
+    var_rule = rdflib.Variable("rule")
     var_transObj = rdflib.Variable("transObj")
-    patterns = [
+    var_algo = rdflib.Variable("algo")
+    var_algonext = rdflib.Variable("algonext")
+    var_conditions = rdflib.Variable("conditions")
+    var_actions = rdflib.Variable("actions")
+    patterns1 = [
             internal.frame_pattern(var_obj, RDF.type, RIF.Forall),
             ]
-    actions = [
-            internal.create_new(var_transObj),
-            internal.assert_frame(var_obj, tmpdata.equals, var_transObj),
-            internal.assert_frame(var_transObj, RDF.type, rif2internal.forall),
-            internal.execute(focke.export, [var_transObj]),
+    actions1 = [
+            internal.create_new(var_algo),
+            internal.assert_frame(var_algo, tmpdata.centrumRules, var_obj),
+            assert_frame(var_algo, RDF.type, tmpdata.start),
             ]
-    return internal.rule(patterns, actions)
+    yield internal.rule(patterns1, actions1)
+    patterns2 = [
+            frame_pattern(var_obj, RDF.type, RIF.Forall),
+            frame_pattern(var_obj, RIF.formula, var_rule),
+            #frame_pattern(var_obj, RIF.pattern, var_formulas),
+            frame_pattern(var_rule, tmpdata.conditions, var_conditions),
+            frame_pattern(var_rule, tmpdata.actions, var_actions),
+            frame_pattern(var_algo, tmpdata.centrumRules, var_obj),
+            frame_pattern(var_algo, RDF.type, tmpdata.start),
+            ]
+    actions2 = [
+            assert_frame(var_algo, tmpdata.actionsfrom1, var_actions),
+            assert_frame(var_algo, tmpdata.conditionsfrom1, var_conditions),
+            ]
+    yield internal.rule(patterns2, actions2)
+    patterns3 = [
+            frame_pattern(var_obj, RDF.type, RIF.Forall),
+            frame_pattern(var_algo, tmpdata.centrumRules, var_obj),
+            frame_pattern(var_algo, tmpdata.actionsfrom1, var_actions),
+            frame_pattern(var_algo, tmpdata.conditionsfrom1, var_conditions),
+            ]
+    actions3 = [
+            internal.create_new(var_algonext),
+            assert_frame(var_algonext, tmpdata.centrumRules, var_obj),
+            assert_frame(var_algonext, tmpdata.conditionsfrom, var_conditions),
+            assert_frame(var_algonext, tmpdata.actionsfrom, var_actions),
+            internal.execute(focke.export, [var_obj, var_algonext]),
+            ]
+    yield internal.rule(patterns3, actions3)
 
-internalRules = _create_internalRules()
+internalRules = list(_create_internalRules())
 """Create internal objects representing each forall
 """
 
@@ -147,7 +180,7 @@ def _create_internalImplies() -> Iterable[internal.rule]:
     actions2 = [
             internal.assert_frame(var_parent, tmpdata.actions, var_actions),
             ]
-    #yield internal.rule(patterns2, actions2)
+    yield internal.rule(patterns2, actions2)
 
 internalImplies = list(_create_internalImplies())
 """Rules for transforming implies"""
@@ -287,7 +320,7 @@ collectRules = _create_collectRules()
 
 rules: list[internal.rule] = [
         internalGroups,
-        internalRules,
+        *internalRules,
         *collectRules,
         *internalImplies,
         *internalFramePattern,
