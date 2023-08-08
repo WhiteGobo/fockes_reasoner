@@ -78,7 +78,31 @@ class _builtin_functions:
                 getattr(func, "make-list"): self._make_list,
                 getattr(pred, "numeric-greater-than"): self._greater_than,
                 getattr(pred, "numeric-equal"): self._numeric_equal_to,
+                func.concatenate: self._concatenate,
                 }
+
+    def _concatenate(
+            self,
+            bindings: dur_abc.BINDING,
+            args: Iterable[dur_abc.TRANSLATEABLE_TYPES],
+            ) -> rdflib.Literal:
+        targetedlists = [bindings[x] if isinstance(x, Variable)
+                         else rdflib2string(x)
+                         for x in args]
+        tmplist_id: str
+        tmplist: list[str]
+        newlist = []
+        for fact in rls.get_facts(self.rulename):#type: ignore[attr-defined]
+            if fact.get(dur_abc.FACTTYPE) == dur_abc.LIST:
+                tmplist_id = fact[dur_abc.LIST_ID]
+                if tmplist_id in targetedlists:
+                    tmplist = fact[dur_abc.LIST_MEMBERS]
+                    newlist.extend([string2rdflib(x) for x in tmplist])
+                    targetedlists.remove(tmplist_id)
+        if targetedlists:
+            raise Exception("couldnt find all targeted lists, missing: %r"
+                            % targetedlists)
+        return self._make_list({}, newlist)
 
     def _count(
             self,

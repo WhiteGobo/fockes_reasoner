@@ -126,12 +126,6 @@ class rule(dur_obj.forall):
         self.patterns = tuple(patterns)
         self.functions = tuple(functions)
 
-    def generate_rule(self, ruleset: rls.ruleset,
-                      external_resolution: typ.Any = None,
-                      **kwargs: typ.Any) -> None:
-        super().generate_rule(ruleset, external_resolution=external_resolution,
-                              **kwargs)
-
     def __repr__(self) -> str:
         return f"%s:{self.patterns}->{self.functions}" % type(self).__name__
 

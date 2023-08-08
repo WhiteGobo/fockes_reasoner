@@ -1,7 +1,17 @@
 from rdflib.namespace import DefinedNamespace, Namespace
 from rdflib.term import URIRef
 
-pred = Namespace("http://www.w3.org/2007/rif-builtin-predicate#")
+class pred(DefinedNamespace):
+    _fail = True
+    _extras = [
+            "numeric-greater-than",
+            "numeric-equal",
+            #"",
+            #"",
+            #"",
+            #"",
+            ]
+    _NS = Namespace("http://www.w3.org/2007/rif-builtin-predicate#")
 
 class func(DefinedNamespace):
     _fail = True
@@ -12,6 +22,7 @@ class func(DefinedNamespace):
     _extras = [
             "count",
             "make-list",
+            "concatenate",
             ]
 
     _NS = Namespace("http://www.w3.org/2007/rif-builtin-function#")

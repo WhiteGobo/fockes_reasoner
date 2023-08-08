@@ -99,9 +99,14 @@ class forall(rule_generator, dur_abc.rule):
     def generate_rule(self, ruleset: rls.ruleset, **kwargs: typ.Any) -> None:
         logger.debug("Using additional resources %r" % (kwargs))
         self._closure_bindings = {}
-        patterns: rls.value\
-                = [p._generate_durable_pattern(self._closure_bindings, f"f{i}")
-                   for i, p in enumerate(self.patterns)]
+        try:
+            patterns: rls.value\
+                    = [p._generate_durable_pattern(self._closure_bindings,
+                                                   f"f{i}")
+                       for i, p in enumerate(self.patterns)]
+        except Exception as err:
+            raise TypeError("Failed to generate pattern for %r"
+                            % self) from err
         assert patterns
         with ruleset:
             @rls.when_all(rls.m.machinestate == "running",
@@ -165,7 +170,12 @@ class frame_pattern(dur_abc.frame_pattern):
                     bindings[value] = loc
                     logger.debug("bind: %r-> %r" % (value, loc))
             else:
-                fact_value: str = rdflib2string(value)
+                try:
+                    fact_value: str = rdflib2string(value)
+                except NotImplementedError as err:
+                    raise Exception("failed to generate pattern for %r becaus"
+                                    "e of value for %s"
+                                    % (self, fact_label)) from err
                 log.append(f"rls.m.{fact_label} == %r" % fact_value)
                 newpattern = getattr(rls.m, fact_label) == fact_value
                 pattern = pattern & newpattern

@@ -41,6 +41,82 @@ internalRules = _create_internalRules()
 """Create internal objects representing each forall
 """
 
+def _create_internalDo() -> Iterable[internal.rule]:
+    var_obj = rdflib.Variable("obj")
+    var_transObj = rdflib.Variable("transObj")
+    var_actionlist = rdflib.Variable("actionlist")
+    var_transList = rdflib.Variable("transList")
+    var_newtransList = rdflib.Variable("newtransList")
+    var_algo = rdflib.Variable("algo")
+    var_workqueue = rdflib.Variable("workqueue")
+    var_newworkqueue = rdflib.Variable("newworkqueue")
+    var_i = rdflib.Variable("i")
+    var_nextelement = rdflib.Variable("nextelement")
+    var_actionList = rdflib.Variable("actionList")
+    var_algonext = rdflib.Variable("algonext")
+    patterns1 = [
+            internal.frame_pattern(var_obj, RDF.type, RIF.Do),
+            internal.frame_pattern(var_obj, RIF.actions, var_actionlist),
+            ]
+    actions1 = [
+            internal.create_new(var_algo),
+            bind(var_transList,
+                 external(getattr(func, "make-list"), [])),
+            internal.assert_frame(var_algo, tmpdata.centrum, var_obj),
+            internal.assert_frame(var_algo, RDF.type, tmpdata.algo1),
+            internal.assert_frame(var_algo, tmpdata.actionsfrom,
+                                  var_actionlist),
+            internal.assert_frame(var_algo, tmpdata.actionsto,
+                                  var_transList),
+            #internal.execute(focke.export, [var_obj, var_transList]),
+            ]
+    yield internal.rule(patterns1, actions1)
+    #rewrite this to a multi step algorithm. Choose a bnode as center
+    #hang in all information as frame unto this bnode
+    #create new bnode for next step and delete old bnode
+    patterns2 = [
+            frame_pattern(var_algo, tmpdata.actionsfrom, var_workqueue),
+            frame_pattern(var_algo, tmpdata.actionsto, var_transList),
+            frame_pattern(var_algo, tmpdata.centrum, var_obj),
+            ]
+    actions2 = [
+            bind(var_i, external(func.count, [var_workqueue])),
+            implies(external(getattr(pred, "numeric-greater-than"),
+                             [var_i, Literal(0)]),
+                    [bind(var_nextelement,
+                          external(func.get, [var_workqueue, Literal(0)])),
+                     assert_frame(var_algo, tmpdata.transfer_actions_from,
+                                  var_nextelement),
+                     ]),
+            implies(external(getattr(pred, "numeric-equal"),
+                             [var_i, Literal(0)]),
+                    [assert_frame(var_obj, tmpdata.actions, var_transList)]),
+            ]
+    yield internal.rule(patterns2, actions2)
+    patterns3 = [
+            frame_pattern(var_algo, tmpdata.actionsfrom, var_workqueue),
+            frame_pattern(var_algo, tmpdata.actionsto, var_transList),
+            frame_pattern(var_algo, tmpdata.centrum, var_obj),
+            frame_pattern(var_algo, tmpdata.transfer_actions_from,
+                          var_nextelement),
+            frame_pattern(var_nextelement, tmpdata.actions, var_actionList),
+            ]
+    actions3 = [
+            internal.create_new(var_algonext),
+            assert_frame(var_algonext, tmpdata.centrum, var_obj),
+            bind(var_newtransList,
+                 external(func["concatenate"],
+                          [var_transList, var_actionList]),
+                 ),
+            bind(var_newworkqueue,
+                 external(func.sublist, [var_workqueue, Literal(1)])),
+            assert_frame(var_algonext, tmpdata.actionsfrom, var_newworkqueue),
+            assert_frame(var_algonext, tmpdata.actionsto, var_newtransList),
+            ]
+    yield internal.rule(patterns3, actions3)
+
+internalDo = list(_create_internalDo())
+
 def _create_internalImplies() -> Iterable[internal.rule]:
     var_obj = rdflib.Variable("obj")
     var_transObj = rdflib.Variable("transObj")
@@ -63,6 +139,18 @@ def _create_internalImplies() -> Iterable[internal.rule]:
             internal.execute(focke.export, [var_transObj]),
             ]
     yield internal.rule(patterns1, actions1)
+    var_then = rdflib.Variable("then")
+    var_parent = rdflib.Variable("parent")
+    var_actions = rdflib.Variable("actions")
+    patterns2 = [
+            internal.frame_pattern(var_parent, RDF.type, RIF.Implies),
+            internal.frame_pattern(var_parent, RIF["then"], var_then),
+            internal.frame_pattern(var_then, tmpdata.actions, var_actions),
+            ]
+    actions2 = [
+            internal.assert_frame(var_parent, tmpdata.actions, var_actions),
+            ]
+    #yield internal.rule(patterns2, actions2)
 
 internalImplies = list(_create_internalImplies())
 """Rules for transforming implies"""
@@ -75,24 +163,8 @@ def _create_internalFramePattern() -> Iterable[internal.rule]:
     var_frameobj = rdflib.Variable("frameobj")
     var_transactionlist = rdflib.Variable("vartransactionlist")
     patterns1 = [
-            internal.frame_pattern(var_parent, tmpdata.use_as_condition,
-                                   var_obj),
-            internal.frame_pattern(var_obj, RDF.type, RIF.Frame),
-            internal.frame_pattern(var_obj, RIF.object, var_frameobj),
-            ]
-    actions1 = [
-            internal.create_new(var_transObj),
-            internal.assert_frame(var_transObj, RDF.type,
-                                  rif2internal.frame_exists),
-            internal.assert_frame(var_parent, focke.condition,
-                                  var_transObj),
-            internal.assert_frame(var_transObj, tmpdata.obj, var_frameobj),
-            internal.execute(focke.export, [var_transObj, var_frameobj]),
-            ]
-    yield internal.rule(patterns1, actions1)
-    patterns1 = [
-            internal.frame_pattern(var_parent, RDF.type, RIF.Assert),
-            internal.frame_pattern(var_parent, RIF.target, var_obj),
+            internal.frame_pattern(var_parent, RDF.type, RIF.Implies),
+            internal.frame_pattern(var_parent, RIF["if"], var_obj),
             internal.frame_pattern(var_obj, RDF.type, RIF.Frame),
             ]
     actions1 = [
@@ -100,14 +172,49 @@ def _create_internalFramePattern() -> Iterable[internal.rule]:
             bind(var_transactionlist,
                  external(getattr(func, "make-list"), [var_transObj])),
             internal.assert_frame(var_transObj, RDF.type,
-                                  rif2internal.assert_frame),
-            internal.assert_frame(var_parent, tmpdata.actions,
+                                  rif2internal.frame_exists),
+            internal.assert_frame(var_parent, tmpdata.conditions,
                                   var_transactionlist),
+            internal.assert_frame(var_transObj, tmpdata.parentframe,
+                                  var_obj),
             internal.execute(focke.export,
                              [var_transObj, var_transactionlist]),
             internal.execute(focke.export, [var_parent]),
             ]
     yield internal.rule(patterns1, actions1)
+    patterns2 = [
+            internal.frame_pattern(var_parent, RDF.type, RIF.Assert),
+            internal.frame_pattern(var_parent, RIF.target, var_obj),
+            internal.frame_pattern(var_obj, RDF.type, RIF.Frame),
+            ]
+    actions2 = [
+            internal.create_new(var_transObj),
+            bind(var_transactionlist,
+                 external(getattr(func, "make-list"), [var_transObj])),
+            internal.assert_frame(var_transObj, RDF.type,
+                                  rif2internal.assert_frame),
+            internal.assert_frame(var_parent, tmpdata.actions,
+                                  var_transactionlist),
+            internal.assert_frame(var_transObj, tmpdata.parentframe,
+                                  var_obj),
+            internal.execute(focke.export,
+                             [var_transObj, var_transactionlist]),
+            internal.execute(focke.export, [var_parent]),
+            ]
+    yield internal.rule(patterns2, actions2)
+    """rule to transfer information from rif.frame to internal.frame
+    :TODO:  missing slot transfer
+    """
+    patterns3 = [
+            internal.frame_pattern(var_transObj, tmpdata.parentframe,
+                                   var_obj),
+            internal.frame_pattern(var_obj, RIF.object, var_frameobj),
+            ]
+    actions3 = [
+            internal.assert_frame(var_transObj, tmpdata.obj, var_frameobj),
+            internal.execute(focke.export, [var_frameobj]),
+            ]
+    yield internal.rule(patterns3, actions3)
 
 internalFramePattern = list(_create_internalFramePattern())
 """Rules for transforming frame patterns as condition"""
@@ -187,6 +294,7 @@ rules: list[internal.rule] = [
         *collectRules,
         *internalImplies,
         *internalFramePattern,
+        *internalDo,
         ]
 
 rif2trafo_group2 = internal.group(rules)
