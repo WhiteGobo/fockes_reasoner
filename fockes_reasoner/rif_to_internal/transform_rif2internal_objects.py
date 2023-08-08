@@ -31,7 +31,12 @@ def _create_internalRules() -> Iterable[internal.rule]:
     var_algo = rdflib.Variable("algo")
     var_algonext = rdflib.Variable("algonext")
     var_conditions = rdflib.Variable("conditions")
+    var_newconditions = rdflib.Variable("newconditions")
     var_actions = rdflib.Variable("actions")
+    var_patterns = rdflib.Variable("patterns")
+    var_newpatterns = rdflib.Variable("newpatterns")
+    var_possibleNextPattern = rdflib.Variable("possibleNextPattern")
+    var_i = rdflib.Variable("i")
     patterns1 = [
             internal.frame_pattern(var_obj, RDF.type, RIF.Forall),
             ]
@@ -63,12 +68,83 @@ def _create_internalRules() -> Iterable[internal.rule]:
             ]
     actions3 = [
             internal.create_new(var_algonext),
+            assert_frame(var_algonext, RDF.type, tmpdata.state3),
             assert_frame(var_algonext, tmpdata.centrumRules, var_obj),
             assert_frame(var_algonext, tmpdata.conditionsfrom, var_conditions),
-            assert_frame(var_algonext, tmpdata.actionsfrom, var_actions),
-            internal.execute(focke.export, [var_obj, var_algonext]),
+            assert_frame(var_algonext, tmpdata.actions, var_actions),
+            bind(var_patterns,
+                 external(getattr(func, "make-list"), [])),
+            assert_frame(var_algonext, tmpdata.patternsfrom, var_patterns),
             ]
     yield internal.rule(patterns3, actions3)
+    patterns4 = [
+            frame_pattern(var_obj, RDF.type, RIF.Forall),
+            frame_pattern(var_algo, tmpdata.centrumRules, var_obj),
+            frame_pattern(var_algo, tmpdata.conditionsfrom, var_conditions),
+            #frame_pattern(var_algo, tmpdata.actionsfrom, var_actions),
+            #frame_pattern(var_algonext, tmpdata.patternsfrom, var_patterns),
+            ]
+    actions4 = [
+            bind(var_possibleNextPattern,
+                 external(func.get, [var_conditions, Literal(0)])),
+            assert_frame(var_algo, tmpdata.possibleNextPattern,
+                         var_possibleNextPattern),
+            ]
+    yield internal.rule(patterns4, actions4)
+    #change frame_exists as pattern to a condition, maybe
+    patterns5 = [
+            frame_pattern(var_obj, RDF.type, RIF.Forall),
+            frame_pattern(var_algo, RDF.type, tmpdata.state3),
+            frame_pattern(var_algo, tmpdata.centrumRules, var_obj),
+            frame_pattern(var_algo, tmpdata.conditionsfrom, var_conditions),
+            frame_pattern(var_algo, tmpdata.actions, var_actions),
+            frame_pattern(var_algonext, tmpdata.patternsfrom, var_patterns),
+            frame_pattern(var_algo, tmpdata.possibleNextPattern,
+                          var_possibleNextPattern),
+            frame_pattern(var_possibleNextPattern, RDF.type,
+                          rif2internal.frame_exists),
+            ]
+    actions5 = [
+            internal.create_new(var_algonext),
+            assert_frame(var_algonext, tmpdata.centrumRules, var_obj),
+            assert_frame(var_algonext, tmpdata.actions, var_actions),
+            bind(var_newpatterns,
+                 external(func.append,
+                          [var_patterns, var_possibleNextPattern]),
+                 ),
+            bind(var_i, external(func.count, [var_conditions])),
+            implies(external(getattr(pred, "numeric-greater-than"),
+                             [var_i, Literal(1)]),
+                    [bind(var_newconditions,
+                          external(func.sublist, [var_conditions,
+                                                  Literal(1)])),
+                     assert_frame(var_algonext, tmpdata.conditionsfrom,
+                                  var_newconditions),
+                     assert_frame(var_algonext, tmpdata.patternsfrom,
+                                  var_newpatterns),
+                     assert_frame(var_algonext, RDF.type, tmpdata.state3),
+                     ]),
+            implies(external(getattr(pred, "numeric-equal"),
+                             [var_i, Literal(1)]),
+                    [assert_frame(var_algonext, tmpdata.patterns,
+                                  var_newpatterns),
+                     assert_frame(var_algonext, RDF.type, tmpdata.state4),
+                     ]),
+            internal.execute(focke.export, [var_obj, var_algonext]),
+            ]
+    yield internal.rule(patterns5, actions5)
+    patterns6 = [
+            frame_pattern(var_obj, RDF.type, RIF.Forall),
+            frame_pattern(var_algo, tmpdata.centrumRules, var_obj),
+            frame_pattern(var_algo, tmpdata.actions, var_actions),
+            frame_pattern(var_algo, tmpdata.patterns, var_patterns),
+            ]
+    actions6 = [
+            assert_frame(var_obj, tmpdata.actions, var_actions),
+            assert_frame(var_obj, tmpdata.patterns, var_patterns),
+            ]
+    yield internal.rule(patterns6, actions6)
+
 
 internalRules = list(_create_internalRules())
 """Create internal objects representing each forall
