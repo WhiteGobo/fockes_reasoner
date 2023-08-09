@@ -16,7 +16,7 @@ import traceback
 EXTERNAL = Callable[[dur_abc.BINDING, Iterable[TRANSLATEABLE_TYPES]], TRANSLATEABLE_TYPES]
 EXTERNAL_CALL = Callable[[dur_abc.BINDING, Iterable[TRANSLATEABLE_TYPES]], None]
 
-def _node2string(x, bindings, external_resolution):
+def _node2string(x, c, bindings, external_resolution):
     if isinstance(x, rdflib.Variable):
         try:
             return bindings[x]
@@ -373,7 +373,7 @@ class assert_frame(dur_abc.assert_frame):
                 (self.label_slotkey, self.slotkey),
                 (self.label_slotvalue, self.slotvalue),
                 ]:
-            fact[label] = _node2string(x, bindings, external_resolution)
+            fact[label] = _node2string(x, c, bindings, external_resolution)
         if isinstance(c, str):
             rls.assert_fact(c, fact)
         else:
