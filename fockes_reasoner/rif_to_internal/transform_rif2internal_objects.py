@@ -1,3 +1,8 @@
+"""
+
+:TODO: change algo-nodes to be classified so less circles possible.
+:TODO: Use local namespaces for simple algorithms
+"""
 from collections.abc import Iterable
 import rdflib
 from rdflib import Variable, Literal
@@ -5,9 +10,20 @@ from .. import internal_dataobjects as internal
 from ..internal_dataobjects import frame_pattern, create_new, execute, assert_frame, external, bind, modify_frame, implies, retract_frame
 from ..shared import tmpdata, focke, rif2internal, RIF, RDF, act, func, pred
 
-def _create_internalGroups() -> internal.rule:
+def _create_internalGroups() -> Iterable[internal.rule]:
     var_obj = rdflib.Variable("obj")
     var_transObj = rdflib.Variable("transObj")
+    var_sentences = rdflib.Variable("sentences")
+    var_algo = rdflib.Variable("algo")
+    var_algonext = rdflib.Variable("algonext")
+    var_sentences_in = rdflib.Variable("sentences_in")
+    var_sentences_out = rdflib.Variable("sentences_out")
+    var_newsentences_in = rdflib.Variable("newsentences_in")
+    var_newsentences_out = rdflib.Variable("newsentences_out")
+    var_i = rdflib.Variable("i")
+    var_nextelement = rdflib.Variable("nextelement")
+    var_workqueue = rdflib.Variable("workqueue")
+    var_nextsentence = rdflib.Variable("nextsentence")
     patterns = [
             internal.frame_pattern(var_obj, RDF.type, RIF.Group),
             ]
@@ -15,11 +31,79 @@ def _create_internalGroups() -> internal.rule:
             internal.create_new(var_transObj),
             internal.assert_frame(var_obj, tmpdata.equals, var_transObj),
             internal.assert_frame(var_transObj, RDF.type, rif2internal.Group),
-            internal.execute(focke.export, [var_transObj]),
             ]
-    return internal.rule(patterns, actions)
+    #yield internal.rule(patterns, actions)
+    patterns1 = [
+            internal.frame_pattern(var_obj, RDF.type, RIF.Group),
+            frame_pattern(var_obj, RIF.sentences, var_sentences_in),
+            ]
+    actions1 = [
+            internal.create_new(var_algo),
+            assert_frame(var_algo, tmpdata.centrumGroup, var_obj),
+            assert_frame(var_algo, tmpdata.sentences_in, var_sentences_in),
+            assert_frame(var_algo, tmpdata.sentences_out,
+                         external(getattr(func, "make-list"), [])),
+            execute(act.print, [Literal("algo1")]),
+            bind(var_nextelement,
+                 external(func.get, [var_sentences_in, Literal(0)])),
+            assert_frame(var_algo, tmpdata.nextsentence, var_nextelement),
+            assert_frame(var_algo, RDF.type, tmpdata.group1),
+            internal.execute(focke.export, [var_algo, var_nextelement]),
+            ]
+    yield internal.rule(patterns1, actions1)
+    patterns2 = [
+            frame_pattern(var_algo, tmpdata.centrumGroup, var_obj),
+            frame_pattern(var_algo, tmpdata.sentences_in, var_sentences_in),
+            frame_pattern(var_algo, tmpdata.sentences_out, var_sentences_out),
+            frame_pattern(var_algo, tmpdata.nextsentence, var_nextelement),
+            frame_pattern(var_nextelement, tmpdata.equalto, var_nextsentence),
+            frame_pattern(var_algo, RDF.type, tmpdata.group1),
+            ]
+    actions2 = [
+            internal.create_new(var_algonext),
+            assert_frame(var_algo, tmpdata.centrumGroup, var_obj),
+            bind(var_newsentences_out,
+                 external(func.append, [var_sentences_out, var_nextsentence])),
+            bind(var_i, external(func.count, [var_sentences_in])),
+            implies(external(pred["numeric-greater-than"],
+                             [var_i, Literal(1)]),
+                    [assert_frame(var_algonext, tmpdata.sentences_out,
+                                  var_newsentences_out),
+                     assert_frame(var_algonext, tmpdata.nextsentence,
+                                  external(func.get, [var_sentences_in,
+                                                      Literal(0)])),
+                     assert_frame(var_algonext, tmpdata.sentences_in,
+                                  external(func.sublist, [var_sentences_out,
+                                                          Literal(1)])),
+                     frame_pattern(var_algonext, RDF.type, tmpdata.group1),
+                     ]),
+            implies(external(pred["numeric-equal"], [var_i, Literal(1)]),
+                    [assert_frame(var_algonext, tmpdata.sentences,
+                                  var_newsentences_out),
+                     frame_pattern(var_algonext, RDF.type, tmpdata.group2),
+                     ]),
+            execute(act.print, [Literal("algo2")]),
+            ]
+    yield internal.rule(patterns2, actions2)
+    patterns3 = [
+            frame_pattern(var_algo, tmpdata.centrumGroup, var_obj),
+            frame_pattern(var_algo, tmpdata.sentences, var_sentences),
+            frame_pattern(var_algo, RDF.type, tmpdata.group2),
+            ]
+    actions3 = [
+            create_new(var_algonext),
+            frame_pattern(var_obj, tmpdata.centrumGroup, var_algonext),
+            bind(var_newsentences_out,
+                 external(func.append, [var_sentences_out, var_nextsentence])),
+            bind(var_newsentences_in,
+                 external(func.sublist, [var_sentences_in,
+                                         Literal(1)])),
+            execute(act.print, [Literal("algo3")]),
+            internal.execute(focke.export, [var_obj]),
+            ]
+    yield internal.rule(patterns3, actions3)
 
-internalGroups = _create_internalGroups()
+internalGroups = list(_create_internalGroups())
 """Create internal objects representing each group.
 """
 
@@ -130,7 +214,6 @@ def _create_internalRules() -> Iterable[internal.rule]:
                                   var_newpatterns),
                      assert_frame(var_algonext, RDF.type, tmpdata.state4),
                      ]),
-            internal.execute(focke.export, [var_obj, var_algonext]),
             ]
     yield internal.rule(patterns5, actions5)
     patterns6 = [
@@ -140,8 +223,10 @@ def _create_internalRules() -> Iterable[internal.rule]:
             frame_pattern(var_algo, tmpdata.patterns, var_patterns),
             ]
     actions6 = [
-            assert_frame(var_obj, tmpdata.actions, var_actions),
-            assert_frame(var_obj, tmpdata.patterns, var_patterns),
+            assert_frame(var_obj, focke.actions, var_actions),
+            assert_frame(var_obj, focke.patterns, var_patterns),
+            assert_frame(var_obj, RDF.type, focke.forall),
+            internal.execute(focke.export, [var_obj]),
             ]
     yield internal.rule(patterns6, actions6)
 
@@ -395,9 +480,9 @@ collectRules = _create_collectRules()
 """
 
 rules: list[internal.rule] = [
-        internalGroups,
+        *internalGroups,
         *internalRules,
-        *collectRules,
+        #*collectRules,
         *internalImplies,
         *internalFramePattern,
         *internalDo,
