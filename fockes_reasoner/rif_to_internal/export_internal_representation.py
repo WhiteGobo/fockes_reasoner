@@ -49,7 +49,7 @@ present internal datastructure.
 """
 
 rules: list[typ.Union[internal.rule, internal.action, internal.group]] = [
-        export_document,
+        #export_document,
         export_all_internal_presentation_predicates,
         ]
 
