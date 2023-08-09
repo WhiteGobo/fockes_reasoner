@@ -21,8 +21,8 @@ def _node2string(x, bindings, external_resolution):
         try:
             return bindings[x]
         except KeyError as err:
-            raise Exception("Tried to get not yet bind variable %s from %s"
-                            % bindings) from err
+            raise Exception("Tried to get not yet bind variable '%s' from %s"
+                            % (x, bindings)) from err
     elif isinstance(x, (URIRef, BNode, Literal)):
         return rdflib2string(x)
     else:
