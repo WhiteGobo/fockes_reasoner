@@ -64,7 +64,7 @@ class _builtin_functions:
         #logger.info("export got bindings %s and args %s" %(bindings, args))
         t_args = [bindings[x] if isinstance(x, Variable) else rdflib2string(x)
                   for x in args]
-        logger.info("labeling for export: %r" % t_args)
+        #logger.info("labeling for export: %r" % t_args)
         self._symbols_for_export.update(t_args)
 
     @property

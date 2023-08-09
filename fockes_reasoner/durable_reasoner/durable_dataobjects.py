@@ -126,15 +126,15 @@ class forall(rule_generator, dur_abc.rule):
                           *patterns)
             def myfunction(c: durable.engine.Closure) -> None:
                 bindings: dur_abc.BINDING = self._generate_bindings(c)
-                logger.critical("starting function for %r" % self)
+                logger.debug("starting function for %r" % self)
                 for func in self.functions:
                     try:
-                        logger.critical("act %r" % func)
+                        logger.debug("act %r" % func)
                         func(c, bindings, **kwargs)
                     except FailedAction:
                         raise
                     except Exception as err:
-                        logger.critical(f"Failure in rule {self}\nFailed at "
+                        logger.info(f"Failure in rule {self}\nFailed at "
                                         "func %r with message:\n%s"
                                         % (func, traceback.format_exc()))
                         raise FailedAction(func) from err
