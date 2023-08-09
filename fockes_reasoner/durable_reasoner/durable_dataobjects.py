@@ -16,6 +16,19 @@ import traceback
 EXTERNAL = Callable[[dur_abc.BINDING, Iterable[TRANSLATEABLE_TYPES]], TRANSLATEABLE_TYPES]
 EXTERNAL_CALL = Callable[[dur_abc.BINDING, Iterable[TRANSLATEABLE_TYPES]], None]
 
+def _node2string(x, bindings, external_resolution):
+    if isinstance(x, rdflib.Variable):
+        try:
+            return bindings[x]
+        except KeyError as err:
+            raise Exception("Tried to get not yet bind variable %s from %s"
+                            % bindings) from err
+    elif isinstance(x, (URIRef, BNode, Literal)):
+        return rdflib2string(x)
+    else:
+        newnode = x(c, bindings, external_resolution)
+        return rdflib2string(newnode)
+
 class FailedAction(Exception):
     """Exception thrown within the machine, when an action fails."""
     def __init__(self, func: typ.Any, *args: typ.Any) -> None:
@@ -360,13 +373,7 @@ class assert_frame(dur_abc.assert_frame):
                 (self.label_slotkey, self.slotkey),
                 (self.label_slotvalue, self.slotvalue),
                 ]:
-            if isinstance(x, rdflib.Variable):
-                fact[label] = bindings[x]
-            elif isinstance(x, (URIRef, BNode, Literal)):
-                fact[label] = rdflib2string(x)
-            else:
-                newnode = x(c, bindings, external_resolution)
-                fact[label] = rdflib2string(newnode)
+            fact[label] = _node2string(x, bindings, external_resolution)
         if isinstance(c, str):
             rls.assert_fact(c, fact)
         else:
