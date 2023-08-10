@@ -30,7 +30,7 @@ def _create_internalGroups() -> Iterable[internal.rule]:
     actions = [
             internal.create_new(var_transObj),
             internal.assert_frame(var_obj, tmpdata.equals, var_transObj),
-            internal.assert_frame(var_transObj, RDF.type, rif2internal.Group),
+            internal.assert_frame(var_transObj, RDF.type, rif2internal.group),
             ]
     #yield internal.rule(patterns, actions)
     patterns1 = [
@@ -515,7 +515,7 @@ def _create_collectRules() -> Iterable[internal.rule]:
     var_i = rdflib.Variable("i")
     var_nextelement = rdflib.Variable("nextelement")
     patterns1 = [
-            frame_pattern(var_group, RDF.type, rif2internal.Group),
+            frame_pattern(var_group, RDF.type, rif2internal.group),
             frame_pattern(var_origgroup, tmpdata.equals, var_group),
             frame_pattern(var_origgroup, RIF.sentences, var_rulelist),
             ]
@@ -536,7 +536,7 @@ def _create_collectRules() -> Iterable[internal.rule]:
             ]
     yield internal.rule(patterns1, actions1)
     patterns2 = [
-            frame_pattern(var_group, RDF.type, rif2internal.Group),
+            frame_pattern(var_group, RDF.type, rif2internal.group),
             frame_pattern(var_group, tmpdata.sentences, var_newtransrulelist),
             frame_pattern(var_transrulelist, tmpdata.workqueue, var_workqueue)
             ]
@@ -578,7 +578,7 @@ def _create_rootgroup() -> Iterable[internal.rule]:
     var_list = rdflib.Variable("list")
     patterns1 = [
             frame_pattern(var_parentgroup, rif2internal.sentences, var_list),
-            frame_pattern(var_group, RDF.type, rif2internal.Group),
+            frame_pattern(var_group, RDF.type, rif2internal.group),
             ]
     actions1 = [
             implies(external(func["list-contains"], [var_list, var_group]),
@@ -594,7 +594,7 @@ rules: list[internal.rule] = [
         *internalImplies,
         *internalFramePattern,
         *internalDo,
-        #*rootgroup,
+        *rootgroup,
         ]
 
 rif2trafo_group2 = internal.group(rules)

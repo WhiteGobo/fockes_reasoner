@@ -79,7 +79,22 @@ class _builtin_functions:
                 getattr(pred, "numeric-greater-than"): self._greater_than,
                 getattr(pred, "numeric-equal"): self._numeric_equal_to,
                 func.concatenate: self._concatenate,
+                func["list-contains"]: self._list_contains,
                 }
+
+    def _list_contains(
+            self,
+            bindings: dur_abc.BINDING,
+            args: Iterable[dur_abc.TRANSLATEABLE_TYPES],
+            ) -> rdflib.Literal:
+        targetedlist, target = [bindings[x] if isinstance(x, Variable)
+                         else rdflib2string(x)
+                         for x in args]
+        for fact in rls.get_facts(self.rulename):#type: ignore[attr-defined]
+            if fact.get(dur_abc.FACTTYPE) == dur_abc.LIST:
+                if targetedlist == fact[dur_abc.LIST_ID]:
+                    return rdflib.Literal(target in fact[dur_abc.LIST_MEMBERS])
+        raise Exception("couldnt find targeted list %r" % targetedlist)
 
     def _concatenate(
             self,
