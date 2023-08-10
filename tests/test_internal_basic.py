@@ -79,6 +79,10 @@ def _rulegrouptest(mygroup):
             #logger.critical(str(c))
             pass
 
+        @rls.when_all(+rls.m.machinestate)
+        def accept_machinestate(c) -> None:
+            pass
+
     q = mygroup.generate_rules(ruleset)
     if failure: 
         raise Exception("During work of logic framework exceptions were "
