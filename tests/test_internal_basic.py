@@ -85,9 +85,12 @@ def _rulegrouptest(mygroup):
                         "raised. See logging for more information.")
     rls.assert_fact("test", {"machinestate": "running"})
     myfacts = rls.get_facts(ruleset.name)
-    f1 = {'type': 'frame', 'obj': '<http://example.org/example#John>', 'slotkey': '<http://example.org/example#status>', 'slotvalue': "'gold'"}
-    f2 = {'type': 'frame', 'obj': '<http://example.org/example#John>', 'slotkey': '<http://example.org/example#discount>', 'slotvalue': "'10'"}
-    assert f1 in myfacts, "logic failed to generate the init-fact from action"
+    f1 = {'type': 'frame', 'obj': '<http://example.org/example#John>', 'slotkey': '<http://example.org/example#status>', 'slotvalue': "'gold'^^<http://www.w3.org/2001/XMLSchema#string>"}
+    f2 = {'type': 'frame', 'obj': '<http://example.org/example#John>', 'slotkey': '<http://example.org/example#discount>', 'slotvalue': "'10'^^<http://www.w3.org/2001/XMLSchema#string>"}
+    try:
+        assert f1 in myfacts, "logic failed to generate the init-fact from action"
+    except AssertionError as err:
+        raise Exception(myfacts)
     try:
         f2_result, = (f for f in myfacts if f != f1 and f.get("type"))
     except StopIteration as err:
@@ -106,8 +109,8 @@ def test_RDFimport():
     my = rdflib.Namespace("http://example.com/mythingies#")
     testgraph = rdflib.Graph()
     testgraph.parse(format="ttl", data=f"""
-        @prefix xs: <http://www.w3.org/2001/XMLSchema#> .
-        @prefix rif: <http://rif> .
+        @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+        @prefix rif: <http://www.w3.org/2007/rif#> .
         @prefix func: <http://func> .
         @prefix ex: <http://example.org/example#> .
         @prefix tmp: <http://example.com/temporarydata#> .
@@ -127,19 +130,26 @@ def test_RDFimport():
             focke:functions ( my:givediscount ) .
 
         my:statusisgold a focke:frame_pattern ;
-            focke:object [a focke:Variable; focke:variablename "X"] ;
-            focke:slotkey ex:status ;
-            focke:slotvalue "gold" .
+            focke:object [a rif:Var; rif:varname "X"] ;
+            focke:slotkey [ a rif:Const ; rif:constIRI "http://example.org/example#status"^^xsd:anyURI ] ;
+            focke:slotvalue [ a rif:Const ; rif:value "gold"^^xsd:string ].
+            #focke:slotkey ex:status ;
+            #focke:slotvaluea "gold" .
 
         my:givediscount a focke:assert_frame ;
-            focke:object [a focke:Variable; focke:variablename "X"] ;
-            focke:slotkey ex:discount ;
-            focke:slotvalue "10" .
+            focke:object [a rif:Var; rif:varname "X"] ;
+            #focke:slotkey ex:discount ;
+            #focke:slotvalue "10" .
+            focke:slotkey [ a rif:Const ; rif:constIRI "http://example.org/example#discount"^^xsd:anyURI ];
+            focke:slotvalue [ a rif:Const ; rif:value "10"^^xsd:string ].
 
         my:makegold a focke:assert_frame ;
-            focke:object ex:John ;
-            focke:slotkey ex:status ;
-            focke:slotvalue "gold" .
+            #focke:object ex:John ;
+            #focke:slotkey ex:status ;
+            #focke:slotvalue "gold" .
+            focke:object [ a rif:Const ; rif:constIRI "http://example.org/example#John"^^xsd:anyURI ] ;
+            focke:slotkey [ a rif:Const ; rif:constIRI "http://example.org/example#status"^^xsd:anyURI ] ;
+            focke:slotvalue [ a rif:Const ; rif:value "gold"^^xsd:string ].
     """)
     mygroup = internal.group.from_rdf(testgraph, my.group)
     logger.debug(repr(mygroup))

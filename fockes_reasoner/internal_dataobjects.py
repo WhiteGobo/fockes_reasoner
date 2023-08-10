@@ -10,7 +10,7 @@ from typing import Union
 from .durable_reasoner import durable_abc as dur_abc
 from .durable_reasoner import durable_dataobjects as dur_obj
 from .durable_reasoner.durable_abc import TRANSLATEABLE_TYPES
-from .shared import focke, RDF, rdflib2string
+from .shared import focke, RDF, rdflib2string, RIF
 
 from .durable_reasoner.durable_dataobjects import implies
 
@@ -19,11 +19,20 @@ def _transform_complex(
         graph: rdflib.Graph,
         valuenode: typ.Union[URIRef, BNode, Literal],
         ) -> typ.Union[Variable, URIRef, BNode, Literal]:
-    if isinstance(valuenode, rdflib.IdentifiedNode):
-        if (valuenode, RDF.type, focke.Variable) in graph:
-            varname = graph.value(valuenode, focke.variablename)
-            return rdflib.Variable(varname)
-    return valuenode
+    data = dict(graph.predicate_objects(valuenode))
+    try:
+        return rdflib.Variable(data[RIF.varname])
+    except KeyError:
+        pass
+    try:
+        return rdflib.URIRef(data[RIF.constIRI])
+    except KeyError:
+        pass
+    try:
+        return data[RIF.value]
+    except KeyError:
+        pass
+    raise NotImplementedError(data)
 
 class group(dur_obj.group):
     sentences: tuple[typ.Union["rule", "action", "group"], ...]
