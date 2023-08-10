@@ -60,6 +60,43 @@ def test_basic_internal_reasoner():
     if failure:
         raise Exception(failure)
 
+def _rulegrouptest(mygroup):
+    ruleset = rls.ruleset("test")
+    failure = []
+
+    with ruleset:
+        @rls.when_all(+rls.s.exception)
+        def second(c) -> None:
+            f = str(c.s.exception).replace(r"\n", "\n")
+            f = f.replace(r"', '", "")
+            f = f.replace("traceback [\' ", "traceback:\n")
+            logger.error(f)
+            failure.append(f)
+            c.s.exception = None
+
+        @rls.when_all(+getattr(rls.m, FACTTYPE))
+        def accept_all_frametypes(c) -> None:
+            #logger.critical(str(c))
+            pass
+
+    q = mygroup.generate_rules(ruleset)
+    if failure: 
+        raise Exception("During work of logic framework exceptions were "
+                        "raised. See logging for more information.")
+    myfacts = rls.get_facts(ruleset.name)
+    f1 = {'type': 'frame', 'obj': '<http://example.org/example#John>', 'slotkey': '<http://example.org/example#status>', 'slotvalue': "'gold'"}
+    f2 = {'type': 'frame', 'obj': '<http://example.org/example#John>', 'slotkey': '<http://example.org/example#discount>', 'slotvalue': "'10'"}
+    assert f1 in myfacts
+    try:
+        f2_result = (f for f in myfacts if f != f1).__next__()
+    except StopIteration as err:
+        raise Exception("logic failed to generate second fact.") from err
+    try:
+        assert all(f2[x] == f2_result[x] for x in f2.keys())
+    except AssertionError as err:
+        raise Exception(f"expected something like: {[f1, f2]}\n"
+                        f" but got: {myfacts}") from err
+
 def test_RDFimport():
     """Tests if a simple example of the internal rulestructure can be load
     when the structure is given in the rdf representation of the internal
@@ -106,38 +143,7 @@ def test_RDFimport():
     mygroup = internal.group.from_rdf(testgraph, my.group)
     logger.debug(repr(mygroup))
 
-    ruleset = rls.ruleset("test")
-    failure = []
-
-    with ruleset:
-        @rls.when_all(+rls.s.exception)
-        def second(c) -> None:
-            f = str(c.s.exception).replace(r"\n", "\n")
-            f = f.replace(r"', '", "")
-            f = f.replace("traceback [\' ", "traceback:\n")
-            logger.error(f)
-            failure.append(f)
-            c.s.exception = None
-
-        @rls.when_all(+getattr(rls.m, FACTTYPE))
-        def accept_all_frametypes(c) -> None:
-            #logger.critical(str(c))
-            pass
-
-    q = mygroup.generate_rules(ruleset)
-    if failure: 
-        raise Exception("During work of logic framework exceptions were "
-                        "raised. See logging for more information.")
-    myfacts = rls.get_facts(ruleset.name)
-    f1 = {'type': 'frame', 'obj': '<http://example.org/example#John>', 'slotkey': '<http://example.org/example#status>', 'slotvalue': "'gold'"}
-    try:
-        assert f1 in myfacts
-        f2_result = (f for f in myfacts if f != f1).__next__()
-        f2 = {'type': 'frame', 'obj': '<http://example.org/example#John>', 'slotkey': '<http://example.org/example#discount>', 'slotvalue': "'10'"}
-        assert all(f2[x] == f2_result[x] for x in f2.keys())
-    except Exception as err:
-        raise Exception(f"expected something like: {[f1, f2]}\n"
-                        f" but got: {myfacts}") from err
+    _rulegrouptest(mygroup)
 
 
 def test_RIFimport():
@@ -166,19 +172,27 @@ def test_RIFimport():
         raise
     logger.info("symbols labeled for export: %s" % trafo._symbols_for_export)
     try:
-        g = rdflib.Graph()
+        internal_rule_graph = rdflib.Graph()
         for ax in trafo:
-            g.add(ax)
+            internal_rule_graph.add(ax)
     except Exception:
         logger.info("internal information during export: %s"
                     % "\n".join(str(x) for x in trafo._get_internal_info()))
         raise
     #logger.info("asdfqwer %s" % list(trafo))
-    logger.info(g.serialize())
-    _subgroups = set(g.subjects(RDF.type, rif2internal.subgroup))
-    rootgroup, = (g for g in g.subjects(RDF.type, rif2internal.Group)
-                  if g not in _subgroups)
+    #logger.info(g.serialize())
+    _subgroups = set(internal_rule_graph.subjects(RDF.type,
+                                                  rif2internal.subgroup))
+    try:
+        rootgroup, = (g for g in internal_rule_graph.subjects(RDF.type, rif2internal.group)
+                      if g not in _subgroups)
+    except ValueError:
+        logger.info("Exported graph:\n%s" % internal_rule_graph.serialize())
+        raise Exception("couldnt find exactly one rootgroup.") from err
     #logger.info(trafo._symbols_for_export)
     #logger.info("internal information during export: %s"
     #            % "\n".join(str(x) for x in trafo._get_internal_info()))
+
+    mygroup = internal.group.from_rdf(internal_rule_graph, rootgroup)
+    logger.info(repr(mygroup))
     raise Exception(rootgroup)
