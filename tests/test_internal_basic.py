@@ -9,6 +9,8 @@ from fockes_reasoner import rif_to_internal as rif2int
 from fockes_reasoner import internal_dataobjects as internal
 from fockes_reasoner.durable_reasoner.durable_abc import FACTTYPE, FRAME
 from fockes_reasoner import rule_importer
+from fockes_reasoner import rif2internal
+from rdflib import RDF
 
 import pathlib
 import os.path
@@ -173,7 +175,10 @@ def test_RIFimport():
         raise
     #logger.info("asdfqwer %s" % list(trafo))
     logger.info(g.serialize())
+    _subgroups = set(g.subjects(RDF.type, rif2internal.subgroup))
+    rootgroup, = (g for g in g.subjects(RDF.type, rif2internal.Group)
+                  if g not in _subgroups)
     #logger.info(trafo._symbols_for_export)
     #logger.info("internal information during export: %s"
     #            % "\n".join(str(x) for x in trafo._get_internal_info()))
-    raise Exception()
+    raise Exception(rootgroup)

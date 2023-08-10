@@ -6,10 +6,9 @@ import pyparsing.results
 
 tmpdata = rdflib.Namespace("http://example.com/temporarydata#")
 focke = rdflib.Namespace("http://example.com/internaldata#")
-rif2internal = rdflib.Namespace("http://example.com/builtin#")
 RIF = rdflib.Namespace("http://www.w3.org/2007/rif#")
 act = rdflib.Namespace("http://www.w3.org/2007/rif-builtin-action#")
-from .namespaces import func, pred
+from .namespaces import func, pred, rif2internal
 from rdflib import XSD
 from rdflib import RDF
 

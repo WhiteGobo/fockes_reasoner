@@ -199,9 +199,10 @@ def _create_internalRules() -> Iterable[internal.rule]:
             assert_frame(var_newFrame, RDF.type, rif2internal.frame_pattern),
             internal.create_new(var_newOrder),
             assert_frame(var_newOrder, RDF.type, tmpdata.transferFrame),
-            assert_frame(var_newOrder, tmpdata["from"], var_newFrame),
-            assert_frame(var_newOrder, tmpdata.to, var_possibleNextPattern),
-            assert_frame(var_newOrder, tmpdata.index, Literal(0)),
+            assert_frame(var_newOrder, tmpdata["from"],
+                         var_possibleNextPattern),
+            assert_frame(var_newOrder, tmpdata.to, var_newFrame),
+            assert_frame(var_newOrder, tmpdata["index"], Literal(0)),
             bind(var_newpatterns,
                  external(func.append,
                           [var_patterns, var_newFrame]),
@@ -369,6 +370,15 @@ def _create_internalFramePattern() -> Iterable[internal.rule]:
     var_parent = rdflib.Variable("parent")
     var_frameobj = rdflib.Variable("frameobj")
     var_transactionlist = rdflib.Variable("vartransactionlist")
+    var_Order = rdflib.Variable("Order")
+    var_from = rdflib.Variable("from")
+    var_to = rdflib.Variable("to")
+    var_framekey = rdflib.Variable("framekey")
+    var_framevalue = rdflib.Variable("framevalue")
+    var_newOrder = rdflib.Variable("newOrder")
+    var_i = rdflib.Variable("i")
+    var_slots = rdflib.Variable("slots")
+    var_slot = rdflib.Variable("slot")
     patterns1 = [
             internal.frame_pattern(var_parent, RDF.type, RIF.Implies),
             internal.frame_pattern(var_parent, RIF["if"], var_obj),
@@ -382,11 +392,13 @@ def _create_internalFramePattern() -> Iterable[internal.rule]:
                                   rif2internal.frame_exists),
             internal.assert_frame(var_parent, tmpdata.conditions,
                                   var_transactionlist),
-            internal.assert_frame(var_transObj, tmpdata.parentframe,
-                                  var_obj),
-            #internal.execute(focke.export,
-            #                 [var_transObj, var_transactionlist]),
-            #internal.execute(focke.export, [var_parent]),
+            #internal.assert_frame(var_transObj, tmpdata.parentframe,
+            #                      var_obj),
+            internal.create_new(var_newOrder),
+            assert_frame(var_newOrder, RDF.type, tmpdata.transferFrame),
+            assert_frame(var_newOrder, tmpdata["from"], var_obj),
+            assert_frame(var_newOrder, tmpdata.to, var_transObj),
+            assert_frame(var_newOrder, tmpdata["index"], Literal(0)),
             ]
     yield internal.rule(patterns1, actions1)
     patterns2 = [
@@ -402,10 +414,15 @@ def _create_internalFramePattern() -> Iterable[internal.rule]:
                                   rif2internal.assert_frame),
             internal.assert_frame(var_parent, tmpdata.actions,
                                   var_transactionlist),
-            internal.assert_frame(var_transObj, tmpdata.parentframe,
-                                  var_obj),
+            #internal.assert_frame(var_transObj, tmpdata.parentframe,
+            #                      var_obj),
             internal.execute(focke.export, [var_transObj]),
             #internal.execute(focke.export, [var_parent]),
+            internal.create_new(var_newOrder),
+            assert_frame(var_newOrder, RDF.type, tmpdata.transferFrame),
+            assert_frame(var_newOrder, tmpdata["from"], var_obj),
+            assert_frame(var_newOrder, tmpdata.to, var_transObj),
+            assert_frame(var_newOrder, tmpdata["index"], Literal(0)),
             ]
     yield internal.rule(patterns2, actions2)
     """rule to transfer information from rif.frame to internal.frame
@@ -428,23 +445,60 @@ def _create_internalFramePattern() -> Iterable[internal.rule]:
                          var_transactionlist),
             internal.assert_frame(var_actionObj, RDF.type,
                                   rif2internal.assert_frame),
-            internal.assert_frame(var_actionObj, tmpdata.parentframe,
-                                  var_obj),
+            #internal.assert_frame(var_actionObj, tmpdata.parentframe,
+            #                      var_obj),
+            internal.create_new(var_newOrder),
+            assert_frame(var_newOrder, RDF.type, tmpdata.transferFrame),
+            assert_frame(var_newOrder, tmpdata["from"], var_obj),
+            assert_frame(var_newOrder, tmpdata.to, var_actionObj),
+            assert_frame(var_newOrder, tmpdata["index"], Literal(0)),
             internal.execute(focke.export,
                              [var_transObj, var_transactionlist, var_actionObj]),
-            #internal.execute(focke.export, [var_parent]),
+            #internal.execute(focke.export, [var_newOrder, var_obj]),
             ]
     yield internal.rule(patterns4, actions4)
-    patterns7 = [
-            internal.frame_pattern(var_transObj, tmpdata.parentframe,
-                                   var_obj),
-            internal.frame_pattern(var_obj, RIF.object, var_frameobj),
+    patterns_transfer1 = [
+            frame_pattern(var_Order, RDF.type, tmpdata.transferFrame),
+            frame_pattern(var_Order, tmpdata["from"], var_from),
+            frame_pattern(var_Order, tmpdata.to, var_to),
+            frame_pattern(var_Order, tmpdata["index"], Literal(0)),
+            frame_pattern(var_from, tmpdata.obj, var_frameobj),
+            frame_pattern(var_from, tmpdata.slotkey, var_framekey),
+            frame_pattern(var_from, tmpdata.slotvalue, var_framevalue),
             ]
-    actions7 = [
-            internal.assert_frame(var_transObj, tmpdata.obj, var_frameobj),
-            internal.execute(focke.export, [var_frameobj]),
+    actions_transfer1 = [
+            assert_frame(var_to, tmpdata.obj, var_frameobj),
+            assert_frame(var_to, tmpdata.slotkey, var_framekey),
+            assert_frame(var_to, tmpdata.slotvalue, var_framevalue),
             ]
-    yield internal.rule(patterns7, actions7)
+    yield internal.rule(patterns_transfer1, actions_transfer1)
+    patterns_transfer2 = [
+            frame_pattern(var_Order, RDF.type, tmpdata.transferFrame),
+            frame_pattern(var_Order, tmpdata["from"], var_from),
+            frame_pattern(var_Order, tmpdata["index"], var_i),
+            frame_pattern(var_from, RIF.object, var_frameobj),
+            frame_pattern(var_from, RIF.slots, var_slots),
+            ]
+    actions_transfer2 = [
+            assert_frame(var_Order, tmpdata.obj, var_frameobj),
+            assert_frame(var_Order, tmpdata.usedSlot,
+                         external(func.get, [var_slots, var_i])),
+            ]
+    yield internal.rule(patterns_transfer2, actions_transfer2)
+    patterns_transfer3 = [
+            frame_pattern(var_Order, RDF.type, tmpdata.transferFrame),
+            frame_pattern(var_Order, tmpdata["to"], var_to),
+            frame_pattern(var_Order, tmpdata.obj, var_frameobj),
+            frame_pattern(var_Order, tmpdata.usedSlot, var_slot),
+            frame_pattern(var_slot, RIF.slotkey, var_framekey),
+            frame_pattern(var_slot, RIF.slotvalue, var_framevalue),
+            ]
+    actions_transfer3 = [
+            assert_frame(var_to, tmpdata.obj, var_frameobj),
+            assert_frame(var_to, tmpdata.slotkey, var_framekey),
+            assert_frame(var_to, tmpdata.slotvalue, var_framevalue),
+            ]
+    yield internal.rule(patterns_transfer3, actions_transfer3)
 
 internalFramePattern = list(_create_internalFramePattern())
 """Rules for transforming frame patterns as condition"""
@@ -518,6 +572,21 @@ collectRules = _create_collectRules()
 """Create internal objects representing each forall
 """
 
+def _create_rootgroup() -> Iterable[internal.rule]:
+    var_group = rdflib.Variable("group")
+    var_parentgroup = rdflib.Variable("parentgroup")
+    var_list = rdflib.Variable("list")
+    patterns1 = [
+            frame_pattern(var_parentgroup, rif2internal.sentences, var_list),
+            frame_pattern(var_group, RDF.type, rif2internal.Group),
+            ]
+    actions1 = [
+            implies(external(func["list-contains"], [var_list, var_group]),
+                    [assert_frame(var_group, RDF.type, rif2internal.subgroup)]),
+            ]
+    yield internal.rule(patterns1, actions1)
+rootgroup = list(_create_rootgroup())
+
 rules: list[internal.rule] = [
         *internalGroups,
         *internalRules,
@@ -525,6 +594,7 @@ rules: list[internal.rule] = [
         *internalImplies,
         *internalFramePattern,
         *internalDo,
+        #*rootgroup,
         ]
 
 rif2trafo_group2 = internal.group(rules)

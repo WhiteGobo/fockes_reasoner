@@ -1,6 +1,8 @@
 from rdflib.namespace import DefinedNamespace, Namespace
 from rdflib.term import URIRef
 
+rif2internal = Namespace("http://example.com/builtin#")
+
 class pred(DefinedNamespace):
     _fail = True
     _extras = [
@@ -23,6 +25,7 @@ class func(DefinedNamespace):
             "count",
             "make-list",
             "concatenate",
+            "list-contains",
             ]
 
     _NS = Namespace("http://www.w3.org/2007/rif-builtin-function#")
