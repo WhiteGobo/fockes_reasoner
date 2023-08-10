@@ -119,37 +119,37 @@ def test_RDFimport():
         @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
         @prefix my: <{my}> .
 
-        my:group a focke:group;
-            focke:sentences ( my:forall1 my:action1 ).
+        my:group a rif2internal:group;
+            rif2internal:sentences ( my:forall1 my:action1 ).
 
-        my:action1 a focke:action;
-            focke:functions ( my:makegold ) .
+        my:action1 a rif2internal:action;
+            rif2internal:functions ( my:makegold ) .
 
-        my:forall1 a focke:forall;
-            focke:patterns ( my:statusisgold ) ;
-            focke:functions ( my:givediscount ) .
+        my:forall1 a rif2internal:forall;
+            rif2internal:patterns ( my:statusisgold ) ;
+            rif2internal:functions ( my:givediscount ) .
 
-        my:statusisgold a focke:frame_pattern ;
-            focke:object [a rif:Var; rif:varname "X"] ;
-            focke:slotkey [ a rif:Const ; rif:constIRI "http://example.org/example#status"^^xsd:anyURI ] ;
-            focke:slotvalue [ a rif:Const ; rif:value "gold"^^xsd:string ].
-            #focke:slotkey ex:status ;
-            #focke:slotvaluea "gold" .
+        my:statusisgold a rif2internal:frame_pattern ;
+            rif2internal:object [a rif:Var; rif:varname "X"] ;
+            rif2internal:slotkey [ a rif:Const ; rif:constIRI "http://example.org/example#status"^^xsd:anyURI ] ;
+            rif2internal:slotvalue [ a rif:Const ; rif:value "gold"^^xsd:string ].
+            #rif2internal:slotkey ex:status ;
+            #rif2internal:slotvaluea "gold" .
 
-        my:givediscount a focke:assert_frame ;
-            focke:object [a rif:Var; rif:varname "X"] ;
-            #focke:slotkey ex:discount ;
-            #focke:slotvalue "10" .
-            focke:slotkey [ a rif:Const ; rif:constIRI "http://example.org/example#discount"^^xsd:anyURI ];
-            focke:slotvalue [ a rif:Const ; rif:value "10"^^xsd:string ].
+        my:givediscount a rif2internal:assert_frame ;
+            rif2internal:object [a rif:Var; rif:varname "X"] ;
+            #rif2internal:slotkey ex:discount ;
+            #rif2internal:slotvalue "10" .
+            rif2internal:slotkey [ a rif:Const ; rif:constIRI "http://example.org/example#discount"^^xsd:anyURI ];
+            rif2internal:slotvalue [ a rif:Const ; rif:value "10"^^xsd:string ].
 
-        my:makegold a focke:assert_frame ;
-            #focke:object ex:John ;
-            #focke:slotkey ex:status ;
-            #focke:slotvalue "gold" .
-            focke:object [ a rif:Const ; rif:constIRI "http://example.org/example#John"^^xsd:anyURI ] ;
-            focke:slotkey [ a rif:Const ; rif:constIRI "http://example.org/example#status"^^xsd:anyURI ] ;
-            focke:slotvalue [ a rif:Const ; rif:value "gold"^^xsd:string ].
+        my:makegold a rif2internal:assert_frame ;
+            #rif2internal:object ex:John ;
+            #rif2internal:slotkey ex:status ;
+            #rif2internal:slotvalue "gold" .
+            rif2internal:object [ a rif:Const ; rif:constIRI "http://example.org/example#John"^^xsd:anyURI ] ;
+            rif2internal:slotkey [ a rif:Const ; rif:constIRI "http://example.org/example#status"^^xsd:anyURI ] ;
+            rif2internal:slotvalue [ a rif:Const ; rif:value "gold"^^xsd:string ].
     """)
     mygroup = internal.group.from_rdf(testgraph, my.group)
     logger.debug(repr(mygroup))
@@ -203,6 +203,7 @@ def test_RIFimport():
     #logger.info(trafo._symbols_for_export)
     #logger.info("internal information during export: %s"
     #            % "\n".join(str(x) for x in trafo._get_internal_info()))
+    logger.info(internal_rule_graph.serialize())
 
     mygroup = internal.group.from_rdf(internal_rule_graph, rootgroup)
     logger.info(repr(mygroup))
