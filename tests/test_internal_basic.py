@@ -83,16 +83,17 @@ def _rulegrouptest(mygroup):
     if failure: 
         raise Exception("During work of logic framework exceptions were "
                         "raised. See logging for more information.")
+    rls.assert_fact("test", {"machinestate": "running"})
     myfacts = rls.get_facts(ruleset.name)
     f1 = {'type': 'frame', 'obj': '<http://example.org/example#John>', 'slotkey': '<http://example.org/example#status>', 'slotvalue': "'gold'"}
     f2 = {'type': 'frame', 'obj': '<http://example.org/example#John>', 'slotkey': '<http://example.org/example#discount>', 'slotvalue': "'10'"}
-    assert f1 in myfacts
+    assert f1 in myfacts, "logic failed to generate the init-fact from action"
     try:
-        f2_result = (f for f in myfacts if f != f1).__next__()
+        f2_result, = (f for f in myfacts if f != f1 and f.get("type"))
     except StopIteration as err:
-        raise Exception("logic failed to generate second fact.") from err
+        raise Exception("logic failed to generate the implication.") from err
     try:
-        assert all(f2[x] == f2_result[x] for x in f2.keys())
+        assert all(f2[x] == f2_result.get(x) for x in f2.keys())
     except AssertionError as err:
         raise Exception(f"expected something like: {[f1, f2]}\n"
                         f" but got: {myfacts}") from err
