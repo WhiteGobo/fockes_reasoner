@@ -23,19 +23,26 @@ class info4internalSyntaxError(ValueError):
 
 def _transform_complex(
         graph: rdflib.Graph,
-        valuenode: typ.Union[URIRef, BNode, Literal],
-        ) -> typ.Union[Variable, URIRef, BNode, Literal]:
+        valuenode: rdflib.term.Node,
+        ) -> typ.Union[Variable, URIRef, Literal]:
+    """
+    Assume, that given graph represents a valid RIF document.
+    """
     data = dict(graph.predicate_objects(valuenode))
+    q: rdflib.Literal
     try:
-        return rdflib.Variable(data[RIF.varname])
+        q = data[RIF.varname] #type: ignore[assignment]
+        return rdflib.Variable(q)
     except KeyError:
         pass
     try:
-        return rdflib.URIRef(data[RIF.constIRI])
+        q = data[RIF.constIRI] #type: ignore[assignment]
+        return rdflib.URIRef(q)
     except KeyError:
         pass
     try:
-        return data[RIF.value]
+        q = data[RIF.value] #type: ignore[assignment]
+        return q
     except KeyError:
         pass
     raise NotImplementedError(data)

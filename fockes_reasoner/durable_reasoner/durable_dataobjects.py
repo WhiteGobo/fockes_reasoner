@@ -16,7 +16,7 @@ import traceback
 EXTERNAL = Callable[[dur_abc.BINDING, Iterable[TRANSLATEABLE_TYPES]], TRANSLATEABLE_TYPES]
 EXTERNAL_CALL = Callable[[dur_abc.BINDING, Iterable[TRANSLATEABLE_TYPES]], None]
 
-def _node2string(x,
+def _node2string(x: typ.Union[TRANSLATEABLE_TYPES, "external"],
                  c: typ.Union[durable.engine.Closure, str],
                  bindings: dur_abc.BINDING,
                  external_resolution: Mapping[typ.Union[rdflib.URIRef, rdflib.BNode], EXTERNAL],

@@ -24,7 +24,7 @@ from . import models
 class _builtin_functions:
     """Enables all functionability for external functions.
     """
-    standard_symbols_for_export = [
+    standard_symbols_for_export: list[rdflib.URIRef] = [
             #focke.Group,
             #focke.action,
             #focke.forall,
@@ -101,7 +101,7 @@ class _builtin_functions:
             self,
             bindings: dur_abc.BINDING,
             args: Iterable[dur_abc.TRANSLATEABLE_TYPES],
-            ) -> rdflib.Literal:
+            ) -> rdflib.BNode:
         targetedlists = [bindings[x] if isinstance(x, Variable)
                          else rdflib2string(x)
                          for x in args]

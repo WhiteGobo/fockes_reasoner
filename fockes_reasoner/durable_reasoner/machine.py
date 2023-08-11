@@ -1,39 +1,50 @@
 import durable.lang as rls
+import durable.engine
 import uuid
 import logging
+from typing import Union, Mapping
 
 from ..shared import RDF
+from . import machine_facts
 
-FACTTYPE: ATOMLABEL = "type"
+FACTTYPE = "type"
 """Labels in where the type of fact is saved"""
-MACHINESTATE: str = "machinestate"
-RUNNING_STATE: str = "running"
+MACHINESTATE = "machinestate"
+RUNNING_STATE = "running"
 
-LIST: ATOMLABEL = "list"
+LIST = "list"
 """All facts that represent :term:`list` are labeled with this."""
-LIST_ID: ATOMLABEL = "id"
+LIST_ID = "id"
 """Facts that represent :term:`list` may have a label of which represent them
 in RDF.
 """
-LIST_MEMBERS: ATOMLABEL = "member"
+LIST_MEMBERS = "member"
 """:term:`list` enlist all their members under this label."""
 
 class machine:
     _ruleset: rls.ruleset
     logger: logging.Logger
+    errors: list
 
     def __init__(self, loggername: str = __name__) -> None:
         rulesetname = str(uuid.uuid4())
         self._ruleset = rls.ruleset(rulesetname)
         self.logger = logging.getLogger(loggername)
         self.__set_basic_rules()
+        self.errors = []
 
-    def __set_basic_rules(self):
+    def assert_fact(self, fact: Mapping[str, str]) -> None:
+        ...
+    
+    def retract_matching(self, fact: Mapping[str, str]) -> None:
+        ...
+
+    def __set_basic_rules(self) -> None:
         with self._ruleset:
             @rls.when_all(rls.pri(-3), +rls.s.exception)
             def second(c: durable.engine.Closure) -> None:
                 self.logger.critical(c.s.exception)
-                save_error(str(c.s.exception))
+                self.errors.append(str(c.s.exception))
                 c.s.exception = None
                 try:
                     c.retract_state({MACHINESTATE: RUNNING_STATE})
@@ -48,23 +59,23 @@ class machine:
             def accept_every_machinestate(c: durable.engine.Closure) -> None:
                 pass
 
-    def run(self, steps: Union[int, None] = None):
+    def run(self, steps: Union[int, None] = None) -> None:
         if steps is None:
-            rls.assert_fact(self.rulename, {MACHINESTATE: RUNNING_STATE})
-            rls.retract_fact(self.rulename, {MACHINESTATE: RUNNING_STATE})
+            rls.assert_fact(self._rulename, {MACHINESTATE: RUNNING_STATE})
+            rls.retract_fact(self._rulename, {MACHINESTATE: RUNNING_STATE})
         else:
             raise NotImplementedError()
             for t in steps:
-                rls.post(self.rulename, {MACHINESTATE: RUNNING_STATE})
-        if self.failures:
-            raise Exception("Rules produced an error.", self.failures)
+                rls.post(self._rulename, {MACHINESTATE: RUNNING_STATE})
+        if self.errors:
+            raise Exception("Rules produced an error.", self.errors)
 
     @property
-    def _rulesetName(self) -> str:
-        return self._ruleset.name
+    def _rulename(self) -> str:
+        return self._ruleset.name #type: ignore[no-any-return]
 
 
-def RDFmachine(machine):
+class RDFmachine(machine):
     """Implements translation of as in RDF specified syntax for the machine
     """
     def __init__(self, loggername: str = __name__) -> None:
@@ -72,13 +83,22 @@ def RDFmachine(machine):
         self.__transform_list_rules()
 
     def __transform_list_rules(self) -> None:
+        from .machine_facts import rdflib2string, frame
+        LIST_ID = "id"
+        LIST = "list"
+        LIST_MEMBERS = "member"
+        FRAME_OBJ = frame.FRAME_OBJ
+        FRAME_SLOTVALUE = frame.FRAME_SLOTVALUE
+        FRAME_SLOTKEY = frame.FRAME_SLOTKEY
+
         NIL = rdflib2string(RDF.nil)
         REST = rdflib2string(RDF.rest)
         FIRST = rdflib2string(RDF.first)
         with self._ruleset:
-            @rls.when_all(rls.pri(-2),
+            @rls.when_all(
+                    rls.pri(-2),
                     rls.c.base << (getattr(rls.m, FRAME_SLOTVALUE) == NIL)
-                    & (getattr(rls.m, FACTTYPE) == FRAME)
+                    & (getattr(rls.m, FACTTYPE) == frame.ID)
                     & (getattr(rls.m, FRAME_SLOTKEY) == REST),
                     rls.c.lastelem << (getattr(rls.m, FRAME_OBJ)
                                        == getattr(rls.c.base, FRAME_OBJ))
@@ -100,11 +120,11 @@ def RDFmachine(machine):
                     rls.c.base << (getattr(rls.m, FRAME_SLOTKEY) == REST)
                     #& (getattr(rls.m, FRAME_SLOTVALUE)
                     #                == getattr(rls.c.list, LIST_ID))
-                    & (getattr(rls.m, FACTTYPE) == FRAME),
+                    & (getattr(rls.m, FACTTYPE) == frame.ID),
                     rls.c.element <<(getattr(rls.m, FRAME_OBJ)
                                     == getattr(rls.c.base, FRAME_OBJ))
                     & (getattr(rls.m, FRAME_SLOTKEY) == FIRST)
-                    & (getattr(rls.m, FACTTYPE) == FRAME),
+                    & (getattr(rls.m, FACTTYPE) == frame.ID),
                     )
             def combine_list(c: durable.engine.Closure) -> None:
                 """

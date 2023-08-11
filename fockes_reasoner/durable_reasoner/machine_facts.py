@@ -1,21 +1,29 @@
 import abc
-from .machine import FACTTYPE, MACHINESTATE, RUNNING_STATE
+from .machine import FACTTYPE, MACHINESTATE, RUNNING_STATE, machine
+import durable.engine
+import durable.lang as rls
+
+import logging
+logger = logging.getLogger(__name__)
 
 import rdflib
+from rdflib import URIRef, BNode, Literal
 import typing as typ
-from typing import MutableMapping, Mapping, Union
+from typing import MutableMapping, Mapping, Union, Callable
 
-BINDING = MutableMapping[rdflib.Variable, str]
-from bridge_rdflib import rdflib2string, string2rdflib, TRANSLATEABLE_TYPES
 
-class external:
+class external(abc.ABC):
     """Parentclass for all extension for information representation."""
+    @abc.abstractmethod
     @classmethod
     def parse(cls, string: str) -> "external":
         ...
 
-    @classmethod
-    def serialize(self) -> str:
+    @abc.abstractmethod
+    def serialize(self, c: typ.Union[durable.engine.Closure, str],
+                  bindings: BINDING,
+                  external_resolution: Mapping[typ.Union[rdflib.URIRef, rdflib.BNode], external],
+                  ) -> str:
         ...
 
 TRANSLATEABLE_TYPES = typ.Union[rdflib.Variable,
@@ -25,8 +33,12 @@ TRANSLATEABLE_TYPES = typ.Union[rdflib.Variable,
                                 list["TRANSLATEABLE_TYPES"],
                                 external,
                                 ]
+BINDING = MutableMapping[rdflib.Variable, str]
+VARIABLE_LOCATOR = Callable[[typ.Union[durable.engine.Closure, None]], TRANSLATEABLE_TYPES]
+CLOSURE_BINDINGS = MutableMapping[rdflib.Variable, VARIABLE_LOCATOR]
 
-from bridge_rdflib import *
+
+from .bridge_rdflib import *
 
 def rdflib2string(identifier: TRANSLATEABLE_TYPES) -> str:
     """Translates from rdflib to strings.
@@ -46,7 +58,7 @@ def rdflib2string(identifier: TRANSLATEABLE_TYPES) -> str:
         except AttributeError:
             pass
         return "".join(parts)
-    elif type(identifier, list):
+    elif type(identifier) == list:
         raise NotImplementedError(type(identifier), identifier)
     else:
         raise NotImplementedError(type(identifier), identifier)
@@ -59,34 +71,34 @@ def string2rdflib(string: str) -> TRANSLATEABLE_TYPES:
     except Exception as err:
         pass
     raise NotImplementedError("Currently no lists and externals are supported"
-                              "happend with %r" % string) from err
+                              "happend with %r" % string)
 
 
 class fact(abc.ABC):
     @abc.abstractmethod
-    def assert(self, c: typ.Union[durable.engine.Closure, str],
-               bindings: dur_abc.BINDING = {},
+    def assert_fact(self, c: machine,
+               bindings: BINDING = {},
                external_resolution: Mapping[Union[rdflib.URIRef,
-                                                  rdflib.BNode], EXTERNAL] = {},
+                                                  rdflib.BNode], external] = {},
                ) -> None:
         ...
 
     @abc.abstractmethod
-    def generate_durable_pattern(self, bindings: dur_abc.CLOSURE_BINDINGS,
-                                  factname: str) -> rls.value:
+    def generate_pattern(self, bindings: CLOSURE_BINDINGS,
+                         factname: str) -> rls.value:
         ...
 
     @abc.abstractmethod
-    def retract(self, c: typ.Union[durable.engine.Closure, str],
-                bindings: dur_abc.BINDING = {},
-                external_resolution: Mapping[typ.Union[rdflib.URIRef, rdflib.BNode], EXTERNAL] = {},
+    def retract_fact(self, c: machine,
+                bindings: BINDING = {},
+                external_resolution: Mapping[typ.Union[rdflib.URIRef, rdflib.BNode], external] = {},
                 ) -> None:
         ...
 
     @abc.abstractmethod
-    def modify(self, c: typ.Union[durable.engine.Closure, str],
-               bindings: dur_abc.BINDING = {},
-               external_resolution: Mapping[typ.Union[rdflib.URIRef, rdflib.BNode], EXTERNAL] = {},
+    def modify_fact(self, c: machine,
+               bindings: BINDING = {},
+               external_resolution: Mapping[typ.Union[rdflib.URIRef, rdflib.BNode], external] = {},
                ) -> None:
         ...
 
@@ -95,35 +107,40 @@ class frame(fact):
     obj: typ.Union[TRANSLATEABLE_TYPES, external]
     slotkey: typ.Union[TRANSLATEABLE_TYPES, external]
     slotvalue: typ.Union[TRANSLATEABLE_TYPES, external]
+    ID = "frame"
     FRAME_OBJ: str = "obj"
     FRAME_SLOTKEY: str = "slotkey"
     FRAME_SLOTVALUE: str = "slotvalue"
+    def __init__(self, obj: typ.Union[TRANSLATEABLE_TYPES, external],
+                 slotkey: typ.Union[TRANSLATEABLE_TYPES, external],
+                 slotvalue: typ.Union[TRANSLATEABLE_TYPES, external],
+                 ) -> None:
+        self.obj = obj
+        self.slotkey = slotkey
+        self.slotvalue = slotvalue
 
-    def assert(self, c: typ.Union[durable.engine.Closure, str],
-               bindings: dur_abc.BINDING = {},
-               external_resolution: Mapping[typ.Union[rdflib.URIRef, rdflib.BNode], EXTERNAL] = {},
+    def assert_fact(self, c: machine,
+               bindings: BINDING = {},
+               external_resolution: Mapping[typ.Union[rdflib.URIRef, rdflib.BNode], external] = {},
                ) -> None:
-        fact = {"type":self.fact_type}
+        fact = {"type": self.ID}
         for label, x, in [
-                (self.label_obj, self.obj),
-                (self.label_slotkey, self.slotkey),
-                (self.label_slotvalue, self.slotvalue),
+                (self.FRAME_OBJ, self.obj),
+                (self.FRAME_SLOTKEY, self.slotkey),
+                (self.FRAME_SLOTVALUE, self.slotvalue),
                 ]:
             fact[label] = _node2string(x, c, bindings, external_resolution)
-        if isinstance(c, str):
-            rls.assert_fact(c, fact)
-        else:
-            c.assert_fact(fact)
+        c.assert_fact(fact)
 
-    def generate_durable_pattern(self, bindings: dur_abc.CLOSURE_BINDINGS,
+    def generate_pattern(self, bindings: CLOSURE_BINDINGS,
                                   factname: str) -> rls.value:
         """Used to generate a pattern for when_all method of durable"""
-        log = [f"rls.m.{dur_abc.FACTTYPE} == {self.fact_type}"]
-        pattern = (getattr(rls.m, dur_abc.FACTTYPE) == self.fact_type)
+        log = [f"rls.m.{FACTTYPE} == {self.ID}"]
+        pattern = (getattr(rls.m, FACTTYPE) == self.ID)
         for fact_label, value in [
-                (self.label_obj, self.obj),
-                (self.label_slotkey, self.slotkey),
-                (self.label_slotvalue, self.slotvalue),
+                (self.FRAME_OBJ, self.obj),
+                (self.FRAME_SLOTKEY, self.slotkey),
+                (self.FRAME_SLOTVALUE, self.slotvalue),
                 ]:
             if isinstance(value, rdflib.Variable):
                 if value in bindings:
@@ -148,94 +165,82 @@ class frame(fact):
         logger.debug(f"{factname} << %s" % " & ".join(log))
         return getattr(rls.c, factname) << pattern
 
-    def retract(self, c: typ.Union[durable.engine.Closure, str],
-                bindings: dur_abc.BINDING = {},
-                external_resolution: Mapping[typ.Union[rdflib.URIRef, rdflib.BNode], EXTERNAL] = {},
+    def retract_fact(self, c: machine,
+                bindings: BINDING = {},
+                external_resolution: Mapping[typ.Union[rdflib.URIRef, rdflib.BNode], external] = {},
                 ) -> None:
-        fact = {"type":self.fact_type}
+        fact = {"type": self.ID}
         for label, x, in [
-                (self.label_obj, self.obj),
-                (self.label_slotkey, self.slotkey),
-                (self.label_slotvalue, self.slotvalue),
+                (self.FRAME_OBJ, self.obj),
+                (self.FRAME_SLOTKEY, self.slotkey),
+                (self.FRAME_SLOTVALUE, self.slotvalue),
                 ]:
-            if isinstance(x, rdflib.Variable):
-                fact[label] = bindings[x]
-            elif isinstance(x, (URIRef, BNode, Literal)):
-                fact[label] = rdflib2string(x)
-            else:
-                newnode = x(c, bindings, external_resolution)
-                fact[label] = rdflib2string(newnode)
+            fact[label] = _node2string(x, c, bindings, external_resolution)
 
-        if isinstance(c, str):
-            facts = rls.get_facts(c)
-        else:
-            facts =c.get_facts()
+        c.retract_matching(fact)
 
-        match = None
-        _slots = (self.label_obj, self.label_slotkey, self.label_slotvalue)
-        for f in facts:
-            #if f["type"] != self.fact_type:
-            #    continue
-            if all(f.get(x, None) == fact[x] for x in _slots):
-                match = f
-                break
-
-        if match is not None:
-            if isinstance(c, str):
-                rls.retract_fact(c, f)
-            else:
-                c.retract_fact(f)
-
-    def modify(self, c: typ.Union[durable.engine.Closure, str],
-               bindings: dur_abc.BINDING = {},
-               external_resolution: Mapping[typ.Union[rdflib.URIRef, rdflib.BNode], EXTERNAL] = {},
+    def modify_fact(self, c: machine,
+               bindings: BINDING = {},
+               external_resolution: Mapping[typ.Union[rdflib.URIRef, rdflib.BNode], external] = {},
                ) -> None:
-        fact = {"type":self.fact_type}
+        fact = {"type": self.ID}
         for label, x, in [
-                (self.label_obj, self.obj),
-                (self.label_slotkey, self.slotkey),
-                (self.label_slotvalue, self.slotvalue),
+                (self.FRAME_OBJ, self.obj),
+                (self.FRAME_SLOTKEY, self.slotkey),
+                (self.FRAME_SLOTVALUE, self.slotvalue),
                 ]:
-            if isinstance(x, rdflib.Variable):
-                fact[label] = bindings[x]
-            elif isinstance(x, (URIRef, BNode, Literal)):
-                fact[label] = rdflib2string(x)
-            else:
-                newnode = x(c, bindings, external_resolution)
-                fact[label] = rdflib2string(newnode)
-        _obj = bindings[self.obj] if isinstance(self.obj, rdflib.Variable)\
-                else rdflib2string(self.obj)
-        _slotkey = bindings[self.slotkey]\
-                if isinstance(self.slotkey, rdflib.Variable)\
-                else rdflib2string(self.slotkey)
+            fact[label] = _node2string(x, c, bindings, external_resolution)
 
-        def retract_first_frame(facts): #type: ignore[no-untyped-def]
-            """Get first frame with given obj and slotkey"""
-            for f in facts:
-                try:
-                    if f[self.label_obj] == _obj\
-                            and f[self.label_slotkey] == _slotkey:
-                        return f
-                except KeyError:
-                    pass
-            return None
-        if isinstance(c, str):
-            f = retract_first_frame(rls.get_facts(c))
-            if f is not None:
-                rls.retract_fact(c, f)
-            rls.assert_fact(c, fact)
-        else:
-            f = retract_first_frame(c.get_facts())
-            if f is not None:
-                c.retract_fact(f)
-            c.assert_fact(fact)
+        c.retract_matching(fact)
+        c.assert_fact(fact)
 
 
 class member(fact):
-    MEMBER: ATOMLABEL = "member"
+    MEMBER = "member"
     """facttype :term:`member` are labeled with this."""
 
 
 class subclass(fact):
-    SUBCLASS: ATOMLABEL = "subclass"
+    SUBCLASS = "subclass"
     """facttype :term:`subclass` are labeled with this."""
+
+
+
+class value_locator:
+    factname: str
+    """Name of the fact, where the variable is defined"""
+    in_fact_label: str
+    """Position in fact, where the variable is defined"""
+    def __init__(self, factname: str, in_fact_label: str):
+        self.factname = factname
+        self.in_fact_label = in_fact_label
+
+    def __call__(self,
+                 c: typ.Union[durable.engine.Closure, rls.closure],
+                 ) -> typ.Union[TRANSLATEABLE_TYPES, rls.value]:
+        fact = getattr(c, self.factname)
+        return getattr(fact, self.in_fact_label)
+
+    def __repr__(self) -> str:
+        return f"%s(c.{self.factname}.{self.in_fact_label})"\
+                % type(self).__name__
+
+
+def _node2string(x: TRANSLATEABLE_TYPES,
+                 c: typ.Union[durable.engine.Closure, str],
+                 bindings: BINDING,
+                 external_resolution: Mapping[typ.Union[rdflib.URIRef, rdflib.BNode], external],
+                 ) -> str:
+    if isinstance(x, rdflib.Variable):
+        try:
+            return bindings[x]
+        except KeyError as err:
+            raise Exception("Tried to get not yet bind variable '%s' from %s"
+                            % (x, bindings)) from err
+    elif isinstance(x, (URIRef, BNode, Literal)):
+        return rdflib2string(x)
+    elif isinstance(x, external):
+        newnode = x.serialize(c, bindings, external_resolution)
+        return newnode
+    else:
+        raise NotImplementedError(type(x))
