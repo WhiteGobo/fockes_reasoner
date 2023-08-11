@@ -3,6 +3,7 @@ import durable.lang as rls
 import rdflib
 import logging
 logger = logging.getLogger(__name__)
+import uuid
 
 import fockes_reasoner
 from fockes_reasoner import rif_to_internal as rif2int
@@ -19,8 +20,7 @@ import importlib.resources
 from data.test_suite import PET_Assert
 
 def test_simple():
-    pytest.skip()
-    ruleset = rls.ruleset("test")
+    ruleset = rls.ruleset(str(uuid.uuid4()))
     logger.debug(rif2int.rif2trafo_group)
     rif2int.rif2trafo_group.generate_rules(ruleset)
 
@@ -42,7 +42,7 @@ def test_basic_internal_reasoner():
     mygroup = internal.group([testrule, testassert])
     logger.debug(mygroup)
 
-    ruleset = rls.ruleset("test")
+    ruleset = rls.ruleset(str(uuid.uuid4()))
     failure = []
 
     with ruleset:
@@ -63,8 +63,8 @@ def test_basic_internal_reasoner():
         raise Exception(failure)
 
 def _rulegrouptest(mygroup):
-    pytest.skip()
-    ruleset = rls.ruleset("test")
+    rname = str(uuid.uuid4())
+    ruleset = rls.ruleset(rname)
     failure = []
 
     with ruleset:
@@ -90,7 +90,7 @@ def _rulegrouptest(mygroup):
     if failure: 
         raise Exception("During work of logic framework exceptions were "
                         "raised. See logging for more information.")
-    rls.assert_fact("test", {"machinestate": "running"})
+    rls.assert_fact(rname, {"machinestate": "running"})
     myfacts = rls.get_facts(ruleset.name)
     f1 = {'type': 'frame', 'obj': '<http://example.org/example#John>', 'slotkey': '<http://example.org/example#status>', 'slotvalue': "'gold'^^<http://www.w3.org/2001/XMLSchema#string>"}
     f2 = {'type': 'frame', 'obj': '<http://example.org/example#John>', 'slotkey': '<http://example.org/example#discount>', 'slotvalue': "'10'^^<http://www.w3.org/2001/XMLSchema#string>"}
