@@ -10,6 +10,7 @@ from fockes_reasoner import internal_dataobjects as internal
 from fockes_reasoner.durable_reasoner.durable_abc import FACTTYPE, FRAME
 from fockes_reasoner import rule_importer
 from fockes_reasoner import rif2internal
+from fockes_reasoner.shared import RIF
 from rdflib import RDF
 
 import pathlib
@@ -186,8 +187,10 @@ def test_RIFimport():
         #            % "\n".join(str(x) for x in trafo._get_internal_info()))
         raise
     logger.info("symbols labeled for export: %s" % trafo._symbols_for_export)
+    internal_rule_graph = rdflib.Graph()
+    internal_rule_graph.bind("rif2internal", rif2internal)
+    internal_rule_graph.bind("rif", RIF)
     try:
-        internal_rule_graph = rdflib.Graph()
         for ax in trafo:
             internal_rule_graph.add(ax)
     except Exception:

@@ -10,11 +10,17 @@ from typing import Union
 from .durable_reasoner import durable_abc as dur_abc
 from .durable_reasoner import durable_dataobjects as dur_obj
 from .durable_reasoner.durable_abc import TRANSLATEABLE_TYPES
-from .shared import focke, RDF, rdflib2string, RIF
+from .shared import focke, RDF, rdflib2string, RIF, rif2internal
 
 from .durable_reasoner.durable_dataobjects import implies
 
 from rdflib import Variable, URIRef, BNode, Literal
+
+class info4internalSyntaxError(ValueError):
+    """Thrown, when information in infograph given for creation of groups
+    is invalid.
+    """
+
 def _transform_complex(
         graph: rdflib.Graph,
         valuenode: typ.Union[URIRef, BNode, Literal],
@@ -58,15 +64,15 @@ class group(dur_obj.group):
     @classmethod
     def from_rdf(cls, graph: rdflib.Graph,
                  rootnode: rdflib.IdentifiedNode) -> "group":
-        sentences_id = graph.value(subject=rootnode, predicate=focke.sentences)
+        sentences_id = graph.value(subject=rootnode, predicate=rif2internal.sentences)
         sentences_infolist = rdflib.collection.Collection(graph, sentences_id)
         sentences: list[typ.Union["rule", "action", "group"]] = []
         for x in sentences_infolist:
-            if (x, RDF.type, focke.forall) in graph:
+            if (x, RDF.type, rif2internal.forall) in graph:
                 sentences.append(rule.from_rdf(graph, x))
-            elif (x, RDF.type, focke.action) in graph:
+            elif (x, RDF.type, rif2internal.action) in graph:
                 sentences.append(action.from_rdf(graph, x))
-            elif (x, RDF.type, focke.group) in graph:
+            elif (x, RDF.type, rif2internal.group) in graph:
                 sentences.append(group.from_rdf(graph, x))
             else:
                 foundtype = list(graph.objects(x, RDF.type))
@@ -101,11 +107,11 @@ class action(dur_obj.action):
     @classmethod
     def from_rdf(cls, graph: rdflib.Graph,
                  rootnode: rdflib.IdentifiedNode) -> "action":
-        functions_id = graph.value(subject=rootnode, predicate=focke.functions)
+        functions_id = graph.value(subject=rootnode, predicate=rif2internal.functions)
         functions_infolist = rdflib.collection.Collection(graph, functions_id)
         functions: list[dur_abc.contextless_function] = []
         for x in functions_infolist:
-            if (x, RDF.type, focke.assert_frame) in graph:
+            if (x, RDF.type, rif2internal.assert_frame) in graph:
                 functions.append(assert_frame.from_rdf(graph, x))
             else:
                 foundtype = list(graph.objects(x, RDF.type))
@@ -141,21 +147,21 @@ class rule(dur_obj.forall):
     @classmethod
     def from_rdf(cls, graph: rdflib.Graph,
                  rootnode: rdflib.IdentifiedNode) -> "rule":
-        patterns_id = graph.value(subject=rootnode, predicate=focke.patterns)
+        patterns_id = graph.value(subject=rootnode, predicate=rif2internal.patterns)
         patterns_infolist = rdflib.collection.Collection(graph, patterns_id)
         patterns = []
         for x in patterns_infolist:
-            if (x, RDF.type, focke.frame_pattern) in graph:
+            if (x, RDF.type, rif2internal.frame_pattern) in graph:
                 patterns.append(frame_pattern.from_rdf(graph, x))
             else:
                 foundtype = list(graph.objects(x, RDF.type))
                 raise NotImplementedError("couldnt figure out how to load "
                                           f"rule {x} with types {foundtype}")
-        functions_id = graph.value(subject=rootnode, predicate=focke.functions)
+        functions_id = graph.value(subject=rootnode, predicate=rif2internal.functions)
         functions_infolist = rdflib.collection.Collection(graph, functions_id)
         functions = []
         for x in functions_infolist:
-            if (x, RDF.type, focke.assert_frame) in graph:
+            if (x, RDF.type, rif2internal.assert_frame) in graph:
                 functions.append(assert_frame.from_rdf(graph, x))
             else:
                 foundtype = list(graph.objects(x, RDF.type))
@@ -178,11 +184,11 @@ class frame_pattern(dur_obj.frame_pattern):
     def from_rdf(cls, graph: rdflib.Graph,
                  rootnode: rdflib.IdentifiedNode) -> "frame_pattern":
         obj = _transform_complex(graph,\
-                graph.value(rootnode, focke.object))
+                graph.value(rootnode, rif2internal.object))
         slotkey = _transform_complex(graph,\
-                graph.value(rootnode, focke.slotkey))
+                graph.value(rootnode, rif2internal.slotkey))
         slotvalue = _transform_complex(graph,\
-                graph.value(rootnode, focke.slotvalue))
+                graph.value(rootnode, rif2internal.slotvalue))
         return cls(obj, slotkey, slotvalue)
 
 
@@ -280,13 +286,21 @@ class assert_frame(dur_obj.assert_frame):
     @classmethod
     def from_rdf(cls, graph: rdflib.Graph,
                  rootnode: rdflib.IdentifiedNode) -> "assert_frame":
+        """
+        :raises: info4internalSyntaxError
+        """
 
-        obj = _transform_complex(graph,\
-                graph.value(rootnode, focke.object))
-        slotkey = _transform_complex(graph,\
-                graph.value(rootnode, focke.slotkey))
-        slotvalue = _transform_complex(graph,\
-                graph.value(rootnode, focke.slotvalue))
+        try:
+            obj_id, = graph.objects(rootnode, rif2internal.object)
+            slotkey_id, = graph.objects(rootnode, rif2internal.slotkey)
+            slotvalue_id, = graph.objects(rootnode, rif2internal.slotvalue)
+        except ValueError as err:
+            raise info4internalSyntaxError(\
+                    "Given information doesnt match expected.",\
+                    dict(graph.predicate_objects(rootnode))) from err
+        obj = _transform_complex(graph, obj_id)
+        slotkey = _transform_complex(graph, slotkey_id)
+        slotvalue = _transform_complex(graph, slotvalue_id)
         return cls(obj, slotkey, slotvalue)
 
 

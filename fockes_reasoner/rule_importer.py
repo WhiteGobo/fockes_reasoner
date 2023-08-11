@@ -25,7 +25,7 @@ class _builtin_functions:
     """Enables all functionability for external functions.
     """
     standard_symbols_for_export = [
-            focke.Group,
+            #focke.Group,
             #focke.action,
             #focke.forall,
             #focke.frame_pattern,
