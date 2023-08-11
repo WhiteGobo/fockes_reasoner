@@ -157,7 +157,7 @@ class rule(dur_obj.forall):
                 foundtype = list(graph.objects(x, RDF.type))
                 raise NotImplementedError("couldnt figure out how to load "
                                           f"rule {x} with types {foundtype}")
-        functions_id = graph.value(subject=rootnode, predicate=rif2internal.functions)
+        functions_id = graph.value(subject=rootnode, predicate=rif2internal.actions)
         functions_infolist = rdflib.collection.Collection(graph, functions_id)
         functions = []
         for x in functions_infolist:
@@ -177,7 +177,9 @@ class frame_pattern(dur_obj.frame_pattern):
         self.slotvalue = slotvalue
 
     def __repr__(self) -> str:
-        return f"%s({self.obj}[{self.slotkey}->{self.slotvalue}])"\
+        o, k, v = (f"?{x}" if isinstance(x, rdflib.Variable) else repr(x)
+                   for x in (self.obj, self.slotkey, self.slotvalue))
+        return f"%s({o}[{k}->{v}])"\
                 % type(self).__name__
 
     @classmethod
@@ -279,7 +281,9 @@ class assert_frame(dur_obj.assert_frame):
         self.slotvalue = slotvalue
 
     def __repr__(self) -> str:
-        return f"%s({self.obj}[{self.slotkey}->{self.slotvalue}])"\
+        o, k, v = (f"?{x}" if isinstance(x, rdflib.Variable) else str(x)
+                   for x in (self.obj, self.slotkey, self.slotvalue))
+        return f"%s({o}[{k}->{v}])"\
                 % type(self).__name__
 
 

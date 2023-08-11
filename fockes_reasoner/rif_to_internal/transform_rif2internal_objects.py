@@ -63,7 +63,8 @@ def _create_internalGroups() -> Iterable[internal.rule]:
             internal.create_new(var_algonext),
             assert_frame(var_algonext, tmpdata.centrumGroup, var_obj),
             bind(var_newsentences_out,
-                 external(func.append, [var_sentences_out, var_nextsentence])),
+                 external(func["insert-before"],
+                          [var_sentences_out, Literal(0), var_nextsentence])),
             bind(var_i, external(func.count, [var_sentences_in])),
             implies(external(pred["numeric-greater-than"],
                              [var_i, Literal(1)]),
@@ -470,6 +471,9 @@ def _create_internalFramePattern() -> Iterable[internal.rule]:
             assert_frame(var_to, tmpdata.obj, var_frameobj),
             assert_frame(var_to, tmpdata.slotkey, var_framekey),
             assert_frame(var_to, tmpdata.slotvalue, var_framevalue),
+            assert_frame(var_to, rif2internal.object, var_frameobj),
+            assert_frame(var_to, rif2internal.slotkey, var_framekey),
+            assert_frame(var_to, rif2internal.slotvalue, var_framevalue),
             ]
     yield internal.rule(patterns_transfer1, actions_transfer1)
     patterns_transfer2 = [
@@ -497,80 +501,16 @@ def _create_internalFramePattern() -> Iterable[internal.rule]:
             assert_frame(var_to, tmpdata.obj, var_frameobj),
             assert_frame(var_to, tmpdata.slotkey, var_framekey),
             assert_frame(var_to, tmpdata.slotvalue, var_framevalue),
+            assert_frame(var_to, rif2internal.object, var_frameobj),
+            assert_frame(var_to, rif2internal.slotkey, var_framekey),
+            assert_frame(var_to, rif2internal.slotvalue, var_framevalue),
+            execute(focke.export, [var_frameobj, var_framekey, var_framevalue]),
             ]
     yield internal.rule(patterns_transfer3, actions_transfer3)
 
 internalFramePattern = list(_create_internalFramePattern())
 """Rules for transforming frame patterns as condition"""
 
-def _create_collectRules() -> Iterable[internal.rule]:
-    var_group = rdflib.Variable("group")
-    var_rule = rdflib.Variable("rule")
-    var_origgroup = rdflib.Variable("origgroup")
-    var_origrule = rdflib.Variable("origrule")
-    var_rulelist = rdflib.Variable("rulelist")
-    var_transrulelist = rdflib.Variable("transrulelist")
-    var_newtransrulelist = rdflib.Variable("newtransrulelist")
-    var_workqueue = rdflib.Variable("workqueue")
-    var_i = rdflib.Variable("i")
-    var_nextelement = rdflib.Variable("nextelement")
-    patterns1 = [
-            frame_pattern(var_group, RDF.type, rif2internal.group),
-            frame_pattern(var_origgroup, tmpdata.equals, var_group),
-            frame_pattern(var_origgroup, RIF.sentences, var_rulelist),
-            ]
-    actions1 = [
-            bind(var_workqueue,
-                 external(func.sublist, [var_rulelist, Literal(0)])),
-            bind(var_transrulelist,
-                 external(getattr(func, "make-list"), [])),
-            assert_frame(var_transrulelist, RDF.type, tmpdata.transrulelist),
-            assert_frame(var_transrulelist, tmpdata.rulesfrom, var_rulelist),
-            assert_frame(var_group, tmpdata.sentences, var_transrulelist),
-            #execute(act.print, [var_workqueue]),
-            assert_frame(var_transrulelist, tmpdata.workqueue, var_workqueue),
-            #execute(focke.export, [var_transrulelist]),
-            #execute(focke.export, [var_workqueue]),
-            #execute(act.print, [Literal("my helperprint")]),
-            #execute(act.print, [var_workqueue]),
-            ]
-    yield internal.rule(patterns1, actions1)
-    patterns2 = [
-            frame_pattern(var_group, RDF.type, rif2internal.group),
-            frame_pattern(var_group, tmpdata.sentences, var_newtransrulelist),
-            frame_pattern(var_transrulelist, tmpdata.workqueue, var_workqueue)
-            ]
-    actions2 = [
-            bind(var_nextelement,
-                 external(func.get, [var_workqueue, Literal(0)])),
-            bind(var_newtransrulelist,
-                 external(func.append,
-                          [var_newtransrulelist, var_nextelement]),
-                 ),
-            bind(var_i, external(func.count, [var_workqueue])),
-            implies(external(getattr(pred, "numeric-greater-than"),
-                             [var_i, Literal(1)]),
-                    [modify_frame(var_group, tmpdata.sentences,
-                                  var_newtransrulelist),
-                     assert_frame(var_newtransrulelist,
-                                  tmpdata.workqueue,
-                                  external(func.sublist,
-                                           [var_workqueue, Literal(1)])),
-                     ]),
-            implies(external(getattr(pred, "numeric-equal"),
-                             [var_i, Literal(1)]),
-                    [assert_frame(var_group, rif2internal.sentences,
-                                  var_newtransrulelist),
-                     retract_frame(var_group, tmpdata.sentences,
-                                   var_transrulelist),
-                     #execute(focke.export, [var_newtransrulelist]),
-                     ]),
-            ]
-    yield internal.rule(patterns2, actions2)
-
-collectRules = _create_collectRules()
-"""Create internal objects representing each forall
-"""
 
 def _create_rootgroup() -> Iterable[internal.rule]:
     var_group = rdflib.Variable("group")
@@ -590,7 +530,6 @@ rootgroup = list(_create_rootgroup())
 rules: list[internal.rule] = [
         *internalGroups,
         *internalRules,
-        #*collectRules,
         *internalImplies,
         *internalFramePattern,
         *internalDo,

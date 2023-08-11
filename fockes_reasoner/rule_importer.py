@@ -80,6 +80,7 @@ class _builtin_functions:
                 getattr(pred, "numeric-equal"): self._numeric_equal_to,
                 func.concatenate: self._concatenate,
                 func["list-contains"]: self._list_contains,
+                func["insert-before"]: self._insert_before,
                 }
 
     def _list_contains(
@@ -174,6 +175,25 @@ class _builtin_functions:
                                 fact[dur_abc.LIST_MEMBERS][int(index)])
                     except IndexError as err:
                         raise IndexError("Cant retrieve element %r from list %r" % (index, fact[dur_abc.LIST_MEMBERS])) from err
+        raise Exception("couldnt find targeted list %r" % targetedlist)
+
+    def _insert_before(
+            self,
+            bindings: dur_abc.BINDING,
+            args: Iterable[dur_abc.TRANSLATEABLE_TYPES],
+            ) -> rdflib.BNode:
+        t_args = [bindings[x] if isinstance(x, Variable) else rdflib2string(x)
+                  for x in args]
+        targetedlist = t_args[0]
+        position = int(string2rdflib(t_args[1]))
+        newelement = t_args[2]
+        for fact in rls.get_facts(self.rulename):#type: ignore[attr-defined]
+            if fact.get(dur_abc.FACTTYPE) == dur_abc.LIST:
+                if fact[dur_abc.LIST_ID] == targetedlist:
+                    _newlist = list(fact[dur_abc.LIST_MEMBERS])
+                    _newlist.insert(position, newelement)
+                    newlist = [string2rdflib(x) for x in _newlist]
+                    return self._make_list({}, newlist)
         raise Exception("couldnt find targeted list %r" % targetedlist)
 
     def _append(
