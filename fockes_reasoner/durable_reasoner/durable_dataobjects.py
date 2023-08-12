@@ -199,17 +199,22 @@ class frame_pattern(dur_abc.frame_pattern):
         logger.debug(f"{factname} << %s" % " & ".join(log))
         return getattr(rls.c, factname) << pattern
 
+
 class member_pattern(dur_abc.Member_pattern):
     ...
+
 
 class subclass_pattern(dur_abc.Subclass_pattern):
     ...
 
+
 class external_pattern(dur_abc.External_pattern):
     ...
 
+
 class frame_condition(dur_abc.frame_condition):
     ...
+
 
 class member_condition(dur_abc.member_condition):
     ...
@@ -362,6 +367,7 @@ class modify_frame(dur_abc.modify_frame):
                 c.retract_fact(f)
             c.assert_fact(fact)
 
+
 class assert_frame(dur_abc.assert_frame):
     obj: typ.Union[TRANSLATEABLE_TYPES, external]
     slotkey: typ.Union[TRANSLATEABLE_TYPES, external]
@@ -383,11 +389,14 @@ class assert_frame(dur_abc.assert_frame):
         else:
             c.assert_fact(fact)
 
+
 class assert_member(dur_abc.assert_member):
     ...
 
+
 class assert_subclass(dur_abc.assert_subclass):
     ...
+
 
 class assert_external(dur_abc.assert_external):
     ...

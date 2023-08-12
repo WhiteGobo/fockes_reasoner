@@ -63,6 +63,7 @@ def rdflib2string(identifier: TRANSLATEABLE_TYPES) -> str:
     else:
         raise NotImplementedError(type(identifier), identifier)
 
+
 def string2rdflib(string: str) -> TRANSLATEABLE_TYPES:
     """Translates from rdflib to strings. Inverse to rdflib2string
     """
@@ -177,7 +178,7 @@ class frame(fact):
                 ]:
             fact[label] = _node2string(x, c, bindings, external_resolution)
 
-        c.retract_matching(fact)
+        c.retract_fact(fact)
 
     def modify_fact(self, c: machine,
                bindings: BINDING = {},
@@ -191,7 +192,7 @@ class frame(fact):
                 ]:
             fact[label] = _node2string(x, c, bindings, external_resolution)
 
-        c.retract_matching(fact)
+        c.retract_fact(fact)
         c.assert_fact(fact)
 
 
@@ -203,7 +204,6 @@ class member(fact):
 class subclass(fact):
     SUBCLASS = "subclass"
     """facttype :term:`subclass` are labeled with this."""
-
 
 
 class value_locator:

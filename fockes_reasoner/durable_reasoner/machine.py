@@ -1,8 +1,9 @@
 import durable.lang as rls
 import durable.engine
 import uuid
+import abc
 import logging
-from typing import Union, Mapping
+from typing import Union, Mapping, Iterable, Callable, Any
 
 from ..shared import RDF
 from . import machine_facts
@@ -21,10 +22,63 @@ in RDF.
 LIST_MEMBERS = "member"
 """:term:`list` enlist all their members under this label."""
 
+class _context_helper(abc.ABC):
+    """helper class to decide how to assert and retract facts"""
+    machine: "machine"
+
+    @abc.abstractmethod
+    def assert_fact(self, fact: Mapping[str, str]) -> None:
+        ...
+
+    @abc.abstractmethod
+    def retract_fact(self, fact: Mapping[str, str]) -> None:
+        """Retract all facts, that are matching with given fact.
+        Eg {1:"a"} matches {1:"a", 2:"b"}
+        """
+        ...
+
+
+class _no_closure(_context_helper):
+    def __init__(self, machine:"machine"):
+        self.machine = machine
+
+    def assert_fact(self, fact: Mapping[str, str]) -> None:
+        rls.assert_fact(self.machine._rulename, fact)
+
+    def retract_fact(self, fact: Mapping[str, str]) -> None:
+        for f in rls.get_facts(self.machine._rulename):
+            if all(f.get(x) == y for x,y in fact.items()):
+                rls.retract(self.machine._rulename, f)
+
+
+class _closure_helper(_context_helper):
+    previous_context: _context_helper 
+    c: durable.engine.Closure
+    def __init__(self, machine: "machine", c: durable.engine.Closure):
+        self.machine = machine
+        self.c = c
+
+    def assert_fact(self, fact: Mapping[str, str]) -> None:
+        self.c.assert_fact(fact)
+
+    def retract_fact(self, fact: Mapping[str, str]) -> None:
+        for f in self.c.get_facts():
+            if all(f.get(x) == y for x,y in fact.items()):
+                self.c.retract_fact(f)
+
+    def __enter__(self) -> None:
+        self.previous_context = machine._current_context
+        machine._current_context = self
+
+    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+        machine._current_context = self.previous_context
+
+
 class machine:
     _ruleset: rls.ruleset
     logger: logging.Logger
     errors: list
+    _current_context: _context_helper
 
     def __init__(self, loggername: str = __name__) -> None:
         rulesetname = str(uuid.uuid4())
@@ -32,12 +86,27 @@ class machine:
         self.logger = logging.getLogger(loggername)
         self.__set_basic_rules()
         self.errors = []
+        self._current_context = _no_closure(self)
 
     def assert_fact(self, fact: Mapping[str, str]) -> None:
-        ...
+        self._current_context.assert_fact(fact)
     
-    def retract_matching(self, fact: Mapping[str, str]) -> None:
-        ...
+    def retract_fact(self, fact: Mapping[str, str]) -> None:
+        """Retract all facts, that are matching with given fact.
+        Eg {1:"a"} matches {1:"a", 2:"b"}
+        """
+        self._current_context.retract_fact(fact)
+
+    def make_rule(self) -> None:
+        patterns: Iterable[rls.value] = []
+        actions: Iterable[Callable] = []
+        with self._ruleset:
+            @rls.when_all(patterns)
+            def myfoo(c: durable.engine.Closure) -> None:
+                with _closure_helper(self, c):
+                    for act in actions:
+                        pass
+                    #act()
 
     def __set_basic_rules(self) -> None:
         with self._ruleset:
