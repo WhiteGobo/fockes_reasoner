@@ -25,12 +25,21 @@ def _compile_RDFLiteral(parser_result: pyparsing.results.ParseResults,
     return rdflib.Literal(v, **kwargs)
 myRDFLiteral = RDFLiteral.copy()
 myRDFLiteral.add_parse_action(_compile_RDFLiteral)
-rdf_identifier = iri | myRDFLiteral | bnode
+list_parser = pp.Forward()
+rdf_identifier = list_parser | iri | myRDFLiteral | bnode
 
-TRANSLATEABLE_TYPES = typ.Union[rdflib.Variable,
+from rdflib import BNode, Literal, URIRef
+list_parser <<= pp.Suppress("{") + pp.ZeroOrMore(rdf_identifier) + pp.Suppress("}")
+@list_parser.add_parse_action
+def _parse_list(parser_result: pyparsing.results.ParseResults,
+                ) -> list[typ.Union[BNode, Literal, URIRef]]:
+    yield list(parser_result)
+
+TRANSLATEABLE_TYPES = typ.Union[rdflib.Variable, #type: ignore[misc]
                                 rdflib.URIRef,
                                 rdflib.BNode,
                                 rdflib.Literal,
+                                "TRANSLATEABLE_TYPES"
                                 ]
 
 import re
@@ -56,6 +65,8 @@ def rdflib2string(identifier: TRANSLATEABLE_TYPES) -> str:
         except AttributeError:
             pass
         return "".join(parts)
+    elif isinstance(identifier, list):
+        return "{%s}" % " ".join(rdflib2string(x) for x in identifier)
     else:
         raise NotImplementedError(type(identifier), identifier)
 
