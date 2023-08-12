@@ -76,6 +76,8 @@ def string2rdflib(string: str) -> TRANSLATEABLE_TYPES:
 
 
 class fact(abc.ABC):
+    ID: str
+
     @abc.abstractmethod
     def assert_fact(self, c: machine,
                bindings: BINDING = {},
@@ -103,6 +105,11 @@ class fact(abc.ABC):
                ) -> None:
         ...
 
+    @abc.abstractmethod
+    @classmethod
+    def from_fact(cls, fact: Mapping[str, str]) -> "fact":
+        ...
+
 
 class frame(fact):
     obj: typ.Union[TRANSLATEABLE_TYPES, external]
@@ -119,6 +126,13 @@ class frame(fact):
         self.obj = obj
         self.slotkey = slotkey
         self.slotvalue = slotvalue
+
+    @classmethod
+    def from_fact(cls, fact: Mapping[str, str]) -> "frame":
+        obj = string2rdflib(fact[cls.FRAME_OBJ])
+        slotkey = string2rdflib(fact[cls.FRAME_SLOTKEY])
+        slotvalue = string2rdflib(fact[cls.FRAME_SLOTVALUE])
+        return cls(obj, slotkey, slotvalue)
 
     def assert_fact(self, c: machine,
                bindings: BINDING = {},
@@ -197,12 +211,12 @@ class frame(fact):
 
 
 class member(fact):
-    MEMBER = "member"
+    ID = "member"
     """facttype :term:`member` are labeled with this."""
 
 
 class subclass(fact):
-    SUBCLASS = "subclass"
+    ID = "subclass"
     """facttype :term:`subclass` are labeled with this."""
 
 

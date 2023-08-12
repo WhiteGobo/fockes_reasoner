@@ -7,11 +7,13 @@ from typing import Union, Mapping, Iterable, Callable, Any
 
 from ..shared import RDF
 from . import machine_facts
+from .machine_facts import frame, member, subclass, fact
 
 FACTTYPE = "type"
 """Labels in where the type of fact is saved"""
 MACHINESTATE = "machinestate"
 RUNNING_STATE = "running"
+INIT_STATE = "init"
 
 LIST = "list"
 """All facts that represent :term:`list` are labeled with this."""
@@ -37,6 +39,10 @@ class _context_helper(abc.ABC):
         """
         ...
 
+    @abc.abstractmethod
+    def get_facts(self) -> Iterable[Mapping[str, str]]:
+        ...
+
 
 class _no_closure(_context_helper):
     def __init__(self, machine:"machine"):
@@ -45,8 +51,11 @@ class _no_closure(_context_helper):
     def assert_fact(self, fact: Mapping[str, str]) -> None:
         rls.assert_fact(self.machine._rulename, fact)
 
+    def get_facts(self) -> Iterable[Mapping[str, str]]:
+        return rls.get_facts(self.machine._rulename) #type: ignore[no-any-return]
+
     def retract_fact(self, fact: Mapping[str, str]) -> None:
-        for f in rls.get_facts(self.machine._rulename):
+        for f in self.get_facts():
             if all(f.get(x) == y for x,y in fact.items()):
                 rls.retract(self.machine._rulename, f)
 
@@ -61,8 +70,11 @@ class _closure_helper(_context_helper):
     def assert_fact(self, fact: Mapping[str, str]) -> None:
         self.c.assert_fact(fact)
 
+    def get_facts(self) -> Iterable[Mapping[str, str]]:
+        return self.c.get_facts() #type: ignore[no-any-return]
+
     def retract_fact(self, fact: Mapping[str, str]) -> None:
-        for f in self.c.get_facts():
+        for f in self.get_facts():
             if all(f.get(x) == y for x,y in fact.items()):
                 self.c.retract_fact(f)
 
@@ -88,6 +100,13 @@ class machine:
         self.errors = []
         self._current_context = _no_closure(self)
 
+    def check_statement(self, statement: fact) -> bool:
+        """Checks if given proposition is true.
+        :TODO: currently facts are only simple facts like a frame. But check
+            should support complex statement like 'Xor'
+        """
+        raise NotImplementedError()
+
     def assert_fact(self, fact: Mapping[str, str]) -> None:
         self._current_context.assert_fact(fact)
     
@@ -97,6 +116,14 @@ class machine:
         """
         self._current_context.retract_fact(fact)
 
+    def get_facts(self) -> Iterable[fact]:
+        q: Mapping[str, type[fact]] = {frame.ID: frame,
+                                       member.ID: member,
+                                       subclass.ID: subclass}
+        for f in self._current_context.get_facts():
+            fact_id = f[FACTTYPE]
+            yield q[fact_id].from_fact(f)
+
     def make_rule(self) -> None:
         patterns: Iterable[rls.value] = []
         actions: Iterable[Callable] = []
@@ -105,8 +132,18 @@ class machine:
             def myfoo(c: durable.engine.Closure) -> None:
                 with _closure_helper(self, c):
                     for act in actions:
+                        #act()
                         pass
-                    #act()
+
+    def make_start_action(self) -> None:
+        actions: Iterable[Callable] = []
+        with self._ruleset:
+            @rls.when_all(getattr(rls.m, MACHINESTATE) == INIT_STATE)
+            def init_function(c: durable.engine.Closure) -> None:
+                with _closure_helper(self, c):
+                    for act in actions:
+                        #act()
+                        pass
 
     def __set_basic_rules(self) -> None:
         with self._ruleset:
