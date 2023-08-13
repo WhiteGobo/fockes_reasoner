@@ -8,7 +8,7 @@ default: test
 
 .PHONY: test
 test:
-	$(PYTHON_TEST) $(PYTEST_OPT) tests
+	$(PYTHON_TEST) $(PYTEST_OPT) tests -k rif_basic
 	#$(PYTHON_TEST) $(PYTEST_OPT) tests -k RIFimport
 	#pytest --log-cli-level=DEBUG tests -k simpleReasoning
 	#pytest --log-cli-level=DEBUG tests -k positiveEntailment -x

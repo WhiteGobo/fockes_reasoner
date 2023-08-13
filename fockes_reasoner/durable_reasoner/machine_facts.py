@@ -1,5 +1,6 @@
 import abc
-from .machine import FACTTYPE, MACHINESTATE, RUNNING_STATE, machine
+#from .machine import FACTTYPE, MACHINESTATE, RUNNING_STATE, machine
+from . import abc_machine
 import durable.engine
 import durable.lang as rls
 
@@ -12,31 +13,9 @@ import typing as typ
 from typing import MutableMapping, Mapping, Union, Callable
 
 
-class external(abc.ABC):
-    """Parentclass for all extension for information representation."""
-    @abc.abstractmethod
-    @classmethod
-    def parse(cls, string: str) -> "external":
-        ...
+from .abc_machine import external
 
-    @abc.abstractmethod
-    def serialize(self, c: typ.Union[durable.engine.Closure, str],
-                  bindings: BINDING,
-                  external_resolution: Mapping[typ.Union[rdflib.URIRef, rdflib.BNode], external],
-                  ) -> str:
-        ...
-
-TRANSLATEABLE_TYPES = typ.Union[rdflib.Variable,
-                                rdflib.URIRef,
-                                rdflib.BNode,
-                                rdflib.Literal,
-                                list["TRANSLATEABLE_TYPES"],
-                                external,
-                                ]
-BINDING = MutableMapping[rdflib.Variable, str]
-VARIABLE_LOCATOR = Callable[[typ.Union[durable.engine.Closure, None]], TRANSLATEABLE_TYPES]
-CLOSURE_BINDINGS = MutableMapping[rdflib.Variable, VARIABLE_LOCATOR]
-
+from .abc_machine import BINDING, CLOSURE_BINDINGS, VARIABLE_LOCATOR, TRANSLATEABLE_TYPES
 
 from .bridge_rdflib import *
 
@@ -75,41 +54,7 @@ def string2rdflib(string: str) -> TRANSLATEABLE_TYPES:
                               "happend with %r" % string)
 
 
-class fact(abc.ABC):
-    ID: str
-
-    @abc.abstractmethod
-    def assert_fact(self, c: machine,
-               bindings: BINDING = {},
-               external_resolution: Mapping[Union[rdflib.URIRef,
-                                                  rdflib.BNode], external] = {},
-               ) -> None:
-        ...
-
-    @abc.abstractmethod
-    def generate_pattern(self, bindings: CLOSURE_BINDINGS,
-                         factname: str) -> rls.value:
-        ...
-
-    @abc.abstractmethod
-    def retract_fact(self, c: machine,
-                bindings: BINDING = {},
-                external_resolution: Mapping[typ.Union[rdflib.URIRef, rdflib.BNode], external] = {},
-                ) -> None:
-        ...
-
-    @abc.abstractmethod
-    def modify_fact(self, c: machine,
-               bindings: BINDING = {},
-               external_resolution: Mapping[typ.Union[rdflib.URIRef, rdflib.BNode], external] = {},
-               ) -> None:
-        ...
-
-    @abc.abstractmethod
-    @classmethod
-    def from_fact(cls, fact: Mapping[str, str]) -> "fact":
-        ...
-
+from .abc_machine import fact
 
 class frame(fact):
     obj: typ.Union[TRANSLATEABLE_TYPES, external]
@@ -134,7 +79,7 @@ class frame(fact):
         slotvalue = string2rdflib(fact[cls.FRAME_SLOTVALUE])
         return cls(obj, slotkey, slotvalue)
 
-    def assert_fact(self, c: machine,
+    def assert_fact(self, c: abc_machine.machine,
                bindings: BINDING = {},
                external_resolution: Mapping[typ.Union[rdflib.URIRef, rdflib.BNode], external] = {},
                ) -> None:
@@ -150,6 +95,7 @@ class frame(fact):
     def generate_pattern(self, bindings: CLOSURE_BINDINGS,
                                   factname: str) -> rls.value:
         """Used to generate a pattern for when_all method of durable"""
+        from .machine import FACTTYPE, MACHINESTATE, RUNNING_STATE
         log = [f"rls.m.{FACTTYPE} == {self.ID}"]
         pattern = (getattr(rls.m, FACTTYPE) == self.ID)
         for fact_label, value in [
@@ -180,7 +126,7 @@ class frame(fact):
         logger.debug(f"{factname} << %s" % " & ".join(log))
         return getattr(rls.c, factname) << pattern
 
-    def retract_fact(self, c: machine,
+    def retract_fact(self, c: abc_machine.machine,
                 bindings: BINDING = {},
                 external_resolution: Mapping[typ.Union[rdflib.URIRef, rdflib.BNode], external] = {},
                 ) -> None:
@@ -194,7 +140,7 @@ class frame(fact):
 
         c.retract_fact(fact)
 
-    def modify_fact(self, c: machine,
+    def modify_fact(self, c: abc_machine.machine,
                bindings: BINDING = {},
                external_resolution: Mapping[typ.Union[rdflib.URIRef, rdflib.BNode], external] = {},
                ) -> None:

@@ -4,10 +4,11 @@ import uuid
 import abc
 import logging
 from typing import Union, Mapping, Iterable, Callable, Any
+from . import abc_machine
 
 from ..shared import RDF
 from . import machine_facts
-from .machine_facts import frame, member, subclass, fact
+#from .machine_facts import frame, member, subclass, fact
 
 FACTTYPE = "type"
 """Labels in where the type of fact is saved"""
@@ -86,7 +87,7 @@ class _closure_helper(_context_helper):
         machine._current_context = self.previous_context
 
 
-class machine:
+class machine(abc_machine.machine):
     _ruleset: rls.ruleset
     logger: logging.Logger
     errors: list
@@ -100,7 +101,7 @@ class machine:
         self.errors = []
         self._current_context = _no_closure(self)
 
-    def check_statement(self, statement: fact) -> bool:
+    def check_statement(self, statement: machine_facts.fact) -> bool:
         """Checks if given proposition is true.
         :TODO: currently facts are only simple facts like a frame. But check
             should support complex statement like 'Xor'
@@ -111,12 +112,10 @@ class machine:
         self._current_context.assert_fact(fact)
     
     def retract_fact(self, fact: Mapping[str, str]) -> None:
-        """Retract all facts, that are matching with given fact.
-        Eg {1:"a"} matches {1:"a", 2:"b"}
-        """
         self._current_context.retract_fact(fact)
 
-    def get_facts(self) -> Iterable[fact]:
+    def get_facts(self) -> Iterable[abc_machine.fact]:
+        from .machine_facts import frame, member, subclass, fact
         q: Mapping[str, type[fact]] = {frame.ID: frame,
                                        member.ID: member,
                                        subclass.ID: subclass}
