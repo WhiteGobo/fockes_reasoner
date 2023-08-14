@@ -8,7 +8,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 import rdflib
-from rdflib import URIRef, BNode, Literal
+from rdflib import URIRef, BNode, Literal, Variable
 import typing as typ
 from typing import MutableMapping, Mapping, Union, Callable
 
@@ -92,9 +92,23 @@ class frame(fact):
             fact[label] = _node2string(x, c, bindings, external_resolution)
         c.assert_fact(fact)
 
+
+    def add_pattern(self, rule: abc_machine.rule) -> None:
+        pattern = {abc_machine.FACTTYPE: self.ID,
+                   self.FRAME_OBJ: self.obj,
+                   self.FRAME_SLOTKEY: self.slotkey,
+                   self.FRAME_SLOTVALUE: self.slotvalue,
+                   }
+        rule.add_pattern(pattern)
+
     def generate_pattern(self, bindings: CLOSURE_BINDINGS,
-                                  factname: str) -> rls.value:
+                         factname: Union[str, None] = None) -> rls.value:
         """Used to generate a pattern for when_all method of durable"""
+        raise Exception("not used anymore")
+        if factname is None:
+            factname = "f%s" % uuid.uuid3(uuid.NAMESPACE_X500,
+                                          str((self.obj,self.slotkey,
+                                               self.slotvalue)))
         from .machine import FACTTYPE, MACHINESTATE, RUNNING_STATE
         log = [f"rls.m.{FACTTYPE} == {self.ID}"]
         pattern = (getattr(rls.m, FACTTYPE) == self.ID)
@@ -126,6 +140,27 @@ class frame(fact):
         logger.debug(f"{factname} << %s" % " & ".join(log))
         return getattr(rls.c, factname) << pattern
 
+    @property
+    def used_variables(self) -> Iterable[Variable]:
+        try:
+            return self._used_variables
+        except AttributeError:
+            pass
+        used_variables = []
+        for x in (self.obj, self.slotkey, self.slotvalue):
+            if isinstance(x, Variable):
+                used_variables.append(x)
+        self._used_variables = used_variables
+        return used_variables
+
+    def check_for_pattern(self, c: abc_machine.machine,
+                          bindings: BINDING = {},
+                          external_resolution: Mapping[typ.Union[rdflib.URIRef, rdflib.BNode], external] = {},
+                          ) -> bool:
+        self.assert_fact(c, bindings, external_resolution)
+        logger.info(list(c.get_facts()))
+        raise NotImplementedError()
+
     def retract_fact(self, c: abc_machine.machine,
                 bindings: BINDING = {},
                 external_resolution: Mapping[typ.Union[rdflib.URIRef, rdflib.BNode], external] = {},
@@ -139,6 +174,9 @@ class frame(fact):
             fact[label] = _node2string(x, c, bindings, external_resolution)
 
         c.retract_fact(fact)
+
+    def __repr__(self):
+        return "%s[%s->%s]" % (self.obj, self.slotkey, self.slotvalue)
 
     def modify_fact(self, c: abc_machine.machine,
                bindings: BINDING = {},
@@ -193,7 +231,7 @@ def _node2string(x: TRANSLATEABLE_TYPES,
                  ) -> str:
     if isinstance(x, rdflib.Variable):
         try:
-            return bindings[x]
+            return rdflib2string(bindings[x])
         except KeyError as err:
             raise Exception("Tried to get not yet bind variable '%s' from %s"
                             % (x, bindings)) from err

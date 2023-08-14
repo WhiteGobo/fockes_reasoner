@@ -1,7 +1,8 @@
+import abc
 from .durable_reasoner import machine_facts
 import rdflib
 import typing as typ
-from typing import Union, Iterable, Any
+from typing import Union, Iterable, Any, Callable
 from .shared import RIF
 from rdflib import RDF
 from . import durable_reasoner
@@ -9,6 +10,13 @@ from .durable_reasoner import machine
 
 class RIFSyntaxError(Exception):
     """The given RIF Document has syntaxerrors"""
+
+class _action_gen(abc.ABC):
+    @abc.abstractmethod
+    def generate_action(self,
+                        machine: durable_reasoner.machine.machine,
+                        ) -> Callable[None, None]:
+        ...
 
 class rif_document:
     payload: "rif_group"
@@ -75,7 +83,44 @@ class rif_forall:
         self.formula = formula
         self.pattern = pattern
 
+    def is_implication(self):
+        """Checks if this is a rule for implication like in RIF-BLD"""
+        return False
+        self.pattern is None
+        isinstance(self.formula, rif_implies)
+        isinstance(self.formula.then_, (rif_frame,))
+        isinstance(self.formula.if_, (rif_frame,))
+
     def create_rules(self, machine: durable_reasoner.machine.machine) -> None:
+        if self.is_implication():
+            raise NotImplementedError()
+        elif self.pattern is None and isinstance(self.formula, rif_implies):
+            newrule = durable_reasoner.machine.durable_rule(machine)
+            patterns = self.formula.if_.add_pattern(newrule)
+            actions = self.formula.then_.generate_action(machine)
+            machine.make_rule(patterns, actions)
+            return
+        elif self.pattern is not None:
+            raise NotImplementedError()
+        else:
+            raise NotImplementedError()
+            self._create_action(machine)
+
+    def _create_action(self,
+                       machine: durable_reasoner.machine.machine,
+                       ) -> None:
+        if isinstance(self.formula, rif_forall):
+            raise NotImplementedError()
+        else:
+            action = self.formula.generate_action(machine)
+        action({rdflib.Variable("X"): rdflib.Literal(3)})
+        if self.pattern is not None:
+            raise Exception()
+            q = self.pattern.generate_pattern(machine)
+        else:
+            raise NotImplementedError()
+            q = None
+        machine.make_rule(patterns, actions)
         raise Exception()
 
     @classmethod
@@ -111,6 +156,16 @@ class rif_implies:
         self.if_ = if_
         self.then_ = then_
 
+    def generate_action(self,
+                        machine: durable_reasoner.machine.machine,
+                        ) -> Callable[(machine_facts.BINDING,), None]:
+        condition = self.if_.generate_condition(machine)
+        implicated_action = self.then_.generate_action(machine)
+        def act(bindings) -> None:
+            if condition(bindings):
+                implicated_action(bindings)
+        return act
+
     @classmethod
     def from_rdf(cls, infograph: rdflib.Graph,
                  rootnode: rdflib.IdentifiedNode) -> "rif_implies":
@@ -135,10 +190,16 @@ class rif_implies:
     def __repr__(self):
         return "If %s Then %s" %(self.if_, self.then_)
 
-class rif_do:
+class rif_do(_action_gen):
     target: Iterable[Union["rif_assert"]]
     def __init__(self, actions: Iterable[Union["rif_assert"]]):
         self.actions = actions
+
+    def generate_action(self,
+                        machine: durable_reasoner.machine.machine,
+                        ) -> Callable[None, None]:
+        actions = [act.generate_action(machine) for act in self.actions]
+        return lambda : [act() for act in actions]
 
     @classmethod
     def from_rdf(cls, infograph: rdflib.Graph,
@@ -169,6 +230,30 @@ class rif_frame:
         for slotkey, slotvalue in slots:
             facts.append(machine_facts.frame(obj, slotkey, slotvalue))
         self.facts = tuple(facts)
+
+    def add_pattern(self, rule: durable_reasoner.machine.durable_rule) -> None:
+        for f in self.facts:
+            f.add_pattern(rule)
+
+    def generate_condition(self,
+                           machine: durable_reasoner.machine.machine,
+                           ) -> Callable[(machine_facts.BINDING,), bool]:
+        external_resolution = {}
+        def condition(bindings: machine_facts.BINDING) -> bool:
+            for f in self.facts:
+                if not f.check_for_pattern(machine, bindings,
+                                           external_resolution):
+                    return False
+            return True
+        return condition
+
+    def generate_assert_action(self,
+                      machine: durable_reasoner.machine.machine,
+                      ) -> Callable[(machine_facts.BINDING,), bool]:
+        external_resolution = {}
+        return lambda bindings: [f.assert_fact(machine, bindings,
+                                               external_resolution)
+                                 for f in self.facts]
 
     def create_rules(self, machine: durable_reasoner.machine.machine) -> None:
         raise Exception()
@@ -217,6 +302,11 @@ class rif_assert:
     fact: Union[rif_frame]
     def __init__(self, fact: Union[rif_frame]):
         self.fact = fact
+
+    def generate_action(self,
+                        machine: durable_reasoner.machine.machine,
+                        ) -> Callable[None, None]:
+        return self.fact.generate_assert_action(machine)
 
     @classmethod
     def from_rdf(cls, infograph: rdflib.Graph,

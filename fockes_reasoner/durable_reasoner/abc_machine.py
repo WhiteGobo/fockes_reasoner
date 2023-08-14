@@ -4,6 +4,9 @@ import typing as typ
 from typing import MutableMapping, Mapping, Union, Callable, Iterable
 import rdflib
 
+FACTTYPE = "type"
+"""Labels in where the type of fact is saved"""
+
 TRANSLATEABLE_TYPES = typ.Union[rdflib.Variable,
                                 rdflib.URIRef,
                                 rdflib.BNode,
@@ -104,4 +107,25 @@ class machine(abc.ABC):
 
     @abc.abstractmethod
     def run(self, steps: Union[int, None] = None) -> None:
+        ...
+
+class rule:
+    patterns: typ.Any
+    action: Callable
+    machine: machine
+    def __init__(self, machine: machine, patterns = [], action = None):
+        self.machine = machine
+        self.patterns = list(patterns)
+        self.action = action
+
+    @abc.abstractmethod
+    def finalize_rule(self) -> None:
+        ...
+
+    @abc.abstractmethod
+    def add_pattern(self) -> None:
+        ...
+
+    @abc.abstractmethod
+    def set_action(self) -> None:
         ...

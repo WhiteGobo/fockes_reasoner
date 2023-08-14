@@ -3,15 +3,17 @@ import durable.engine
 import uuid
 import abc
 import logging
-from typing import Union, Mapping, Iterable, Callable, Any
+from typing import Union, Mapping, Iterable, Callable, Any, MutableMapping
+from hashlib import sha1
+import rdflib
+from rdflib import URIRef, Variable, Literal, BNode
 from . import abc_machine
+from .abc_machine import TRANSLATEABLE_TYPES, FACTTYPE, BINDING
 
 from ..shared import RDF
 from . import machine_facts
 #from .machine_facts import frame, member, subclass, fact
 
-FACTTYPE = "type"
-"""Labels in where the type of fact is saved"""
 MACHINESTATE = "machinestate"
 RUNNING_STATE = "running"
 INIT_STATE = "init"
@@ -41,7 +43,8 @@ class _context_helper(abc.ABC):
         ...
 
     @abc.abstractmethod
-    def get_facts(self) -> Iterable[Mapping[str, str]]:
+    def get_facts(self, fact_filter: Union[Mapping[str, str], None] = None,
+                  ) -> Iterable[Mapping[str, str]]:
         ...
 
 
@@ -52,8 +55,14 @@ class _no_closure(_context_helper):
     def assert_fact(self, fact: Mapping[str, str]) -> None:
         rls.assert_fact(self.machine._rulename, fact)
 
-    def get_facts(self) -> Iterable[Mapping[str, str]]:
-        return rls.get_facts(self.machine._rulename) #type: ignore[no-any-return]
+    def get_facts(self, fact_filter: Union[Mapping[str, str], None] = None,
+                  ) -> Iterable[Mapping[str, str]]:
+        if fact_filter is None:
+            return rls.get_facts(self.machine._rulename) #type: ignore[no-any-return]
+        else:
+            return (f #type: ignore[no-any-return]
+                    for f in rls.get_facts(self.machine._rulename)
+                    if all(f[key] == val for key, val in fact_filter.items()))
 
     def retract_fact(self, fact: Mapping[str, str]) -> None:
         for f in self.get_facts():
@@ -71,8 +80,13 @@ class _closure_helper(_context_helper):
     def assert_fact(self, fact: Mapping[str, str]) -> None:
         self.c.assert_fact(fact)
 
-    def get_facts(self) -> Iterable[Mapping[str, str]]:
-        return self.c.get_facts() #type: ignore[no-any-return]
+    def get_facts(self, fact_filter: Union[Mapping[str, str], None] = None,
+                  ) -> Iterable[Mapping[str, str]]:
+        if fact_filter is None:
+            return self.c.get_facts() #type: ignore[no-any-return]
+        else:
+            return (f for f in self.c.get_facts() #type: ignore[no-any-return]
+                    if all(f[key] == val for key, val in fact_filter.items()))
 
     def retract_fact(self, fact: Mapping[str, str]) -> None:
         for f in self.get_facts():
@@ -123,19 +137,15 @@ class machine(abc_machine.machine):
             fact_id = f[FACTTYPE]
             yield q[fact_id].from_fact(f)
 
-    def make_rule(self) -> None:
-        patterns: Iterable[rls.value] = []
-        actions: Iterable[Callable] = []
+    def make_rule(self, patterns: Iterable[rls.value],
+                  actions: Callable) -> None:
         with self._ruleset:
             @rls.when_all(patterns)
             def myfoo(c: durable.engine.Closure) -> None:
                 with _closure_helper(self, c):
-                    for act in actions:
-                        #act()
-                        pass
+                    action(c)
 
-    def make_start_action(self) -> None:
-        actions: Iterable[Callable] = []
+    def make_start_action(self, actions: Iterable[Callable]) -> None:
         with self._ruleset:
             @rls.when_all(getattr(rls.m, MACHINESTATE) == INIT_STATE)
             def init_function(c: durable.engine.Closure) -> None:
@@ -255,3 +265,90 @@ class RDFmachine(machine):
             def is_list_combined(c: durable.engine.Closure) -> None:
                 c.retract_fact(c.machinestate)
                 raise Exception("Couldnt transform all lists")
+
+
+class durable_rule(abc_machine.rule):
+    patterns: list[rls.value]
+    action: Callable
+    bindings: BINDING
+    machine: machine
+    def __init__(self, machine: machine):
+        self.machine = machine
+        self.patterns = []
+        self.action = None
+        self.finalized = False
+        self.bindings = {}
+
+    def finalize_rule(self) -> None:
+        if self.finalized:
+            raise Exception()
+        if self.action is None:
+            raise Exception()
+        self.finalized = True
+        self.machine.make_rule(self.patterns, self.action)
+
+    def add_pattern(self,
+                    pattern: Mapping[str, Union[str, TRANSLATEABLE_TYPES]],
+                    factname: Union[str, None] = None,
+                    ):
+        from .machine_facts import rdflib2string
+        pattern = dict(pattern)
+        if factname is None:
+            _as_string = repr(sorted(pattern.items()))
+            factname = "f%s" % sha1(_as_string.encode("utf8")).hexdigest()
+        #         c: typ.Union[durable.engine.Closure, str],
+        #         bindings: BINDING,
+        #         external_resolution: Mapping[typ.Union[rdflib.URIRef, rdflib.BNode], external],
+        next_constraint: rls.value
+        constraint: Union[rls.value, None] = None
+        for key, value in pattern.items():
+            next_constraint = None
+            if type(value) == str:
+                next_constraint = getattr(rls.m, key) == value
+            elif isinstance(value, rdflib.Variable):
+                if value in self.bindings:
+                    loc = self.bindings[value]
+                    newpattern = getattr(rls.m, key) == loc(rls.c)
+                    #log.append(f"rls.m.{fact_label} == {loc}")
+                else:
+                    loc = _value_locator(factname, key)
+                    self.bindings[value] = loc
+                    next_constraint = None
+                    #logger.debug("bind: %r-> %r" % (value, loc))
+            elif isinstance(value, (URIRef, BNode, Literal)):
+                next_constraint = getattr(rls.m, key) == rdflib2string(value)
+            elif isinstance(value, external):
+                newnode = value.serialize(c, bindings, external_resolution)
+                next_constraint = getattr(rls.m, key) == newnode
+            else:
+                raise NotImplementedError(value, type(value))
+            if next_constraint is not None:
+                if constraint is None:
+                    constraint = next_constraint
+                else:
+                    constraint = constraint & next_constraint
+        if constraint is None:
+            raise Exception("Cant handle %s" % pattern)
+        self.patterns.append(getattr(rls.c, factname) << constraint)
+
+    def set_action(self):
+        raise NotImplementedError()
+
+class _value_locator:
+    factname: str
+    """Name of the fact, where the variable is defined"""
+    in_fact_label: str
+    """Position in fact, where the variable is defined"""
+    def __init__(self, factname: str, in_fact_label: str):
+        self.factname = factname
+        self.in_fact_label = in_fact_label
+
+    def __call__(self,
+                 c: Union[durable.engine.Closure, rls.closure],
+                 ) -> Union[TRANSLATEABLE_TYPES, rls.value]:
+        fact = getattr(c, self.factname)
+        return getattr(fact, self.in_fact_label)
+
+    def __repr__(self) -> str:
+        return f"%s(c.{self.factname}.{self.in_fact_label})"\
+                % type(self).__name__
