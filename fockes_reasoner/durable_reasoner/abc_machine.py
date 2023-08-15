@@ -109,14 +109,17 @@ class machine(abc.ABC):
     def run(self, steps: Union[int, None] = None) -> None:
         ...
 
+class action:
+    action: Callable
+    machine: machine
+    @abc.abstractmethod
+    def finalize_rule(self) -> None:
+        ...
+
 class rule:
     patterns: typ.Any
     action: Callable
     machine: machine
-    def __init__(self, machine: machine, patterns = [], action = None):
-        self.machine = machine
-        self.patterns = list(patterns)
-        self.action = action
 
     @abc.abstractmethod
     def finalize_rule(self) -> None:

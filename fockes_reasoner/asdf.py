@@ -25,5 +25,5 @@ class simpleLogicMachine:
         else:
             mymachine.run(steps)
         myfacts = mymachine.get_facts()
-        raise Exception(myfacts)
+        raise Exception(list(myfacts))
 

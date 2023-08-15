@@ -2,7 +2,7 @@ import abc
 from .durable_reasoner import machine_facts
 import rdflib
 import typing as typ
-from typing import Union, Iterable, Any, Callable
+from typing import Union, Iterable, Any, Callable, MutableMapping
 from .shared import RIF
 from rdflib import RDF
 from . import durable_reasoner
@@ -97,8 +97,9 @@ class rif_forall:
         elif self.pattern is None and isinstance(self.formula, rif_implies):
             newrule = durable_reasoner.machine.durable_rule(machine)
             patterns = self.formula.if_.add_pattern(newrule)
-            actions = self.formula.then_.generate_action(machine)
-            machine.make_rule(patterns, actions)
+            action = self.formula.then_.generate_action(machine)
+            newrule.action = action
+            newrule.finalize()
             return
         elif self.pattern is not None:
             raise NotImplementedError()
@@ -198,8 +199,12 @@ class rif_do(_action_gen):
     def generate_action(self,
                         machine: durable_reasoner.machine.machine,
                         ) -> Callable[None, None]:
-        actions = [act.generate_action(machine) for act in self.actions]
-        return lambda : [act() for act in actions]
+        self._all_actions = [act.generate_action(machine) for act in self.actions]
+        return self._act
+
+    def _act(self, bindings: MutableMapping) -> None:
+        for act in self._all_actions:
+            act(bindings)
 
     @classmethod
     def from_rdf(cls, infograph: rdflib.Graph,
@@ -251,12 +256,17 @@ class rif_frame:
                       machine: durable_reasoner.machine.machine,
                       ) -> Callable[(machine_facts.BINDING,), bool]:
         external_resolution = {}
+        def _assert():
+            for f in self.facts:
+                f.assert_fact(machine, bindings, external_resolution)
         return lambda bindings: [f.assert_fact(machine, bindings,
                                                external_resolution)
                                  for f in self.facts]
 
     def create_rules(self, machine: durable_reasoner.machine.machine) -> None:
-        raise Exception()
+        """Is called, when frame is direct sub to a Group"""
+        action = self.generate_assert_action(machine)
+        durable_reasoner.machine.durable_action(machine, action, finalize=True)
 
     @property
     def obj(self):

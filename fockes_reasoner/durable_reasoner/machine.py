@@ -3,12 +3,14 @@ import durable.engine
 import uuid
 import abc
 import logging
+import traceback
 from typing import Union, Mapping, Iterable, Callable, Any, MutableMapping
 from hashlib import sha1
 import rdflib
 from rdflib import URIRef, Variable, Literal, BNode
 from . import abc_machine
-from .abc_machine import TRANSLATEABLE_TYPES, FACTTYPE, BINDING
+from .abc_machine import TRANSLATEABLE_TYPES, FACTTYPE, BINDING, VARIABLE_LOCATOR
+from .machine_facts import rdflib2string, string2rdflib
 
 from ..shared import RDF
 from . import machine_facts
@@ -26,6 +28,9 @@ in RDF.
 """
 LIST_MEMBERS = "member"
 """:term:`list` enlist all their members under this label."""
+
+class FailedInternalAction(Exception):
+    ...
 
 class _context_helper(abc.ABC):
     """helper class to decide how to assert and retract facts"""
@@ -94,11 +99,11 @@ class _closure_helper(_context_helper):
                 self.c.retract_fact(f)
 
     def __enter__(self) -> None:
-        self.previous_context = machine._current_context
-        machine._current_context = self
+        self.previous_context = self.machine._current_context
+        self.machine._current_context = self
 
     def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
-        machine._current_context = self.previous_context
+        self.machine._current_context = self.previous_context
 
 
 class machine(abc_machine.machine):
@@ -106,6 +111,7 @@ class machine(abc_machine.machine):
     logger: logging.Logger
     errors: list
     _current_context: _context_helper
+    _initialized: bool
 
     def __init__(self, loggername: str = __name__) -> None:
         rulesetname = str(uuid.uuid4())
@@ -114,6 +120,7 @@ class machine(abc_machine.machine):
         self.__set_basic_rules()
         self.errors = []
         self._current_context = _no_closure(self)
+        self._initialized = False
 
     def check_statement(self, statement: machine_facts.fact) -> bool:
         """Checks if given proposition is true.
@@ -138,14 +145,33 @@ class machine(abc_machine.machine):
             yield q[fact_id].from_fact(f)
 
     def make_rule(self, patterns: Iterable[rls.value],
-                  actions: Callable) -> None:
+                  action: Callable,
+                  variable_locator: VARIABLE_LOCATOR,
+                  error_message: str = "") -> None:
         with self._ruleset:
-            @rls.when_all(patterns)
+            @rls.when_all(*patterns)
             def myfoo(c: durable.engine.Closure) -> None:
-                with _closure_helper(self, c):
-                    action(c)
+                bindings = {}
+                try:
+                    for var, loc in variable_locator.items():
+                        bindings[var] = string2rdflib(loc(c))
+                except Exception as err:
+                    self.logger.info("failed loading bindings: %s"
+                                     % traceback.format_exc())
+                    raise FailedInternalAction(error_message) from err
+                try:
+                    with _closure_helper(self, c):
+                        action(bindings)
+                except FailedInternalAction:
+                    raise
+                except Exception as err:
+                    self.logger.info("Failed at action %r with bindings %s. "
+                                     "Produced traceback:\n%s"
+                                     % (action, bindings,  traceback.format_exc()))
+                    raise FailedInternalAction(error_message) from err
 
     def make_start_action(self, actions: Iterable[Callable]) -> None:
+        raise Exception()
         with self._ruleset:
             @rls.when_all(getattr(rls.m, MACHINESTATE) == INIT_STATE)
             def init_function(c: durable.engine.Closure) -> None:
@@ -175,6 +201,10 @@ class machine(abc_machine.machine):
                 pass
 
     def run(self, steps: Union[int, None] = None) -> None:
+        if not self._initialized:
+            rls.assert_fact(self._rulename, {MACHINESTATE: INIT_STATE})
+            rls.retract_fact(self._rulename, {MACHINESTATE: INIT_STATE})
+            self._initialized = True
         if steps is None:
             rls.assert_fact(self._rulename, {MACHINESTATE: RUNNING_STATE})
             rls.retract_fact(self._rulename, {MACHINESTATE: RUNNING_STATE})
@@ -266,26 +296,49 @@ class RDFmachine(machine):
                 c.retract_fact(c.machinestate)
                 raise Exception("Couldnt transform all lists")
 
-
-class durable_rule(abc_machine.rule):
-    patterns: list[rls.value]
+class durable_action(abc_machine.action):
     action: Callable
-    bindings: BINDING
+    """action that is executed in initstate (machinestate==init)"""
     machine: machine
-    def __init__(self, machine: machine):
+    """Rulemachine for this action"""
+    finalized: bool
+    """Shows if action is already implemented in machine"""
+    def __init__(self, machine: machine, action: Union[None, Callable] = None,
+                 finalize: bool = False):
         self.machine = machine
-        self.patterns = []
-        self.action = None
+        self.action = action
         self.finalized = False
-        self.bindings = {}
+        if finalize:
+            self.finalize()
 
-    def finalize_rule(self) -> None:
+    def finalize(self):
         if self.finalized:
             raise Exception()
         if self.action is None:
             raise Exception()
         self.finalized = True
-        self.machine.make_rule(self.patterns, self.action)
+        patterns = [getattr(rls.m, MACHINESTATE) == INIT_STATE]
+        self.machine.make_rule(patterns, self.action, {})
+
+class durable_rule(abc_machine.rule):
+    patterns: list[rls.value]
+    action: Callable
+    bindings: VARIABLE_LOCATOR
+    machine: machine
+    def __init__(self, machine: machine):
+        self.machine = machine
+        self.patterns = [getattr(rls.m, MACHINESTATE) == RUNNING_STATE]
+        self.action = None
+        self.finalized = False
+        self.bindings = {}
+
+    def finalize(self) -> None:
+        if self.finalized:
+            raise Exception()
+        if self.action is None:
+            raise Exception()
+        self.finalized = True
+        self.machine.make_rule(self.patterns, self.action, self.bindings)
 
     def add_pattern(self,
                     pattern: Mapping[str, Union[str, TRANSLATEABLE_TYPES]],
@@ -330,9 +383,6 @@ class durable_rule(abc_machine.rule):
         if constraint is None:
             raise Exception("Cant handle %s" % pattern)
         self.patterns.append(getattr(rls.c, factname) << constraint)
-
-    def set_action(self):
-        raise NotImplementedError()
 
 class _value_locator:
     factname: str
