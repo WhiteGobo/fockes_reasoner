@@ -1,6 +1,7 @@
 """Provides multiple shared methods between different parts of this package.
 """
 import typing as typ
+from typing import Iterable, List, Union
 import rdflib
 import pyparsing.results
 
@@ -30,9 +31,10 @@ rdf_identifier = list_parser | iri | myRDFLiteral | bnode
 
 from rdflib import BNode, Literal, URIRef
 list_parser <<= pp.Suppress("{") + pp.ZeroOrMore(rdf_identifier) + pp.Suppress("}")
+
 @list_parser.add_parse_action
 def _parse_list(parser_result: pyparsing.results.ParseResults,
-                ) -> list[typ.Union[BNode, Literal, URIRef]]:
+                ) -> typ.Iterable[List[typ.Union[BNode, Literal, URIRef]]]:
     yield list(parser_result)
 
 TRANSLATEABLE_TYPES = typ.Union[rdflib.Variable, #type: ignore[misc]

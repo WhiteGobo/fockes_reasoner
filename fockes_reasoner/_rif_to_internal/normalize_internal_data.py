@@ -1,3 +1,4 @@
+#type: ignore
 """We need a ruleset which translates :term:`RIF` to a representation
 of the :term:`internal datastructure`.
 This module provides a python implementation of this ruleset.

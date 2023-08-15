@@ -1,3 +1,4 @@
+#type: ignore
 """This module supports all groups needed for rif import
 """
 from .. import internal_dataobjects as _internal

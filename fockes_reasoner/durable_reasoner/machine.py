@@ -4,13 +4,14 @@ import uuid
 import abc
 import logging
 import traceback
-from typing import Union, Mapping, Iterable, Callable, Any, MutableMapping
+from typing import Union, Mapping, Iterable, Callable, Any, MutableMapping, Optional
 from hashlib import sha1
 import rdflib
 from rdflib import URIRef, Variable, Literal, BNode
 from . import abc_machine
 from .abc_machine import TRANSLATEABLE_TYPES, FACTTYPE, BINDING, VARIABLE_LOCATOR
-from .machine_facts import rdflib2string, string2rdflib
+from .bridge_rdflib import rdflib2string, string2rdflib
+from .machine_facts import external
 
 from ..shared import RDF
 from . import machine_facts
@@ -34,7 +35,7 @@ class FailedInternalAction(Exception):
 
 class _context_helper(abc.ABC):
     """helper class to decide how to assert and retract facts"""
-    machine: "machine"
+    machine: "durable_machine"
 
     @abc.abstractmethod
     def assert_fact(self, fact: Mapping[str, str]) -> None:
@@ -54,7 +55,7 @@ class _context_helper(abc.ABC):
 
 
 class _no_closure(_context_helper):
-    def __init__(self, machine:"machine"):
+    def __init__(self, machine: "durable_machine"):
         self.machine = machine
 
     def assert_fact(self, fact: Mapping[str, str]) -> None:
@@ -78,7 +79,7 @@ class _no_closure(_context_helper):
 class _closure_helper(_context_helper):
     previous_context: _context_helper 
     c: durable.engine.Closure
-    def __init__(self, machine: "machine", c: durable.engine.Closure):
+    def __init__(self, machine: "durable_machine", c: durable.engine.Closure):
         self.machine = machine
         self.c = c
 
@@ -106,7 +107,7 @@ class _closure_helper(_context_helper):
         self.machine._current_context = self.previous_context
 
 
-class machine(abc_machine.machine):
+class durable_machine(abc_machine.machine):
     _ruleset: rls.ruleset
     logger: logging.Logger
     errors: list
@@ -144,17 +145,17 @@ class machine(abc_machine.machine):
             fact_id = f[FACTTYPE]
             yield q[fact_id].from_fact(f)
 
-    def make_rule(self, patterns: Iterable[rls.value],
+    def _make_rule(self, patterns: Iterable[rls.value],
                   action: Callable,
-                  variable_locator: VARIABLE_LOCATOR,
+                  variable_locators: Mapping[Variable, VARIABLE_LOCATOR],
                   error_message: str = "") -> None:
         with self._ruleset:
             @rls.when_all(*patterns)
             def myfoo(c: durable.engine.Closure) -> None:
                 bindings = {}
                 try:
-                    for var, loc in variable_locator.items():
-                        bindings[var] = string2rdflib(loc(c))
+                    for var, loc in variable_locators.items():
+                        bindings[var] = loc(c)
                 except Exception as err:
                     self.logger.info("failed loading bindings: %s"
                                      % traceback.format_exc())
@@ -167,18 +168,9 @@ class machine(abc_machine.machine):
                 except Exception as err:
                     self.logger.info("Failed at action %r with bindings %s. "
                                      "Produced traceback:\n%s"
-                                     % (action, bindings,  traceback.format_exc()))
+                                     % (action, bindings,
+                                        traceback.format_exc()))
                     raise FailedInternalAction(error_message) from err
-
-    def make_start_action(self, actions: Iterable[Callable]) -> None:
-        raise Exception()
-        with self._ruleset:
-            @rls.when_all(getattr(rls.m, MACHINESTATE) == INIT_STATE)
-            def init_function(c: durable.engine.Closure) -> None:
-                with _closure_helper(self, c):
-                    for act in actions:
-                        #act()
-                        pass
 
     def __set_basic_rules(self) -> None:
         with self._ruleset:
@@ -219,8 +211,15 @@ class machine(abc_machine.machine):
     def _rulename(self) -> str:
         return self._ruleset.name #type: ignore[no-any-return]
 
+    def add_init_action(self, action: Callable[[BINDING], None]) -> None:
+        q = durable_action(self, action)
+        q.finalize()
 
-class RDFmachine(machine):
+    def create_rule_builder(self) -> "durable_rule":
+        return durable_rule(self)
+
+
+class RDFmachine(durable_machine):
     """Implements translation of as in RDF specified syntax for the machine
     """
     def __init__(self, loggername: str = __name__) -> None:
@@ -296,36 +295,36 @@ class RDFmachine(machine):
                 c.retract_fact(c.machinestate)
                 raise Exception("Couldnt transform all lists")
 
+
 class durable_action(abc_machine.action):
-    action: Callable
+    action: Optional[Callable[[BINDING], None]]
     """action that is executed in initstate (machinestate==init)"""
-    machine: machine
+    machine: durable_machine
     """Rulemachine for this action"""
     finalized: bool
     """Shows if action is already implemented in machine"""
-    def __init__(self, machine: machine, action: Union[None, Callable] = None,
-                 finalize: bool = False):
+    def __init__(self, machine: durable_machine,
+                 action: Union[None, Callable] = None) -> None:
         self.machine = machine
         self.action = action
         self.finalized = False
-        if finalize:
-            self.finalize()
 
-    def finalize(self):
+    def finalize(self) -> None:
         if self.finalized:
             raise Exception()
         if self.action is None:
             raise Exception()
         self.finalized = True
         patterns = [getattr(rls.m, MACHINESTATE) == INIT_STATE]
-        self.machine.make_rule(patterns, self.action, {})
+        self.machine._make_rule(patterns, self.action, {})
+
 
 class durable_rule(abc_machine.rule):
     patterns: list[rls.value]
-    action: Callable
-    bindings: VARIABLE_LOCATOR
-    machine: machine
-    def __init__(self, machine: machine):
+    action: Optional[Callable]
+    bindings: MutableMapping[Variable, VARIABLE_LOCATOR]
+    machine: durable_machine
+    def __init__(self, machine: durable_machine):
         self.machine = machine
         self.patterns = [getattr(rls.m, MACHINESTATE) == RUNNING_STATE]
         self.action = None
@@ -338,12 +337,12 @@ class durable_rule(abc_machine.rule):
         if self.action is None:
             raise Exception()
         self.finalized = True
-        self.machine.make_rule(self.patterns, self.action, self.bindings)
+        self.machine._make_rule(self.patterns, self.action, self.bindings)
 
     def add_pattern(self,
-                    pattern: Mapping[str, Union[str, TRANSLATEABLE_TYPES]],
+                    pattern: Mapping[str, Union[Variable, str, TRANSLATEABLE_TYPES]],
                     factname: Union[str, None] = None,
-                    ):
+                    ) -> None:
         from .machine_facts import rdflib2string
         pattern = dict(pattern)
         if factname is None:
@@ -371,8 +370,9 @@ class durable_rule(abc_machine.rule):
             elif isinstance(value, (URIRef, BNode, Literal)):
                 next_constraint = getattr(rls.m, key) == rdflib2string(value)
             elif isinstance(value, external):
-                newnode = value.serialize(c, bindings, external_resolution)
-                next_constraint = getattr(rls.m, key) == newnode
+                raise NotImplementedError()
+                #newnode = value.serialize(c, bindings, external_resolution)
+                #next_constraint = getattr(rls.m, key) == newnode
             else:
                 raise NotImplementedError(value, type(value))
             if next_constraint is not None:
@@ -397,7 +397,11 @@ class _value_locator:
                  c: Union[durable.engine.Closure, rls.closure],
                  ) -> Union[TRANSLATEABLE_TYPES, rls.value]:
         fact = getattr(c, self.factname)
-        return getattr(fact, self.in_fact_label)
+        val = getattr(fact, self.in_fact_label)
+        if isinstance(val, str):
+            return string2rdflib(val)
+        else:
+            return val
 
     def __repr__(self) -> str:
         return f"%s(c.{self.factname}.{self.in_fact_label})"\

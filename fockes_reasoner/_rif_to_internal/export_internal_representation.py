@@ -1,3 +1,4 @@
+#type: ignore
 """
 To enable input-output things for information one need methods to label, what
 data should be exported. This module labels all information about internaldata

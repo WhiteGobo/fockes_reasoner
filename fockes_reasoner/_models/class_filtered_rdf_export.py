@@ -1,3 +1,4 @@
+#type: ignore
 from . import model_abc
 from collections.abc import Iterator, Container, Mapping, Iterable
 import rdflib

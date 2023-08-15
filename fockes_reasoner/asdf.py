@@ -1,10 +1,10 @@
 from typing import Union
 import rdflib
-from rdflib import RDF
+from rdflib import RDF, IdentifiedNode
 from .shared import RIF
 
 from .rif_dataobjects import rif_document
-from .durable_reasoner.machine import machine
+from .durable_reasoner.machine import durable_machine as machine
 
 class simpleLogicMachine:
     document: rif_document
@@ -13,11 +13,15 @@ class simpleLogicMachine:
 
     @classmethod
     def from_rdf(cls, infograph: rdflib.Graph) -> "simpleLogicMachine":
-        rootdocument_node, = infograph.subjects(RDF.type, RIF.Document)
+        rootdocument_node: IdentifiedNode
+        rootdocument_node,\
+                = infograph.subjects(RDF.type, #type: ignore[assignment]
+                                     RIF.Document)
+                                                
         document = rif_document.from_rdf(infograph, rootdocument_node)
         return cls(document)
 
-    def run(self, steps: Union[int, None] = None):
+    def run(self, steps: Union[int, None] = None) -> None:
         mymachine = machine()
         self.document.create_rules(mymachine)
         if steps is None:

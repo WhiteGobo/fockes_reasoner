@@ -1,23 +1,20 @@
 import abc
 import logging
 import typing as typ
-from typing import MutableMapping, Mapping, Union, Callable, Iterable
+from typing import MutableMapping, Mapping, Union, Callable, Iterable, Optional
 import rdflib
 
 FACTTYPE = "type"
 """Labels in where the type of fact is saved"""
 
-TRANSLATEABLE_TYPES = typ.Union[rdflib.Variable,
-                                rdflib.URIRef,
-                                rdflib.BNode,
-                                rdflib.Literal,
-                                list["TRANSLATEABLE_TYPES"],
-                                "external",
-                                ]
-BINDING = MutableMapping[rdflib.Variable, str]
+from .bridge_rdflib import TRANSLATEABLE_TYPES
+
+BINDABLE_TYPES = Union[TRANSLATEABLE_TYPES, "external"]
+BINDING = MutableMapping[rdflib.Variable, TRANSLATEABLE_TYPES]
 #VARIABLE_LOCATOR = Callable[[typ.Union[durable.engine.Closure, None]], TRANSLATEABLE_TYPES]
 VARIABLE_LOCATOR = Callable[[typ.Any], TRANSLATEABLE_TYPES]
 CLOSURE_BINDINGS = MutableMapping[rdflib.Variable, VARIABLE_LOCATOR]
+
 
 class external(abc.ABC):
     """Parentclass for all extension for information representation."""
@@ -43,14 +40,11 @@ class fact(abc.ABC):
     @abc.abstractmethod
     def assert_fact(self, c: "machine",
                bindings: BINDING = {},
-               external_resolution: Mapping[Union[rdflib.URIRef,
-                                                  rdflib.BNode], external] = {},
                ) -> None:
         ...
 
     @abc.abstractmethod
-    def generate_pattern(self, bindings: CLOSURE_BINDINGS,
-                         factname: str) -> pattern:
+    def add_pattern(self, rule: "rule") -> None:
         ...
 
     @abc.abstractmethod
@@ -98,37 +92,29 @@ class machine(abc.ABC):
         ...
 
     @abc.abstractmethod
-    def make_rule(self) -> None:
-        ...
-
-    @abc.abstractmethod
-    def make_start_action(self) -> None:
-        ...
-
-    @abc.abstractmethod
     def run(self, steps: Union[int, None] = None) -> None:
         ...
 
 class action:
-    action: Callable
+    action: Optional[Callable]
     machine: machine
+
     @abc.abstractmethod
-    def finalize_rule(self) -> None:
+    def finalize(self) -> None:
         ...
 
 class rule:
     patterns: typ.Any
-    action: Callable
+    action: Optional[Callable]
     machine: machine
 
     @abc.abstractmethod
-    def finalize_rule(self) -> None:
+    def finalize(self) -> None:
         ...
 
     @abc.abstractmethod
-    def add_pattern(self) -> None:
-        ...
-
-    @abc.abstractmethod
-    def set_action(self) -> None:
+    def add_pattern(self,
+                    pattern: Mapping[str, Union[str, TRANSLATEABLE_TYPES]],
+                    factname: Optional[str] = None,
+                    ) -> None:
         ...

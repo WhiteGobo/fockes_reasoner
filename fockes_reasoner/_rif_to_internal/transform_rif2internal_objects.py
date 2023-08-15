@@ -1,3 +1,4 @@
+#type: ignore
 """
 
 :TODO: change algo-nodes to be classified so less circles possible.
