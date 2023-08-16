@@ -22,7 +22,8 @@ def test_simple():
 
     q = fockes_reasoner.simpleLogicMachine.from_rdf(g)
     myfacts = q.run()
-    logger.info(conc_graph.serialize())
+    logger.info("Expected conclusions in ttl:\n%s" % conc_graph.serialize())
+    logger.info("All facts after machine has run:\n%s" % list(q.machine.get_facts()))
     rif_facts = list(rdfmodel().import_graph(conc_graph))
     assert rif_facts, "couldnt load conclusion rif_facts directly"
-    assert q.check(rif_facts)
+    assert q.check(rif_facts), "Missing expected conclusions"
