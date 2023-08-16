@@ -121,12 +121,12 @@ class frame(fact):
 
 
 class member(fact):
-    ID = "member"
+    ID: str = "member"
     """facttype :term:`member` are labeled with this."""
 
 
 class subclass(fact):
-    ID = "subclass"
+    ID: str = "subclass"
     """facttype :term:`subclass` are labeled with this."""
 
 

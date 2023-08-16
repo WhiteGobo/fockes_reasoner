@@ -11,10 +11,10 @@ from rdflib import URIRef, Variable, Literal, BNode
 from . import abc_machine
 from .abc_machine import TRANSLATEABLE_TYPES, FACTTYPE, BINDING, VARIABLE_LOCATOR
 from .bridge_rdflib import rdflib2string, string2rdflib
-from .machine_facts import external
 
 from ..shared import RDF
 from . import machine_facts
+from .machine_facts import frame, member, subclass, fact, external
 #from .machine_facts import frame, member, subclass, fact
 
 MACHINESTATE = "machinestate"
@@ -137,7 +137,6 @@ class durable_machine(abc_machine.machine):
         self._current_context.retract_fact(fact)
 
     def get_facts(self) -> Iterable[abc_machine.fact]:
-        from .machine_facts import frame, member, subclass, fact
         q: Mapping[str, type[fact]] = {frame.ID: frame,
                                        member.ID: member,
                                        subclass.ID: subclass}

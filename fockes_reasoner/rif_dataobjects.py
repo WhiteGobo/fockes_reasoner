@@ -67,8 +67,8 @@ class rif_group:
         sentences_list_node, = infograph.objects(rootnode, RIF.sentences)
         sentences: list[Union[rif_forall, rif_frame, rif_group]] = []
         next_sentence: Union[rif_forall, rif_frame, rif_group]
-        sentences_list = rdflib.collection.Collection(infograph,
-                                                      sentences_list_node)
+        sentences_list: Iterable[IdentifiedNode]\
+                = rdflib.collection.Collection(infograph, sentences_list_node) #type: ignore[assignment]
         for sentence_node in sentences_list:
             sentence_type = infograph.value(sentence_node, RDF.type)
             if sentence_type == RIF.Forall:
@@ -211,7 +211,7 @@ class rif_do(_action_gen):
             target_list_node, = infograph.objects(rootnode, RIF.actions)
         except ValueError as err:
             raise Exception("Syntaxerror of RIF document") from err
-        target_list = rdflib.collection.Collection(infograph, target_list_node)
+        target_list: Iterable[IdentifiedNode] = rdflib.collection.Collection(infograph, target_list_node) #type: ignore[assignment]
         actions: List[Union[rif_assert]] = []
         for target_node in target_list:
             target_type = infograph.value(target_node, RDF.type)
@@ -322,7 +322,7 @@ class rif_assert:
     def from_rdf(cls, infograph: rdflib.Graph,
                  rootnode: rdflib.IdentifiedNode,
                  **kwargs: typ.Any) -> "rif_assert":
-        target = infograph.value(rootnode, RIF.target)
+        target: rdflib.IdentifiedNode = infograph.value(rootnode, RIF.target) #type: ignore[assignment]
         target_type = infograph.value(target, RDF.type)
         if target_type == RIF.Frame:
             fact = rif_frame.from_rdf(infograph, target)
