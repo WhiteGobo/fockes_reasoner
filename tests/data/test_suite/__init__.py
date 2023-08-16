@@ -26,4 +26,9 @@ PET_Modify_loop = PositiveEntailmentTest(
         _PRD.joinpath("PositiveEntailmentTest/Modify_loop/Modify_loop-conclusion.rif"),
         )
 
-PositiveEntailmentTests = [PET_Assert, PET_AssertRetract]
+PositiveEntailmentTests = [PET_Assert,
+        #PET_AssertRetract,
+        PET_AssertRetract2,
+        #PET_Modify,
+        #PET_Modify_loop,
+        ]

@@ -38,11 +38,13 @@ def test_PositiveEntailmentTests():
             conc_graph = rdflib.Graph().parse(conclusionfile, format="rif")
         except rdflib.plugin.PluginException:
             pytest.skip("Need rdflib parser plugin to load RIF-file")
+        logger.info("premise in ttl:\n%s" % g.serialize())
 
         q = fockes_reasoner.simpleLogicMachine.from_rdf(g)
         myfacts = q.run()
         logger.info("Expected conclusions in ttl:\n%s" % conc_graph.serialize())
-        logger.info("All facts after machine has run:\n%s" % list(q.machine.get_facts()))
         rif_facts = list(rdfmodel().import_graph(conc_graph))
+        logger.info("All facts after machine has run:\n%s\n\nexpected "
+                "facts:\n%s" % (list(q.machine.get_facts()), rif_facts))
         assert rif_facts, "couldnt load conclusion rif_facts directly"
         assert q.check(rif_facts), "Missing expected conclusions"
