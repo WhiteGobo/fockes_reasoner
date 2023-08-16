@@ -24,4 +24,5 @@ def test_simple():
     myfacts = q.run()
     logger.info(conc_graph.serialize())
     rif_facts = list(rdfmodel().import_graph(conc_graph))
+    assert rif_facts, "couldnt load conclusion rif_facts directly"
     assert q.check(rif_facts)
