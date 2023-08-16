@@ -86,7 +86,7 @@ class _closure_helper(_context_helper):
     def assert_fact(self, fact: Mapping[str, str]) -> None:
         self.c.assert_fact(fact)
 
-    def get_facts(self, fact_filter: Union[Mapping[str, str], None] = None,
+    def get_facts(self, fact_filter: Optional[Mapping[str, str]] = None,
                   ) -> Iterable[Mapping[str, str]]:
         if fact_filter is None:
             return self.c.get_facts() #type: ignore[no-any-return]
@@ -136,11 +136,12 @@ class durable_machine(abc_machine.machine):
     def retract_fact(self, fact: Mapping[str, str]) -> None:
         self._current_context.retract_fact(fact)
 
-    def get_facts(self) -> Iterable[abc_machine.fact]:
+    def get_facts(self, fact_filter: Optional[Mapping[str, str]] = None,
+            ) -> Iterable[abc_machine.fact]:
         q: Mapping[str, type[fact]] = {frame.ID: frame,
                                        member.ID: member,
                                        subclass.ID: subclass}
-        for f in self._current_context.get_facts():
+        for f in self._current_context.get_facts(fact_filter):
             fact_id = f[FACTTYPE]
             yield q[fact_id].from_fact(f)
 

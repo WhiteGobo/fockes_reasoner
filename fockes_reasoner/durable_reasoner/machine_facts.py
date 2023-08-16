@@ -83,9 +83,17 @@ class frame(fact):
     def check_for_pattern(self, c: abc_machine.machine,
                           bindings: BINDING = {},
                           ) -> bool:
-        self.assert_fact(c, bindings)
-        logger.info(list(c.get_facts()))
-        raise NotImplementedError()
+        fact = {"type": self.ID}
+        for label, x, in [
+                (self.FRAME_OBJ, self.obj),
+                (self.FRAME_SLOTKEY, self.slotkey),
+                (self.FRAME_SLOTVALUE, self.slotvalue),
+                ]:
+            fact[label] = _node2string(x, c, bindings)
+        for x in c.get_facts(fact):
+            #triggers, when any corresponding fact is found
+            return True
+        return False
 
     def retract_fact(self, c: abc_machine.machine,
                 bindings: BINDING = {},

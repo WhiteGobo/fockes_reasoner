@@ -235,6 +235,15 @@ class rif_frame:
             facts.append(machine_facts.frame(obj, slotkey, slotvalue))
         self.facts = tuple(facts)
 
+    def check(self,
+            machine: durable_reasoner.machine.durable_machine,
+            bindings: BINDING = {},
+            ) -> bool:
+        for f in self.facts:
+            if not f.check_for_pattern(machine, bindings):
+                return False
+        return True
+
     def add_pattern(self, rule: durable_reasoner.machine.durable_rule) -> None:
         for f in self.facts:
             f.add_pattern(rule)
