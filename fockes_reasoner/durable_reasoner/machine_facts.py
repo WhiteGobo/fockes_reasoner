@@ -57,7 +57,6 @@ class frame(fact):
             fact[label] = _node2string(x, c, bindings)
         c.assert_fact(fact)
 
-
     def add_pattern(self, rule: abc_machine.rule) -> None:
         if isinstance(self.obj, external) or isinstance(self.slotkey, external) or isinstance(self.slotvalue, external):
             raise NotImplementedError()
@@ -158,3 +157,15 @@ def _node2string(x: Union[TRANSLATEABLE_TYPES, Variable, str, external],
         raise NotImplementedError()
     else:
         raise NotImplementedError(type(x))
+
+class retract_object_function:
+    machine: abc_machine.machine
+    atom: typ.Union[TRANSLATEABLE_TYPES, external, Variable]
+    def __init__(self, machine: abc_machine.machine, atom: typ.Union[TRANSLATEABLE_TYPES, external, Variable]):
+        self.atom = atom
+        self.machine = machine
+
+    def __call__(self, bindings: BINDING = {}) -> None:
+        atom = _node2string(self.atom, self.machine, bindings)
+        fact = {"type": frame.ID, frame.FRAME_OBJ: atom}
+        self.machine.retract_fact(fact)

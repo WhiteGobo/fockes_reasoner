@@ -1,10 +1,12 @@
 import abc
-from .durable_reasoner import machine_facts
+import logging
+logger = logging.getLogger(__name__)
+from .durable_reasoner import machine_facts, fact
 from .durable_reasoner.machine_facts import external, TRANSLATEABLE_TYPES
 import rdflib
 from rdflib import IdentifiedNode, Graph, Variable, Literal
 import typing as typ
-from typing import Union, Iterable, Any, Callable, MutableMapping, List, Tuple
+from typing import Union, Iterable, Any, Callable, MutableMapping, List, Tuple, Optional
 from .shared import RIF
 from rdflib import RDF
 from . import durable_reasoner
@@ -23,6 +25,20 @@ class _action_gen(abc.ABC):
                         machine: durable_reasoner.machine.durable_machine,
                         ) -> Callable[..., None]:
         ...
+
+
+def slot2node(infograph: Graph, x: IdentifiedNode) -> ATOM:
+    val_info = dict(infograph.predicate_objects(x))
+    t = val_info[RDF.type]
+    if t == RIF.Var:
+        return rdflib.Variable(str(val_info[RIF.varname]))
+    elif t == RIF.Const and RIF.constIRI in val_info:
+        return rdflib.URIRef(str(val_info[RIF.constIRI]))
+    elif t == RIF.Const and RIF.value in val_info:
+        val: Literal = val_info[RIF.value]#type: ignore[assignment]
+        return val
+    else:
+        raise NotImplementedError(t)
 
 class rif_document:
     payload: "rif_group"
@@ -77,6 +93,8 @@ class rif_group:
                 next_sentence = rif_frame.from_rdf(infograph, sentence_node)
             elif sentence_type == RIF.Group:
                 next_sentence = rif_group.from_rdf(infograph, sentence_node)
+            elif sentence_type == RIF.Implies:
+                next_sentence = rif_implies.from_rdf(infograph, sentence_node)
             else:
                 raise NotImplementedError(sentence_type)
             sentences.append(next_sentence)
@@ -110,6 +128,7 @@ class rif_forall:
             self.formula.if_.add_pattern(newrule)
             action = self.formula.then_.generate_action(machine)
             newrule.action = action
+            logger.info("create rule %r" % newrule)
             newrule.finalize()
             return
         elif self.pattern is not None:
@@ -152,6 +171,16 @@ class rif_implies:
         self.if_ = if_
         self.then_ = then_
 
+    def create_rules(self, machine: durable_reasoner.machine.durable_machine) -> None:
+        logger.critical("Implications are not yet supported")
+        return
+        raise NotImplementedError()
+        newrule = machine.create_rule_builder()
+        self.formula.if_.add_pattern(newrule)
+        action = self.formula.then_.generate_action(machine)
+        newrule.action = action
+        newrule.finalize()
+
     def generate_action(self,
                         machine: durable_reasoner.machine.durable_machine,
                         ) -> Callable[[BINDING], None]:
@@ -176,6 +205,8 @@ class rif_implies:
         if_type = infograph.value(if_node, RDF.type)
         if if_type == RIF.Frame:
             if_ = rif_frame.from_rdf(infograph, if_node)
+        elif if_type == RIF.INeg:
+            if_ = rif_ineg.from_rdf(infograph, if_node)
         else:
             raise NotImplementedError(if_type)
         then_type = infograph.value(then_node, RDF.type)
@@ -189,8 +220,8 @@ class rif_implies:
         return "If %s Then %s" %(self.if_, self.then_)
 
 class rif_do(_action_gen):
-    target: List[Union["rif_assert"]]
-    def __init__(self, actions: Iterable[Union["rif_assert"]]):
+    target: List[Union["rif_assert", "rif_retract"]]
+    def __init__(self, actions: Iterable[Union["rif_assert", "rif_retract"]]):
         self.actions = list(actions)
 
     def generate_action(self,
@@ -217,8 +248,10 @@ class rif_do(_action_gen):
             target_type = infograph.value(target_node, RDF.type)
             if target_type == RIF.Assert:
                 next_target = rif_assert.from_rdf(infograph, target_node)
+            elif target_type == RIF.Retract:
+                next_target = rif_retract.from_rdf(infograph, target_node)
             else:
-                raise NotImplementedError()
+                raise NotImplementedError(target_type)
             actions.append(next_target)
         return cls(actions)
 
@@ -316,6 +349,63 @@ class rif_frame:
                     for d in (dict(infograph.predicate_objects(x)) for x in q)]
         obj = slot2node(info[RIF.object])
         return cls(obj, slotinfo, **kwargs)
+
+class rif_retract:
+    #fact: Optional[Union[rif_frame]]
+    #atom: Optional[Union[IdentifiedNode]]
+    def __init__(self, fact_or_atom: Union[rif_frame, IdentifiedNode]):
+        if isinstance(fact_or_atom, fact):
+            self.fact = fact
+        else:
+            self.atom = fact_or_atom
+
+    @property
+    def fact_or_atom(self):
+        try:
+            return self.fact
+        except KeyError:
+            return self.atom
+
+    def generate_action(self,
+                        machine: durable_reasoner.machine.durable_machine,
+                        ) -> Callable[[BINDING], None]:
+        if getattr(self, "fact", None) is not None:
+            raise NotImplementedError(1)
+        else:
+            return machine_facts.retract_object_function(machine, self.atom)
+
+    @classmethod
+    def from_rdf(cls, infograph: rdflib.Graph,
+                 rootnode: rdflib.IdentifiedNode,
+                 model = None,
+                 **kwargs: typ.Any) -> "rif_retract":
+        if model is None: #please remove later
+            from .class_rdfmodel import rdfmodel
+            model = rdfmodel()
+        target_node: rdflib.IdentifiedNode = infograph.value(rootnode, RIF.target) #type: ignore[assignment]
+        target = model.generate_object(infograph, target_node)
+        return cls(target)
+
+
+class rif_ineg:
+    formula: Union[rif_frame]
+    def __init__(self, formula: Union[rif_frame]):
+        self.formula = formula
+
+    @classmethod
+    def from_rdf(cls, infograph: rdflib.Graph,
+                 rootnode: rdflib.IdentifiedNode,
+                 model = None,
+                 **kwargs: typ.Any) -> "rif_assert":
+        if model is None: #please remove later
+            from .class_rdfmodel import rdfmodel
+            model = rdfmodel()
+        target_node: rdflib.IdentifiedNode = infograph.value(rootnode, RIF.formula) #type: ignore[assignment]
+        target = model.generate_object(infograph, target_node)
+        return cls(target)
+
+    def __repr__(self) -> str:
+        return "INeg( %s )" % self.fact
 
 class rif_assert:
     fact: Union[rif_frame]

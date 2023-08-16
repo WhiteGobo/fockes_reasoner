@@ -331,6 +331,8 @@ class durable_rule(abc_machine.rule):
         self.finalized = False
         self.bindings = {}
 
+        self._orig_pattern = []
+
     def finalize(self) -> None:
         if self.finalized:
             raise Exception()
@@ -343,6 +345,7 @@ class durable_rule(abc_machine.rule):
                     pattern: Mapping[str, Union[Variable, str, TRANSLATEABLE_TYPES]],
                     factname: Union[str, None] = None,
                     ) -> None:
+        self._orig_pattern.append(dict(pattern))
         from .machine_facts import rdflib2string
         pattern = dict(pattern)
         if factname is None:
@@ -383,6 +386,9 @@ class durable_rule(abc_machine.rule):
         if constraint is None:
             raise Exception("Cant handle %s" % pattern)
         self.patterns.append(getattr(rls.c, factname) << constraint)
+
+    def __repr__(self) -> str:
+        return f"rule: {self._orig_pattern}-> {self.action}"
 
 class _value_locator:
     factname: str
