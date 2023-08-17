@@ -26,7 +26,7 @@ def test_simpletestrun():
     myfacts = q.run()
     logger.info("Expected conclusions in ttl:\n%s" % conc_graph.serialize())
     logger.info("All facts after machine has run:\n%s" % list(q.machine.get_facts()))
-    rif_facts = list(rdfmodel().import_graph(conc_graph))
+    rif_facts = [f for f in rdfmodel().import_graph(conc_graph) if not isinstance(f, rdflib.term.Node)]
     assert rif_facts, "couldnt load conclusion rif_facts directly"
     assert q.check(rif_facts), "Missing expected conclusions"
 
@@ -51,7 +51,7 @@ def test_PositiveEntailmentTests(testinfo):
     q = fockes_reasoner.simpleLogicMachine.from_rdf(g)
     myfacts = q.run()
     logger.info("Expected conclusions in ttl:\n%s" % conc_graph.serialize())
-    rif_facts = list(rdfmodel().import_graph(conc_graph))
+    rif_facts = [f for f in rdfmodel().import_graph(conc_graph) if not isinstance(f, rdflib.term.Node)]
     logger.info("All facts after machine has run:\n%s\n\nexpected "
             "facts:\n%s" % (list(q.machine.get_facts()), rif_facts))
     assert rif_facts, "couldnt load conclusion rif_facts directly"
