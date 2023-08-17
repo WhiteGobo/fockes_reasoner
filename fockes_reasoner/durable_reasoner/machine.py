@@ -175,6 +175,8 @@ class durable_machine(abc_machine.machine):
                 try:
                     with _closure_helper(self, c):
                         action(bindings)
+                except FailedInteranlAction:
+                    raise
                 except Exception as err:
                     self.logger.info("Failed at action %r with bindings %s. "
                                      "Produced traceback:\n%s"
@@ -382,8 +384,24 @@ class durable_rule(abc_machine.rule):
             self.machine._make_rule(self.patterns, self.action, self.bindings)
         else:
             def action(bindings: BINDING) -> None:
-                if all(x(bindings) for x in self.conditions):
+                for cond in self.conditions:
+                    try:
+                        if not cond(bindings):
+                            return
+                    except Exception as err:
+                        self.machine.logger.info("Failed at condition %r with "
+                                    "bindings %s. Produced traceback:\n%s"
+                                     % (cond, bindings,
+                                        traceback.format_exc()))
+                        raise FailedInternalAction() from err
+                try:
                     self.action(bindings)
+                except Exception as err:
+                    self.machine.logger.info("Failed at action %r with bindings %s. "
+                                     "Produced traceback:\n%s"
+                                     % (action, bindings,
+                                        traceback.format_exc()))
+                    raise FailedInternalAction() from err
             self.machine._make_rule(self.patterns, action, self.bindings)
         self.finalized = True
 
