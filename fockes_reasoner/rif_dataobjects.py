@@ -254,7 +254,7 @@ class rif_do(_action_gen):
         actions: List[Union[rif_assert]] = []
         for target_node in target_list:
             next_target = model.generate_object(infograph, target_node)
-            assert isinstance(next_target, (rif_assert, rif_retract))
+            assert isinstance(next_target, (rif_assert, rif_retract, rif_modify)), "got unexpected rif object. Invalid RIF document?"
             actions.append(next_target)
         return cls(actions)
 
@@ -419,6 +419,34 @@ class rif_ineg:
 
     def __repr__(self) -> str:
         return "INeg( %s )" % self.fact
+
+class rif_modify:
+    fact: Union[rif_frame]
+    def __init__(self, fact: Union[rif_frame]):
+        self.fact = fact
+
+    def generate_action(self,
+                        machine: durable_reasoner.machine.durable_machine,
+                        ) -> Callable[[BINDING], None]:
+        return self.fact.generate_assert_action(machine)
+
+    @classmethod
+    def from_rdf(cls, infograph: rdflib.Graph,
+                 rootnode: rdflib.IdentifiedNode,
+                 model = None,
+                 **kwargs: typ.Any) -> "rif_assert":
+        if model is None: #please remove later
+            from .class_rdfmodel import rdfmodel
+            model = rdfmodel()
+        target: rdflib.IdentifiedNode = infograph.value(rootnode, RIF.target) #type: ignore[assignment]
+        target_type = infograph.value(target, RDF.type)
+        fact = model.generate_object(infograph, target)
+        assert isinstance(fact, rif_frame)
+        return cls(fact, **kwargs)
+
+    def __repr__(self) -> str:
+        return "Modify(%s)" % self.fact
+
 
 class rif_assert:
     fact: Union[rif_frame]
