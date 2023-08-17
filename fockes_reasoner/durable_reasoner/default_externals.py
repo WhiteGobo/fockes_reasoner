@@ -13,5 +13,14 @@ def ascondition_pred_greater_than(bigger: Union[Literal, Variable], smaller: Uni
     def greater_than(bindings: BINDING) -> bool:
         b = bindings.get(bigger, bigger)
         s = bindings.get(smaller, smaller)
-        return b > s
+        return Literal(b > s)
     return greater_than
+
+def asassign_func_numeric_subtract(first: Union[Literal, Variable], second: Union[Literal, Variable]) -> Callable[[BINDING], Literal]:
+    valid1 = bigger.isnumeric() or isinstance(bigger, Variable)
+    valid2 = smaller.isnumeric() or isinstance(smaller, Variable)
+    def numeric_subtract(bindings: BINDING) -> Literal:
+        f = bindings.get(first, first)
+        s = bindings.get(second, second)
+        return Literal(f - s)
+    return numeric_subtract

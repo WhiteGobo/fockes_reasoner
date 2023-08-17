@@ -12,7 +12,7 @@ from . import abc_machine
 from .abc_machine import TRANSLATEABLE_TYPES, FACTTYPE, BINDING, VARIABLE_LOCATOR
 from .bridge_rdflib import rdflib2string, string2rdflib
 
-from ..shared import RDF, pred
+from ..shared import RDF, pred, func
 from . import machine_facts
 from .machine_facts import frame, member, subclass, fact, external
 #from .machine_facts import frame, member, subclass, fact
@@ -132,8 +132,10 @@ class durable_machine(abc_machine.machine):
 
         self._registered_pattern_generator = {}
         self._registered_condition_generator = {}
-        self._registered_action_generator= {}
+        self._registered_action_generator = {}
+        self._registered_assignment_generator = {}
         self.register(pred["numeric-greater-than"], ascondition=def_ext.ascondition_pred_greater_than)
+        self.register(func["numeric-subtract"], asassign=def_ext.asassign_func_numeric_subtract)
 
     def check_statement(self, statement: machine_facts.fact) -> bool:
         """Checks if given proposition is true.
@@ -250,11 +252,14 @@ class durable_machine(abc_machine.machine):
 
     def register(self, op: rdflib.URIRef, asaction: Optional[Callable] = None,
             ascondition: Optional[Callable] = None,
+            asassign: Optional[Callable] = None,
             aspattern: Optional[Callable] = None):
         if asaction is not None:
             self._registered_action_generator[op] = asaction
         if ascondition is not None:
             self._registered_condition_generator[op] = ascondition
+        if asassign is not None:
+            self._registered_assignment_generator[op] = asassign
         if aspattern is not None:
             self._registered_pattern_generator[op] = aspattern
 
