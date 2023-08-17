@@ -13,12 +13,18 @@ import typing as typ
 from typing import MutableMapping, Mapping, Union, Callable
 
 
-from .abc_machine import external
-
 from .abc_machine import BINDING, CLOSURE_BINDINGS, VARIABLE_LOCATOR, TRANSLATEABLE_TYPES
 
 from .bridge_rdflib import *
 from .abc_machine import fact
+
+class external:
+    def __init__(self, op, args) -> None:
+        self.op = op
+        self.args = list(args)
+
+    def add_pattern(self, rule: abc_machine.rule) -> None:
+        rule.generate_pattern_external(self.op, self.args)
 
 class frame(fact):
     obj: typ.Union[TRANSLATEABLE_TYPES, external, Variable]
@@ -172,3 +178,4 @@ class retract_object_function:
 
     def __repr__(self):
         return "Retract(%s)" % self.atom
+

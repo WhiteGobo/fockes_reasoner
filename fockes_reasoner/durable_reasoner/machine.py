@@ -12,10 +12,12 @@ from . import abc_machine
 from .abc_machine import TRANSLATEABLE_TYPES, FACTTYPE, BINDING, VARIABLE_LOCATOR
 from .bridge_rdflib import rdflib2string, string2rdflib
 
-from ..shared import RDF
+from ..shared import RDF, pred
 from . import machine_facts
 from .machine_facts import frame, member, subclass, fact, external
 #from .machine_facts import frame, member, subclass, fact
+
+from . import default_externals as def_ext
 
 MACHINESTATE = "machinestate"
 RUNNING_STATE = "running"
@@ -31,6 +33,11 @@ LIST_MEMBERS = "member"
 """:term:`list` enlist all their members under this label."""
 
 class FailedInternalAction(Exception):
+    ...
+
+class NoPossibleExternal(ValueError):
+    """Raise this, if wanted functionality is not implemented for this external
+    """
     ...
 
 class _context_helper(abc.ABC):
@@ -122,6 +129,11 @@ class durable_machine(abc_machine.machine):
         self.errors = []
         self._current_context = _no_closure(self)
         self._initialized = False
+
+        self._registered_pattern_generator = {}
+        self._registered_condition_generator = {}
+        self._registered_action_generator= {}
+        self.register(pred["numeric-greater-than"], ascondition=def_ext.ascondition_pred_greater_than)
 
     def check_statement(self, statement: machine_facts.fact) -> bool:
         """Checks if given proposition is true.
@@ -216,6 +228,34 @@ class durable_machine(abc_machine.machine):
     def create_rule_builder(self) -> "durable_rule":
         return durable_rule(self)
 
+    def _create_pattern_for_external(self, op, args):
+        """Try to create a complete pattern for given external statement.
+        :raises NoPossibleExternal: If given external is not defined or cant be used to
+            directly produce a pattern raise this error.
+        """
+        raise NoPossibleExternal()
+
+    def _create_condition_from_external(self, op, args) -> Callable[[BINDING], bool]:
+        """Create a condition from given external.
+        :raises NoPossibleExternal: If given external is not defined or cant be used to
+            directly produce a condition raise this error.
+        """
+        try:
+            mygen = self._registered_condition_generator[op]
+        except KeyError as err:
+            raise NoPossibleExternal(op) from err
+        return mygen(*args)
+
+    def register(self, op: rdflib.URIRef, asaction: Optional[Callable] = None,
+            ascondition: Optional[Callable] = None,
+            aspattern: Optional[Callable] = None):
+        if asaction is not None:
+            self._registered_action_generator[op] = asaction
+        if ascondition is not None:
+            self._registered_condition_generator[op] = ascondition
+        if aspattern is not None:
+            self._registered_pattern_generator[op] = aspattern
+
 
 class RDFmachine(durable_machine):
     """Implements translation of as in RDF specified syntax for the machine
@@ -294,6 +334,7 @@ class RDFmachine(durable_machine):
                 raise Exception("Couldnt transform all lists")
 
 
+
 class durable_action(abc_machine.action):
     action: Optional[Callable[[BINDING], None]]
     """action that is executed in initstate (machinestate==init)"""
@@ -326,6 +367,7 @@ class durable_rule(abc_machine.rule):
         self.machine = machine
         self.patterns = [getattr(rls.m, MACHINESTATE) == RUNNING_STATE]
         self.action = None
+        self.conditions = []
         self.finalized = False
         self.bindings = {}
 
@@ -336,8 +378,28 @@ class durable_rule(abc_machine.rule):
             raise Exception()
         if self.action is None:
             raise Exception()
+        if not self.conditions:
+            self.machine._make_rule(self.patterns, self.action, self.bindings)
+        else:
+            def action(bindings: BINDING) -> None:
+                if all(x(bindings) for x in self.conditions):
+                    self.action(bindings)
+            self.machine._make_rule(self.patterns, action, self.bindings)
         self.finalized = True
-        self.machine._make_rule(self.patterns, self.action, self.bindings)
+
+    def generate_pattern_external(self, op, args) -> None:
+        try:
+            self.machine._create_pattern_for_external(op, args)
+            return
+        except NoPossibleExternal:
+            pass
+        try:
+            new_condition = self.machine._create_condition_from_external(op, args)
+            self.conditions.append(new_condition)
+            return
+        except NoPossibleExternal:
+            pass
+        raise ValueError("Cant process external: %s %s" % (op, args))
 
     def add_pattern(self,
                     pattern: Mapping[str, Union[Variable, str, TRANSLATEABLE_TYPES]],

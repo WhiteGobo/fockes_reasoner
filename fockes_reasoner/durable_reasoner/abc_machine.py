@@ -16,19 +16,19 @@ VARIABLE_LOCATOR = Callable[[typ.Any], TRANSLATEABLE_TYPES]
 CLOSURE_BINDINGS = MutableMapping[rdflib.Variable, VARIABLE_LOCATOR]
 
 
-class external(abc.ABC):
-    """Parentclass for all extension for information representation."""
-    @classmethod
-    @abc.abstractmethod
-    def parse(cls, string: str) -> "external":
-        ...
-
-    @abc.abstractmethod
-    def serialize(self, c: typ.Any,
-                  bindings: BINDING,
-                  external_resolution: Mapping[typ.Union[rdflib.URIRef, rdflib.BNode], "external"],
-                  ) -> str:
-        ...
+#class external(abc.ABC):
+#    """Parentclass for all extension for information representation."""
+#    @classmethod
+#    @abc.abstractmethod
+#    def parse(cls, string: str) -> "external":
+#        ...
+#
+#    @abc.abstractmethod
+#    def serialize(self, c: typ.Any,
+#                  bindings: BINDING,
+#                  external_resolution: Mapping[typ.Union[rdflib.URIRef, rdflib.BNode], "external"],
+#                  ) -> str:
+#        ...
 
 class pattern(abc.ABC):
     #replaces rls.value
@@ -50,14 +50,12 @@ class fact(abc.ABC):
     @abc.abstractmethod
     def retract_fact(self, c: "machine",
                 bindings: BINDING = {},
-                external_resolution: Mapping[typ.Union[rdflib.URIRef, rdflib.BNode], external] = {},
                 ) -> None:
         ...
 
     @abc.abstractmethod
     def modify_fact(self, c: "machine",
                bindings: BINDING = {},
-               external_resolution: Mapping[typ.Union[rdflib.URIRef, rdflib.BNode], external] = {},
                ) -> None:
         ...
 
@@ -103,7 +101,7 @@ class action:
     def finalize(self) -> None:
         ...
 
-class rule:
+class rule(abc.ABC):
     patterns: typ.Any
     action: Optional[Callable]
     machine: machine
@@ -117,4 +115,8 @@ class rule:
                     pattern: Mapping[str, Union[str, TRANSLATEABLE_TYPES]],
                     factname: Optional[str] = None,
                     ) -> None:
+        ...
+
+    @abc.abstractmethod
+    def generate_pattern_external(self, op, args) -> None:
         ...

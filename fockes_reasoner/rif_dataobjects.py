@@ -28,6 +28,8 @@ class _action_gen(abc.ABC):
 
 
 def slot2node(infograph: Graph, x: IdentifiedNode) -> ATOM:
+    """Transform
+    """
     val_info = dict(infograph.predicate_objects(x))
     t = val_info[RDF.type]
     if t == RIF.Var:
@@ -37,6 +39,8 @@ def slot2node(infograph: Graph, x: IdentifiedNode) -> ATOM:
     elif t == RIF.Const and RIF.value in val_info:
         val: Literal = val_info[RIF.value]#type: ignore[assignment]
         return val
+    elif t == RIF.External:
+        rif_external.from_rdf(infograph, x)
     else:
         raise NotImplementedError(t)
 
@@ -125,8 +129,20 @@ class rif_forall:
             raise NotImplementedError()
         elif self.pattern is None and isinstance(self.formula, rif_implies):
             newrule = machine.create_rule_builder()
-            self.formula.if_.add_pattern(newrule)
-            action = self.formula.then_.generate_action(machine)
+            conditions = []
+            if isinstance(self.formula.if_, rif_and):
+                for pat in self.formula.if_.formulas:
+                    try:
+                        pat.add_pattern(newrule)
+                    except Exception:
+                        raise
+                        conditions.append(pat.generate_condition(machine))
+            else:
+                self.formula.if_.add_pattern(newrule)
+            if len(conditions) == 0:
+                action = self.formula.then_.generate_action(machine)
+            else:
+                raise NotImplementedError()
             newrule.action = action
             logger.info("create rule %r" % newrule)
             newrule.finalize()
@@ -219,6 +235,10 @@ class rif_and:
     def __init__(self, formulas: Iterable[Union["rif_frame"]]):
         self.formulas = list(formulas)
 
+    def add_pattern(self, rule: durable_reasoner.machine.durable_rule) -> None:
+        for form in self.formulas:
+            form.add_pattern(rule)
+
     @classmethod
     def from_rdf(cls, infograph: rdflib.Graph,
                  rootnode: IdentifiedNode,
@@ -287,6 +307,17 @@ class rif_external:
     def __init__(self, op: ATOM, args: Iterable[ATOM]):
         self.op = op
         self.args = list(args)
+
+    def generate_condition(self,
+                           machine: durable_reasoner.machine.durable_machine,
+                           ) -> Callable[[BINDING], bool]:
+        raise NotImplementedError()
+
+    def add_pattern(self, rule: durable_reasoner.machine.durable_rule) -> None:
+        if not isinstance(self.op, rdflib.term.Node) and all(isinstance(x, rdflib.term.Node) for x in self.args):
+            raise NotImplementedError("Currently only basic atoms are supported", self.op)
+        m = external(self.op, self.args)
+        m.add_pattern(rule)
 
     @classmethod
     def from_rdf(cls, infograph: rdflib.Graph,
