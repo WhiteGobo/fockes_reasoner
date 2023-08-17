@@ -214,6 +214,31 @@ class rif_implies:
     def __repr__(self) -> str:
         return "If %s Then %s" %(self.if_, self.then_)
 
+class rif_and:
+    formulas: Iterable[Union["rif_frame"]]
+    def __init__(self, formulas: Iterable[Union["rif_frame"]]):
+        self.formulas = list(formulas)
+
+    @classmethod
+    def from_rdf(cls, infograph: rdflib.Graph,
+                 rootnode: IdentifiedNode,
+                 model = None,
+                 ) -> "rif_do":
+        if model is None: #please remove later
+            from .class_rdfmodel import rdfmodel
+            model = rdfmodel()
+        try:
+            formula_list_node, = infograph.objects(rootnode, RIF.formulas)
+        except ValueError as err:
+            raise Exception("Syntaxerror of RIF document") from err
+        formula_list: Iterable[IdentifiedNode] = rdflib.collection.Collection(infograph, formula_list_node) #type: ignore[assignment]
+        formulas: List[Union[rif_assert]] = []
+        for formula_node in formula_list:
+            next_formula = model.generate_object(infograph, formula_node)
+            #assert isinstance(next_formula, (rif_assert, rif_retract, rif_modify)), "got unexpected rif object. Invalid RIF document?"
+            formulas.append(next_formula)
+        return cls(formulas)
+
 class rif_do(_action_gen):
     target: List[Union["rif_assert", "rif_retract"]]
     def __init__(self, actions: Iterable[Union["rif_assert", "rif_retract"]]):
@@ -255,6 +280,31 @@ class rif_do(_action_gen):
 
     def __repr__(self) -> str:
         return "Do( %s )" % ", ".join(repr(x) for x in self.actions)
+
+class rif_external:
+    op: ATOM
+    args: Iterable[ATOM]
+    def __init__(self, op: ATOM, args: Iterable[ATOM]):
+        self.op = op
+        self.args = list(args)
+
+    @classmethod
+    def from_rdf(cls, infograph: rdflib.Graph,
+                 rootnode: rdflib.IdentifiedNode,
+                 model = None,
+                 **kwargs: typ.Any) -> "rif_retract":
+        if model is None: #please remove later
+            from .class_rdfmodel import rdfmodel
+            model = rdfmodel()
+        content_node: rdflib.IdentifiedNode = infograph.value(rootnode, RIF.content) #type: ignore[assignment]
+        op_node: rdflib.IdentifiedNode = infograph.value(content_node, RIF.op)
+        op = model.generate_object(infograph, op_node)
+        arg_list_node = infograph.value(content_node, RIF.args)
+        arg_list = rdflib.collection.Collection(infograph, arg_list_node)
+        args = []
+        for x in arg_list:
+            args.append(model.generate_object(infograph, x))
+        return cls(op, args)
 
 class rif_frame:
     facts: Tuple[machine_facts.frame, ...]
