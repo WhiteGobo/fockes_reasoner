@@ -193,7 +193,12 @@ class rif_implies:
 
     @classmethod
     def from_rdf(cls, infograph: rdflib.Graph,
-                 rootnode: rdflib.IdentifiedNode) -> "rif_implies":
+                 rootnode: rdflib.IdentifiedNode,
+                 model = None,
+                 ) -> "rif_implies":
+        if model is None: #please remove later
+            from .class_rdfmodel import rdfmodel
+            model = rdfmodel()
         if_node: IdentifiedNode
         then_node: IdentifiedNode
         info = dict(infograph.predicate_objects(rootnode))
@@ -202,18 +207,8 @@ class rif_implies:
             then_node = info[RIF["then"]] #type: ignore[assignment]
         except KeyError as err:
             raise RIFSyntaxError() from err
-        if_type = infograph.value(if_node, RDF.type)
-        if if_type == RIF.Frame:
-            if_ = rif_frame.from_rdf(infograph, if_node)
-        elif if_type == RIF.INeg:
-            if_ = rif_ineg.from_rdf(infograph, if_node)
-        else:
-            raise NotImplementedError(if_type)
-        then_type = infograph.value(then_node, RDF.type)
-        if then_type == RIF.Do:
-            then_ = rif_do.from_rdf(infograph, then_node)
-        else:
-            raise NotImplementedError(then_type)
+        if_ = model.generate_object(infograph, if_node)
+        then_ = model.generate_object(infograph, then_node)
         return cls(if_, then_)
 
     def __repr__(self) -> str:

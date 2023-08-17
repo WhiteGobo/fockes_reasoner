@@ -3,7 +3,7 @@ import rdflib
 from rdflib import RDF, Graph, URIRef, IdentifiedNode
 from .shared import RIF
 from .durable_reasoner import fact, frame
-from .rif_dataobjects import slot2node, rif_frame, rif_assert, rif_retract, rif_modify
+from .rif_dataobjects import slot2node, rif_frame, rif_assert, rif_retract, rif_modify, rif_do
 
 DEFAULT_REGISTER: Mapping[rdflib.URIRef, Callable[[Graph, IdentifiedNode], Any]]\
         = {RIF.Frame: rif_frame.from_rdf,
@@ -11,6 +11,7 @@ DEFAULT_REGISTER: Mapping[rdflib.URIRef, Callable[[Graph, IdentifiedNode], Any]]
             RIF.Retract: rif_retract.from_rdf,
             RIF.Modify: rif_modify.from_rdf,
             RIF.Var: slot2node,
+            RIF.Do: rif_do.from_rdf,
             #RIF.constIRI: slot2node,
             #RIF.RIF.Const: slot2node,
             }

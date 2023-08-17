@@ -36,7 +36,7 @@ def test_simpletestrun():
     pytest.param(data.test_suite.PET_AssertRetract, marks=pytest.mark.skip("implications are not supported yet")),
     pytest.param(data.test_suite.PET_AssertRetract2),
     pytest.param(data.test_suite.PET_Modify),
-    pytest.param(data.test_suite.PET_Modify_loop, marks=pytest.mark.skip("modify isnt implemented yet")),
+    pytest.param(data.test_suite.PET_Modify_loop),
     ])
 def test_PositiveEntailmentTests(testinfo):
     testfile = str(testinfo.premise)
