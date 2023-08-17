@@ -388,22 +388,10 @@ class rif_frame:
                  rootnode: rdflib.IdentifiedNode,
                  **kwargs: typ.Any) -> "rif_frame":
         info = dict(infograph.predicate_objects(rootnode))
-        def slot2node(x: rdflib.term.Node) -> ATOM:
-            val_info = dict(infograph.predicate_objects(x))
-            t = val_info[RDF.type]
-            if t == RIF.Var:
-                return rdflib.Variable(str(val_info[RIF.varname]))
-            elif t == RIF.Const and RIF.constIRI in val_info:
-                return rdflib.URIRef(str(val_info[RIF.constIRI]))
-            elif t == RIF.Const and RIF.value in val_info:
-                val: Literal = val_info[RIF.value]#type: ignore[assignment]
-                return val
-            else:
-                raise NotImplementedError(t)
         q = rdflib.collection.Collection(infograph, info[RIF.slots])
-        slotinfo = [(slot2node(d[RIF.slotkey]), slot2node(d[RIF.slotvalue]))
+        slotinfo = [(slot2node(infograph, d[RIF.slotkey]), slot2node(infograph, d[RIF.slotvalue]))
                     for d in (dict(infograph.predicate_objects(x)) for x in q)]
-        obj = slot2node(info[RIF.object])
+        obj = slot2node(infograph, info[RIF.object])
         return cls(obj, slotinfo, **kwargs)
 
 class rif_retract:
