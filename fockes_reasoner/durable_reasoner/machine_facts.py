@@ -169,3 +169,6 @@ class retract_object_function:
         atom = _node2string(self.atom, self.machine, bindings)
         fact = {"type": frame.ID, frame.FRAME_OBJ: atom}
         self.machine.retract_fact(fact)
+
+    def __repr__(self):
+        return "Retract(%s)" % self.atom

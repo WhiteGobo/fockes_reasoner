@@ -232,12 +232,20 @@ class rif_do(_action_gen):
 
     def _act(self, bindings: BINDING) -> None:
         for act in self._all_actions:
-            act(bindings)
+            try:
+                act(bindings)
+            except Exception:
+                logger.info("Failed at: %s" % act)
+                raise
 
     @classmethod
     def from_rdf(cls, infograph: rdflib.Graph,
                  rootnode: IdentifiedNode,
+                 model = None,
                  ) -> "rif_do":
+        if model is None: #please remove later
+            from .class_rdfmodel import rdfmodel
+            model = rdfmodel()
         try:
             target_list_node, = infograph.objects(rootnode, RIF.actions)
         except ValueError as err:
@@ -245,13 +253,8 @@ class rif_do(_action_gen):
         target_list: Iterable[IdentifiedNode] = rdflib.collection.Collection(infograph, target_list_node) #type: ignore[assignment]
         actions: List[Union[rif_assert]] = []
         for target_node in target_list:
-            target_type = infograph.value(target_node, RDF.type)
-            if target_type == RIF.Assert:
-                next_target = rif_assert.from_rdf(infograph, target_node)
-            elif target_type == RIF.Retract:
-                next_target = rif_retract.from_rdf(infograph, target_node)
-            else:
-                raise NotImplementedError(target_type)
+            next_target = model.generate_object(infograph, target_node)
+            assert isinstance(next_target, (rif_assert, rif_retract))
             actions.append(next_target)
         return cls(actions)
 
@@ -291,6 +294,14 @@ class rif_frame:
                     return False
             return True
         return condition
+
+    def generate_retract_action(self,
+                      machine: durable_reasoner.machine.durable_machine,
+                      ) -> Callable[[machine_facts.BINDING], None]:
+        def _assert(bindings: BINDING) -> None:
+            for f in self.facts:
+                f.retract_fact(machine, bindings)
+        return _assert
 
     def generate_assert_action(self,
                       machine: durable_reasoner.machine.durable_machine,
@@ -354,10 +365,12 @@ class rif_retract:
     #fact: Optional[Union[rif_frame]]
     #atom: Optional[Union[IdentifiedNode]]
     def __init__(self, fact_or_atom: Union[rif_frame, IdentifiedNode]):
-        if isinstance(fact_or_atom, fact):
-            self.fact = fact
-        else:
+        if isinstance(fact_or_atom, (rif_frame,)):
+            self.fact = fact_or_atom
+        elif isinstance(fact_or_atom, IdentifiedNode):
             self.atom = fact_or_atom
+        else:
+            raise TypeError(fact_or_atom, type(fact_or_atom))
 
     @property
     def fact_or_atom(self):
@@ -370,7 +383,7 @@ class rif_retract:
                         machine: durable_reasoner.machine.durable_machine,
                         ) -> Callable[[BINDING], None]:
         if getattr(self, "fact", None) is not None:
-            raise NotImplementedError(1)
+            return self.fact.generate_retract_action(machine)
         else:
             return machine_facts.retract_object_function(machine, self.atom)
 

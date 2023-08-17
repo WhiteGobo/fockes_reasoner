@@ -163,8 +163,6 @@ class durable_machine(abc_machine.machine):
                 try:
                     with _closure_helper(self, c):
                         action(bindings)
-                except FailedInternalAction:
-                    raise
                 except Exception as err:
                     self.logger.info("Failed at action %r with bindings %s. "
                                      "Produced traceback:\n%s"
