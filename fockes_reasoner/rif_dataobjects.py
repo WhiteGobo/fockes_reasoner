@@ -339,13 +339,21 @@ class rif_external:
 
 class rif_frame:
     facts: Tuple[machine_facts.frame, ...]
+    obj: ATOM
+    slots: Iterable[Tuple[ATOM, ATOM]]
     def __init__(self, obj: ATOM,
                  slots: Iterable[SLOT],
                  ) -> None:
-        facts = []
-        for slotkey, slotvalue in slots:
-            facts.append(machine_facts.frame(obj, slotkey, slotvalue))
-        self.facts = tuple(facts)
+        self.obj = obj
+        self.slots = [tuple((x,y)) for x,y in slots]
+
+    @property
+    def facts(self) -> Iterable[machine_facts.frame]:
+        for slotkey, slotvalue in self.slots:
+            if any(isinstance(x, rif_external) for x in (self.obj, slotkey, slotvalue)):
+                raise Exception(self.obj, slotkey, slotvalue)
+            yield machine_facts.frame(self.obj, slotkey, slotvalue)
+        
 
     def check(self,
             machine: durable_reasoner.machine.durable_machine,
@@ -357,7 +365,10 @@ class rif_frame:
         return True
 
     def add_pattern(self, rule: durable_reasoner.machine.durable_rule) -> None:
-        for f in self.facts:
+        for slotkey, slotvalue in self.slots:
+            if any(isinstance(x, rif_external) for x in (self.obj, slotkey, slotvalue)):
+                raise Eception(self.obj, slotkey, slotvalue)
+            f = machine_facts.frame(self.obj, slotkey, slotvalue)
             f.add_pattern(rule)
 
     def generate_condition(self,
@@ -382,8 +393,9 @@ class rif_frame:
     def generate_assert_action(self,
                       machine: durable_reasoner.machine.durable_machine,
                       ) -> Callable[[machine_facts.BINDING], None]:
+        facts = list(self.facts)
         def _assert(bindings: BINDING) -> None:
-            for f in self.facts:
+            for f in facts:
                 f.assert_fact(machine, bindings)
         return _assert
 
@@ -391,10 +403,6 @@ class rif_frame:
         """Is called, when frame is direct sub to a Group"""
         action = self.generate_assert_action(machine)
         machine.add_init_action(action)
-
-    @property
-    def obj(self) -> ATOM:
-        return self.facts[0].obj
 
     def __repr__(self) -> str:
         name = type(self).__name__
@@ -410,8 +418,8 @@ class rif_frame:
                     return "'%s'" % x
             else:
                 return str(x)
-        slots = ", ".join("%s->%s"%(conv(f.slotkey), conv(f.slotvalue))
-                          for f in self.facts)
+        slots = ", ".join("%s->%s"%(conv(slotkey), conv(slotvalue))
+                          for slotkey, slotvalue in self.slots)
         return "%s[%s]" % (conv(self.obj), slots)
 
     @classmethod
