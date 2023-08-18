@@ -9,7 +9,7 @@ from hashlib import sha1
 import rdflib
 from rdflib import URIRef, Variable, Literal, BNode
 from . import abc_machine
-from .abc_machine import TRANSLATEABLE_TYPES, FACTTYPE, BINDING, VARIABLE_LOCATOR
+from .abc_machine import TRANSLATEABLE_TYPES, FACTTYPE, BINDING, VARIABLE_LOCATOR, NoPossibleExternal
 from .bridge_rdflib import rdflib2string, string2rdflib
 
 from ..shared import RDF, pred, func
@@ -33,11 +33,6 @@ LIST_MEMBERS = "member"
 """:term:`list` enlist all their members under this label."""
 
 class FailedInternalAction(Exception):
-    ...
-
-class NoPossibleExternal(ValueError):
-    """Raise this, if wanted functionality is not implemented for this external
-    """
     ...
 
 class _context_helper(abc.ABC):
@@ -136,6 +131,16 @@ class durable_machine(abc_machine.machine):
         self._registered_assignment_generator = {}
         self.register(pred["numeric-greater-than"], ascondition=def_ext.ascondition_pred_greater_than)
         self.register(func["numeric-subtract"], asassign=def_ext.asassign_func_numeric_subtract)
+
+    def get_replacement_node(self, op: rdflib.term.Node, args: Iterable[rdflib.term.Node]):
+        raise NoPossibleExternal()
+
+    def get_binding_action(self, op: rdflib.term.Node, args: Iterable[rdflib.term.Node]):
+        try:
+            funcgen = self._registered_assignment_generator[op]
+        except KeyError:
+            raise NoPossibleExternal() from err
+        return funcgen(*args)
 
     def check_statement(self, statement: machine_facts.fact) -> bool:
         """Checks if given proposition is true.
@@ -379,6 +384,9 @@ class durable_rule(abc_machine.rule):
         self.bindings = {}
 
         self._orig_pattern = []
+
+    def generate_node_external(self, op, args) -> Union[str, rdflib.BNode, rdflib.URIRef, rdflib.Literal]:
+        raise NotImplementedError()
 
     def finalize(self) -> None:
         if self.finalized:

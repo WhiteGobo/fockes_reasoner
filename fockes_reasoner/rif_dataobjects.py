@@ -1,7 +1,8 @@
 import abc
 import logging
 logger = logging.getLogger(__name__)
-from .durable_reasoner import machine_facts, fact
+import uuid
+from .durable_reasoner import machine_facts, fact, NoPossibleExternal
 from .durable_reasoner.machine_facts import external, TRANSLATEABLE_TYPES
 import rdflib
 from rdflib import IdentifiedNode, Graph, Variable, Literal
@@ -308,6 +309,16 @@ class rif_external:
         self.op = op
         self.args = list(args)
 
+    def get_replacement_node(self,
+                      machine: durable_reasoner.machine.durable_machine,
+            ):
+        return machine.get_replacement_node(self.op, self.args)
+
+    def get_binding_action(self,
+                      machine: durable_reasoner.machine.durable_machine,
+            ):
+        return machine.get_binding_action(self.op, self.args)
+
     def generate_condition(self,
                            machine: durable_reasoner.machine.durable_machine,
                            ) -> Callable[[BINDING], bool]:
@@ -403,18 +414,38 @@ class rif_frame:
     def generate_assert_action(self,
                       machine: durable_reasoner.machine.durable_machine,
                       ) -> Callable[[machine_facts.BINDING], None]:
+        """
+        :TODO: Creation of variable is not safe
+        """
         facts = []
+        binding_actions = []
         for slotkey, slotvalue in self.slots:
             args = [self.obj, slotkey, slotvalue]
             for i, arg in enumerate(args):
                 if isinstance(arg, rdflib.term.Node):
                     pass
                 elif isinstance(arg, rif_external):
-                    raise NotImplementedError()
+                    try:
+                        args[i] = arg.get_replacement_node(machine)
+                        continue
+                    except NoPossibleExternal:
+                        pass
+                    try:
+                        bindact = arg.get_binding_action(machine)
+                        var = Variable("tmp%s" % uuid.uuid4().hex)
+                        binding_actions.append(lambda bindings: bindings.__setitem__(var, bindact(bindings)))
+                        args[i] = var
+                        continue
+                    except NoPossibleExternal:
+                        raise
+                        pass
+                    raise ValueError("Cant figure out how use '%s' as atom in %s" %(arg, self))
                 else:
                     raise NotImplementedError(x, type(x))
             facts.append(machine_facts.frame(*args))
         def _assert(bindings: BINDING) -> None:
+            for act in binding_actions:
+                act(bindings)
             for f in facts:
                 f.assert_fact(machine, bindings)
         return _assert

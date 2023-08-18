@@ -15,6 +15,10 @@ BINDING = MutableMapping[rdflib.Variable, TRANSLATEABLE_TYPES]
 VARIABLE_LOCATOR = Callable[[typ.Any], TRANSLATEABLE_TYPES]
 CLOSURE_BINDINGS = MutableMapping[rdflib.Variable, VARIABLE_LOCATOR]
 
+class NoPossibleExternal(ValueError):
+    """Raise this, if wanted functionality is not implemented for this external
+    """
+    ...
 
 #class external(abc.ABC):
 #    """Parentclass for all extension for information representation."""
@@ -119,4 +123,11 @@ class rule(abc.ABC):
 
     @abc.abstractmethod
     def generate_pattern_external(self, op, args) -> None:
+        ...
+
+    @abc.abstractmethod
+    def generate_node_external(self, op, args) -> Union[str, rdflib.BNode, rdflib.URIRef, rdflib.Literal]:
+        """
+        :raises NoPossibleExternal:
+        """
         ...

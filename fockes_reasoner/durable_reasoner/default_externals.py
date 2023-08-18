@@ -17,8 +17,8 @@ def ascondition_pred_greater_than(bigger: Union[Literal, Variable], smaller: Uni
     return greater_than
 
 def asassign_func_numeric_subtract(first: Union[Literal, Variable], second: Union[Literal, Variable]) -> Callable[[BINDING], Literal]:
-    valid1 = bigger.isnumeric() or isinstance(bigger, Variable)
-    valid2 = smaller.isnumeric() or isinstance(smaller, Variable)
+    valid1 = first.isnumeric() or isinstance(first, Variable)
+    valid2 = second.isnumeric() or isinstance(second, Variable)
     def numeric_subtract(bindings: BINDING) -> Literal:
         f = bindings.get(first, first)
         s = bindings.get(second, second)
