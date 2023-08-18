@@ -40,7 +40,7 @@ def slot2node(infograph: Graph, x: IdentifiedNode) -> ATOM:
         val: Literal = val_info[RIF.value]#type: ignore[assignment]
         return val
     elif t == RIF.External:
-        rif_external.from_rdf(infograph, x)
+        return rif_external.from_rdf(infograph, x)
     else:
         raise NotImplementedError(t)
 
