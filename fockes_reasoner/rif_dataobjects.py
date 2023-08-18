@@ -337,6 +337,10 @@ class rif_external:
             args.append(model.generate_object(infograph, x))
         return cls(op, args)
 
+    def __repr__(self) -> str:
+        return "external %s (%s)" % (self.op, ", ".join(self.args))
+        
+
 class rif_frame:
     facts: Tuple[machine_facts.frame, ...]
     obj: ATOM
@@ -366,8 +370,14 @@ class rif_frame:
 
     def add_pattern(self, rule: durable_reasoner.machine.durable_rule) -> None:
         for slotkey, slotvalue in self.slots:
-            if any(isinstance(x, rif_external) for x in (self.obj, slotkey, slotvalue)):
-                raise Eception(self.obj, slotkey, slotvalue)
+            args = [self.obj, slotkey, slotvalue]
+            for i, arg in enumerate(args):
+                if isinstance(arg, rdflib.term.Node):
+                    pass
+                elif isinstance(arg, rif_external):
+                    raise NotImplementedError()
+                else:
+                    raise NotImplementedError(x, type(x))
             f = machine_facts.frame(self.obj, slotkey, slotvalue)
             f.add_pattern(rule)
 
@@ -393,7 +403,17 @@ class rif_frame:
     def generate_assert_action(self,
                       machine: durable_reasoner.machine.durable_machine,
                       ) -> Callable[[machine_facts.BINDING], None]:
-        facts = list(self.facts)
+        facts = []
+        for slotkey, slotvalue in self.slots:
+            args = [self.obj, slotkey, slotvalue]
+            for i, arg in enumerate(args):
+                if isinstance(arg, rdflib.term.Node):
+                    pass
+                elif isinstance(arg, rif_external):
+                    raise NotImplementedError()
+                else:
+                    raise NotImplementedError(x, type(x))
+            facts.append(machine_facts.frame(*args))
         def _assert(bindings: BINDING) -> None:
             for f in facts:
                 f.assert_fact(machine, bindings)
