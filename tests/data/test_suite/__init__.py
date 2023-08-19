@@ -7,16 +7,15 @@ _PRD = importlib.resources.files(PRD)
 PositiveEntailmentTest = namedtuple("PositiveEntailmentTest", ("premise", "conclusion"))
 NegativeEntailmentTest = namedtuple("PositiveEntailmentTest", ("premise", "conclusion"))
 class NegativeEntailmentTest:
-    def __init__(self, premise, nonconclusion, import001=None):
+    def __init__(self, premise, nonconclusion, importedDocuments={}):
         self.premise = str(premise)
         self.nonconclusion = str(nonconclusion)
-        self.import001 = str(import001) if import001 is not None else None
+        self.importedDocuments = {x: str(y) for x, y in dict(importedDocuments).items()}
 
     def __iter__(self):
         yield self.premise
         yield self.nonconclusion
-        if self.import001 is not None:
-            yield self.import001
+        yield self.importedDocuments
 
 PET_Assert = PositiveEntailmentTest(
         _PRD.joinpath("PositiveEntailmentTest/Assert/Assert-premise.rif"),
@@ -46,7 +45,8 @@ NET_Retract = NegativeEntailmentTest(
 NET_RDF_Combination_SubClass_5 = NegativeEntailmentTest(
         _PRD.joinpath("NegativeEntailmentTest/RDF_Combination_SubClass_5/RDF_Combination_SubClass_5-premise.rif"),
         _PRD.joinpath("NegativeEntailmentTest/RDF_Combination_SubClass_5/RDF_Combination_SubClass_5-nonconclusion.rif"),
-        _PRD.joinpath("NegativeEntailmentTest/RDF_Combination_SubClass_5/RDF_Combination_SubClass_5-import001.rif"),
+        {"http://www.w3.org/2005/rules/test/repository/tc/RDF_Combination_SubClass_5/RDF_Combination_SubClass_5-import001":
+        _PRD.joinpath("NegativeEntailmentTest/RDF_Combination_SubClass_5/RDF_Combination_SubClass_5-import001.rif")},
         )
 
 PositiveEntailmentTests = [PET_Assert,

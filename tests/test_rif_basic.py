@@ -59,14 +59,13 @@ def test_PositiveEntailmentTests(testinfo):
 
 @pytest.mark.parametrize("testinfo",[
     pytest.param(data.test_suite.NET_Retract),
-    pytest.param(data.test_suite.NET_RDF_Combination_SubClass_5, marks=pytest.mark.skip("implications are not supported yet")),
+    pytest.param(data.test_suite.NET_RDF_Combination_SubClass_5),
     ])
 def test_NegativeEntailmentTests(testinfo):
     testinfo.premise
     testinfo.nonconclusion
-    if testinfo.import001 is not None:
-        q3 = testinfo.import001
-        raise NotImplementedError(repr(testinfo.import001))
+    if testinfo.importedDocuments:
+        raise NotImplementedError(repr(testinfo.importedDocuments))
     try:
         g = rdflib.Graph().parse(testinfo.premise, format="rif")
         nonconc_graph = rdflib.Graph().parse(testinfo.nonconclusion, format="rif")
