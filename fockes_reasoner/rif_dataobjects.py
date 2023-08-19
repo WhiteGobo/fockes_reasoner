@@ -7,7 +7,7 @@ from .durable_reasoner.machine_facts import external, TRANSLATEABLE_TYPES
 import rdflib
 from rdflib import IdentifiedNode, Graph, Variable, Literal
 import typing as typ
-from typing import Union, Iterable, Any, Callable, MutableMapping, List, Tuple, Optional
+from typing import Union, Iterable, Any, Callable, MutableMapping, List, Tuple, Optional, Mapping
 from .shared import RIF
 from rdflib import RDF
 from . import durable_reasoner
@@ -56,15 +56,25 @@ class rif_document:
     @classmethod
     def from_rdf(cls, infograph: rdflib.Graph,
                  rootnode: rdflib.IdentifiedNode,
+                 extraDocuments: Mapping[str, None] = {},
                  **kwargs: Any) -> "rif_document":
+        """
+        :param extraDocuments: A Manager of all importable documents
+        """
+        kwargs = {}
         payload_node: IdentifiedNode
-        payload_node, = infograph.objects(rootnode, RIF.payload) #type: ignore[assignment]
-        payload_type, = infograph.objects(payload_node, RDF.type)
-        if payload_type == RIF.Group:
-            payload = rif_group.from_rdf(infograph, payload_node)
-        else:
-            raise NotImplementedError(payload_type)
-        return cls(payload)
+        payload_nodes = list(infograph.objects(rootnode, RIF.payload)) #type: ignore[assignment]
+        if len(payload_nodes) == 1:
+            payload_node = payload_nodes[0]
+            payload_type, = infograph.objects(payload_node, RDF.type)
+            if payload_type == RIF.Group:
+                kwargs["payload"] = rif_group.from_rdf(infograph, payload_node)
+            else:
+                raise NotImplementedError(payload_type)
+            
+        elif len(payload_nodes) > 1:
+            raise SyntaxError("This doesnt looks like a valid rif document.")
+        return cls(**kwargs)
 
     def __repr__(self) -> str:
         return "Document %s" % repr(self.payload)

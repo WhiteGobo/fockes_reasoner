@@ -2,11 +2,32 @@ from typing import Union
 import rdflib
 from rdflib import RDF, IdentifiedNode
 from .shared import RIF
+from collections.abc import Mapping
 import logging
 logger = logging.getLogger(__name__)
 
 from .rif_dataobjects import rif_document
 from .durable_reasoner.machine import durable_machine as machine
+
+class importManager(Mapping):
+    def __init__(self, documents: Mapping[str, rdflib.Graph]) -> None:
+        self.documents = dict(documents)
+        self._transmutedDocuments = {}
+
+    def __getitem__(self, document: str):
+        try:
+            return self._transmutedDocuments[document]
+        except KeyError:
+            pass
+        q = self.documents[document]
+        raise NotImplementedError()
+
+    def __len__(self):
+        return len(self.documents)
+
+    def __iter__(self):
+        return iter(self.documents)
+
 
 class simpleLogicMachine:
     document: rif_document
@@ -22,13 +43,16 @@ class simpleLogicMachine:
         return all(checks.values())
 
     @classmethod
-    def from_rdf(cls, infograph: rdflib.Graph) -> "simpleLogicMachine":
+    def from_rdf(cls, infograph: rdflib.Graph, extraDocuments: Mapping[str, rdflib.Graph] = None) -> "simpleLogicMachine":
+        extraOptions = {}
+        if extraDocuments is not None:
+            extraOptions["extraDocuments"] = importManager(extraDocuments)
         rootdocument_node: IdentifiedNode
         rootdocument_node,\
                 = infograph.subjects(RDF.type, #type: ignore[assignment]
                                      RIF.Document)
                                                 
-        document = rif_document.from_rdf(infograph, rootdocument_node)
+        document = rif_document.from_rdf(infograph, rootdocument_node, **extraOptions)
         return cls(document)
 
     def run(self, steps: Union[int, None] = None) -> None:

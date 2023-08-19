@@ -10,7 +10,7 @@ class NegativeEntailmentTest:
     def __init__(self, premise, nonconclusion, importedDocuments={}):
         self.premise = str(premise)
         self.nonconclusion = str(nonconclusion)
-        self.importedDocuments = {x: str(y) for x, y in dict(importedDocuments).items()}
+        self.importedDocuments = {x: y for x, y in dict(importedDocuments).items()}
 
     def __iter__(self):
         yield self.premise
@@ -46,7 +46,7 @@ NET_RDF_Combination_SubClass_5 = NegativeEntailmentTest(
         _PRD.joinpath("NegativeEntailmentTest/RDF_Combination_SubClass_5/RDF_Combination_SubClass_5-premise.rif"),
         _PRD.joinpath("NegativeEntailmentTest/RDF_Combination_SubClass_5/RDF_Combination_SubClass_5-nonconclusion.rif"),
         {"http://www.w3.org/2005/rules/test/repository/tc/RDF_Combination_SubClass_5/RDF_Combination_SubClass_5-import001":
-        _PRD.joinpath("NegativeEntailmentTest/RDF_Combination_SubClass_5/RDF_Combination_SubClass_5-import001.rif")},
+        _PRD.joinpath("NegativeEntailmentTest/RDF_Combination_SubClass_5/RDF_Combination_SubClass_5-import001.ttl")},
         )
 
 PositiveEntailmentTests = [PET_Assert,

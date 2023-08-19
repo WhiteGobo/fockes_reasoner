@@ -64,8 +64,6 @@ def test_PositiveEntailmentTests(testinfo):
 def test_NegativeEntailmentTests(testinfo):
     testinfo.premise
     testinfo.nonconclusion
-    if testinfo.importedDocuments:
-        raise NotImplementedError(repr(testinfo.importedDocuments))
     try:
         g = rdflib.Graph().parse(testinfo.premise, format="rif")
         nonconc_graph = rdflib.Graph().parse(testinfo.nonconclusion, format="rif")
@@ -73,7 +71,9 @@ def test_NegativeEntailmentTests(testinfo):
         pytest.skip("Need rdflib parser plugin to load RIF-file")
     logger.info("premise in ttl:\n%s" % g.serialize())
 
-    q = fockes_reasoner.simpleLogicMachine.from_rdf(g)
+    #filepath.suffix is eg ".rif" so filepath.suffix[1:]=="rif"
+    extra_documents = {uri: rdflib.Graph().parse(str(filepath), format=filepath.suffix[1:]) for uri, filepath in testinfo.importedDocuments.items()}
+    q = fockes_reasoner.simpleLogicMachine.from_rdf(g, extra_documents)
     myfacts = q.run()
     logger.info("Not expected conclusions in ttl:\n%s" % nonconc_graph.serialize())
     rif_facts = [f for f in rdfmodel().import_graph(nonconc_graph) if not isinstance(f, rdflib.term.Node)]
