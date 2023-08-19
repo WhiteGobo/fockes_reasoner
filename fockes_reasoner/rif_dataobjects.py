@@ -62,8 +62,7 @@ class rif_document:
         :param extraDocuments: A Manager of all importable documents
         """
         kwargs = {}
-        payload_node: IdentifiedNode
-        payload_nodes = list(infograph.objects(rootnode, RIF.payload)) #type: ignore[assignment]
+        payload_nodes: list[IdentifiedNode] = list(infograph.objects(rootnode, RIF.payload)) #type: ignore[assignment]
         if len(payload_nodes) == 1:
             payload_node = payload_nodes[0]
             payload_type, = infograph.objects(payload_node, RDF.type)
@@ -74,6 +73,15 @@ class rif_document:
             
         elif len(payload_nodes) > 1:
             raise SyntaxError("This doesnt looks like a valid rif document.")
+
+        try:
+            directives_node, = infograph.objects(rootnode, RIF.directives)
+            directives = rdflib.collection.Collection(infograph, directives_node)
+        except ValueError:
+            directives = []
+        for directive in directives:
+            raise NotImplementedError()
+
         return cls(**kwargs)
 
     def __repr__(self) -> str:
