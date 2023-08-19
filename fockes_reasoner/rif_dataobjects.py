@@ -490,7 +490,7 @@ class rif_retract:
     def __init__(self, fact_or_atom: Union[rif_frame, IdentifiedNode]):
         if isinstance(fact_or_atom, (rif_frame,)):
             self.fact = fact_or_atom
-        elif isinstance(fact_or_atom, IdentifiedNode):
+        elif isinstance(fact_or_atom, (IdentifiedNode, Variable)):
             self.atom = fact_or_atom
         else:
             raise TypeError(fact_or_atom, type(fact_or_atom))
