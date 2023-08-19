@@ -77,7 +77,7 @@ def test_NegativeEntailmentTests(testinfo):
     q = fockes_reasoner.simpleLogicMachine.from_rdf(g)
     myfacts = q.run()
     logger.info("Not expected conclusions in ttl:\n%s" % nonconc_graph.serialize())
-    rif_facts = [f for f in rdfmodel().import_graph(conc_graph) if not isinstance(f, rdflib.term.Node)]
+    rif_facts = [f for f in rdfmodel().import_graph(nonconc_graph) if not isinstance(f, rdflib.term.Node)]
     logger.info("All facts after machine has run:\n%s\n\nexpected "
             "facts:\n%s" % (list(q.machine.get_facts()), rif_facts))
     assert rif_facts, "couldnt load conclusion rif_facts directly"
