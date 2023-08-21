@@ -5,7 +5,7 @@ import uuid
 from .durable_reasoner import machine_facts, fact, NoPossibleExternal
 from .durable_reasoner.machine_facts import external, TRANSLATEABLE_TYPES
 import rdflib
-from rdflib import IdentifiedNode, Graph, Variable, Literal
+from rdflib import IdentifiedNode, Graph, Variable, Literal, URIRef
 import typing as typ
 from typing import Union, Iterable, Any, Callable, MutableMapping, List, Tuple, Optional, Mapping
 from .shared import RIF
@@ -46,12 +46,18 @@ def slot2node(infograph: Graph, x: IdentifiedNode) -> ATOM:
         raise NotImplementedError(t)
 
 class rif_document:
-    payload: "rif_group"
-    def __init__(self, payload: "rif_group") -> None:
+    payload: Optional["rif_group"]
+    def __init__(self, payload: Optional["rif_group"] = None,
+                 directives: Optional["rif_import"] = None) -> None:
         self.payload = payload
+        self.directives = directives
 
-    def create_rules(self, machine: durable_reasoner.machine.durable_machine) -> None:
-        self.payload.create_rules(machine)
+    def create_rules(self, machine: durable_reasoner.machine.durable_machine,
+                     ) -> None:
+        if self.payload is not None:
+            self.payload.create_rules(machine)
+        if self.directives is not None:
+            raise NotImplementedError()
 
     @classmethod
     def from_rdf(cls, infograph: rdflib.Graph,
@@ -76,16 +82,44 @@ class rif_document:
 
         try:
             directives_node, = infograph.objects(rootnode, RIF.directives)
-            directives = rdflib.collection.Collection(infograph, directives_node)
+            directives_lists = rdflib.collection.Collection(infograph, directives_node)
         except ValueError:
-            directives = []
-        for directive in directives:
-            raise NotImplementedError()
+            directives_lists = []
+        for directive_node in directives_lists:
+            tmp_directive = cls._generate_directive(infograph, directive_node)
+            kwargs.setdefault("directives", []).append(tmp_directive)
 
         return cls(**kwargs)
 
+    @classmethod
+    def _generate_directive(cls, infograph: Graph,
+                            directive_node: IdentifiedNode):
+        t = infograph.value(directive_node, RDF.type)
+        if t == RIF.Import:
+            return rif_import.from_rdf(infograph, directive_node)
+        else:
+            raise NotImplementedError(t)
+
     def __repr__(self) -> str:
         return "Document %s" % repr(self.payload)
+
+
+class rif_import:
+    profile: Optional[URIRef]
+    location: URIRef
+    def __init__(self, location: URIRef, profile: Optional[URIRef] = None):
+        self.location = location
+        self.profile = profile
+
+    @classmethod
+    def from_rdf(cls, infograph: rdflib.Graph,
+                 rootnode: rdflib.IdentifiedNode,
+                 **kwargs: Any) -> "rif_group":
+        location, = infograph.objects(rootnode, RIF.location)
+        profile = infograph.value(rootnode, RIF.profile)
+        if profile:
+            return cls(location, profile)
+        return cls(location)
 
 
 class rif_group:
