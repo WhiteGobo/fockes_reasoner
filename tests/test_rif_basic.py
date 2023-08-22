@@ -9,7 +9,7 @@ from fockes_reasoner.rif_dataobjects import rif_forall, rif_implies, rif_assert,
 import fockes_reasoner
 from fockes_reasoner.class_rdfmodel import rdfmodel
 
-from data.test_suite import PET_Assert, PositiveEntailmentTests, PET_AssertRetract, PET_Modify, PET_Modify_loop, PET_AssertRetract2
+from data.test_suite import PET_Assert, PET_AssertRetract, PET_Modify, PET_Modify_loop, PET_AssertRetract2
 import data.test_suite
 
 _rif_type_to_constructor = {RIF.Frame: rif_frame.from_rdf,
@@ -64,8 +64,10 @@ def test_PositiveEntailmentTests(testinfo):
     assert q.check(rif_facts), "Missing expected conclusions"
 
 @pytest.mark.parametrize("testinfo",[
-    pytest.param(data.test_suite.NET_Retract),
-    pytest.param(data.test_suite.NET_RDF_Combination_SubClass_5, id="NET_RDF_Combination_SubClass_5"),
+    pytest.param(data.test_suite.NET_Retract,
+                 id="NET_Retract"),
+    pytest.param(data.test_suite.NET_RDF_Combination_SubClass_5,
+                 id="NET_RDF_Combination_SubClass_5"),
     ])
 def test_NegativeEntailmentTests(testinfo):
     logger.info("premise located: %s\nnonconclusion located: %s"
