@@ -59,11 +59,11 @@ def test_PositiveEntailmentTests(testinfo):
 
 @pytest.mark.parametrize("testinfo",[
     pytest.param(data.test_suite.NET_Retract),
-    pytest.param(data.test_suite.NET_RDF_Combination_SubClass_5),
+    pytest.param(data.test_suite.NET_RDF_Combination_SubClass_5, id="NET_RDF_Combination_SubClass_5"),
     ])
 def test_NegativeEntailmentTests(testinfo):
-    testinfo.premise
-    testinfo.nonconclusion
+    logger.info("premise located: %s\nnonconclusion located: %s"
+                %(testinfo.premise, testinfo.nonconclusion))
     try:
         g = rdflib.Graph().parse(testinfo.premise, format="rif")
         nonconc_graph = rdflib.Graph().parse(testinfo.nonconclusion, format="rif")
@@ -75,11 +75,12 @@ def test_NegativeEntailmentTests(testinfo):
     extra_documents = {uri: rdflib.Graph().parse(str(filepath), format=filepath.suffix[1:]) for uri, filepath in testinfo.importedDocuments.items()}
     q = fockes_reasoner.simpleLogicMachine.from_rdf(g, extra_documents)
     myfacts = q.run()
-    logger.info("Not expected conclusions in ttl:\n%s" % nonconc_graph.serialize())
-    rif_facts = [f for f in rdfmodel().import_graph(nonconc_graph) if not isinstance(f, rdflib.term.Node)]
-    logger.info("All facts after machine has run:\n%s\n\nexpected "
+    logger.info("Not expected conclusions in ttl:\n%s"
+                % nonconc_graph.serialize())
+    rif_facts = [f for f in rdfmodel().import_graph(nonconc_graph)
+                 if not isinstance(f, rdflib.term.Node)]
+    logger.info("All facts after machine has run:\n%s\n\nNot expected "
             "facts:\n%s" % (list(q.machine.get_facts()), rif_facts))
     assert rif_facts, "couldnt load conclusion rif_facts directly"
-    assert not q.check(rif_facts), "Not expected conclusions"
-
-
+    for f in rif_facts:
+        assert not q.check([f]), "Not expected conclusion %s found" % f
