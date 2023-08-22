@@ -23,7 +23,7 @@ class RIFSyntaxError(Exception):
 class _action_gen(abc.ABC):
     @abc.abstractmethod
     def generate_action(self,
-                        machine: durable_reasoner.machine.durable_machine,
+                        machine: durable_reasoner.machine,
                         ) -> Callable[..., None]:
         ...
 
@@ -53,7 +53,7 @@ class rif_document:
         self.payload = payload
         self.directives = list(directives)
 
-    def create_rules(self, machine: durable_reasoner.machine.durable_machine,
+    def create_rules(self, machine: durable_reasoner.machine,
                      ) -> None:
         for directive in self.directives:
             directive.apply_to(machine)
@@ -125,7 +125,7 @@ class rif_import:
         else:
             self.profile = URIRef(profile)
 
-    def apply_to(self, machine: durable_reasoner.machine.durable_machine,
+    def apply_to(self, machine: durable_reasoner.machine,
                  ) -> None:
         infograph = self.extraDocuments[self.location]
         if self.profile is not None:
@@ -155,7 +155,7 @@ class rif_group:
                  ) -> None:
         self.sentences = tuple(sentences)
 
-    def create_rules(self, machine: durable_reasoner.machine.durable_machine) -> None:
+    def create_rules(self, machine: durable_reasoner.machine) -> None:
         for s in self.sentences:
             s.create_rules(machine)
 
@@ -203,7 +203,7 @@ class rif_forall:
         isinstance(self.formula.then_, (rif_frame,))
         isinstance(self.formula.if_, (rif_frame,))
 
-    def create_rules(self, machine: durable_reasoner.machine.durable_machine) -> None:
+    def create_rules(self, machine: durable_reasoner.machine) -> None:
         if self.is_implication():
             raise NotImplementedError()
         elif self.pattern is None and isinstance(self.formula, rif_implies):
@@ -266,7 +266,7 @@ class rif_implies:
         self.if_ = if_
         self.then_ = then_
 
-    def create_rules(self, machine: durable_reasoner.machine.durable_machine) -> None:
+    def create_rules(self, machine: durable_reasoner.machine) -> None:
         logger.critical("Implications are not yet supported")
         return
         raise NotImplementedError()
@@ -277,7 +277,7 @@ class rif_implies:
         newrule.finalize()
 
     def generate_action(self,
-                        machine: durable_reasoner.machine.durable_machine,
+                        machine: durable_reasoner.machine,
                         ) -> Callable[[BINDING], None]:
         condition = self.if_.generate_condition(machine)
         implicated_action = self.then_.generate_action(machine)
@@ -314,7 +314,7 @@ class rif_and:
     def __init__(self, formulas: Iterable[Union["rif_frame"]]):
         self.formulas = list(formulas)
 
-    def add_pattern(self, rule: durable_reasoner.machine.durable_rule) -> None:
+    def add_pattern(self, rule: durable_reasoner.rule) -> None:
         for form in self.formulas:
             form.add_pattern(rule)
 
@@ -344,7 +344,7 @@ class rif_do(_action_gen):
         self.actions = list(actions)
 
     def generate_action(self,
-                        machine: durable_reasoner.machine.durable_machine,
+                        machine: durable_reasoner.machine,
                         ) -> Callable[[BINDING], None]:
         self._all_actions = [act.generate_action(machine) for act in self.actions]
         return self._act
@@ -388,21 +388,21 @@ class rif_external:
         self.args = list(args)
 
     def get_replacement_node(self,
-                      machine: durable_reasoner.machine.durable_machine,
+                      machine: durable_reasoner.machine,
             ):
         return machine.get_replacement_node(self.op, self.args)
 
     def get_binding_action(self,
-                      machine: durable_reasoner.machine.durable_machine,
+                      machine: durable_reasoner.machine,
             ):
         return machine.get_binding_action(self.op, self.args)
 
     def generate_condition(self,
-                           machine: durable_reasoner.machine.durable_machine,
+                           machine: durable_reasoner.machine,
                            ) -> Callable[[BINDING], bool]:
         raise NotImplementedError()
 
-    def add_pattern(self, rule: durable_reasoner.machine.durable_rule) -> None:
+    def add_pattern(self, rule: durable_reasoner.rule) -> None:
         if not isinstance(self.op, rdflib.term.Node) and all(isinstance(x, rdflib.term.Node) for x in self.args):
             raise NotImplementedError("Currently only basic atoms are supported", self.op)
         m = external(self.op, self.args)
@@ -449,7 +449,7 @@ class rif_frame:
         
 
     def check(self,
-            machine: durable_reasoner.machine.durable_machine,
+            machine: durable_reasoner.machine,
             bindings: BINDING = {},
             ) -> bool:
         for f in self.facts:
@@ -457,7 +457,7 @@ class rif_frame:
                 return False
         return True
 
-    def add_pattern(self, rule: durable_reasoner.machine.durable_rule) -> None:
+    def add_pattern(self, rule: durable_reasoner.rule) -> None:
         for slotkey, slotvalue in self.slots:
             args = [self.obj, slotkey, slotvalue]
             for i, arg in enumerate(args):
@@ -471,7 +471,7 @@ class rif_frame:
             f.add_pattern(rule)
 
     def generate_condition(self,
-                           machine: durable_reasoner.machine.durable_machine,
+                           machine: durable_reasoner.machine,
                            ) -> Callable[[BINDING], bool]:
         raise NotImplementedError()
         def condition(bindings: BINDING) -> bool:
@@ -482,7 +482,7 @@ class rif_frame:
         return condition
 
     def generate_retract_action(self,
-                      machine: durable_reasoner.machine.durable_machine,
+                      machine: durable_reasoner.machine,
                       ) -> Callable[[machine_facts.BINDING], None]:
         def _assert(bindings: BINDING) -> None:
             for f in self.facts:
@@ -490,7 +490,7 @@ class rif_frame:
         return _assert
 
     def generate_assert_action(self,
-                      machine: durable_reasoner.machine.durable_machine,
+                      machine: durable_reasoner.machine,
                       ) -> Callable[[machine_facts.BINDING], None]:
         """
         :TODO: Creation of variable is not safe
@@ -528,7 +528,7 @@ class rif_frame:
                 f.assert_fact(machine, bindings)
         return _assert
 
-    def create_rules(self, machine: durable_reasoner.machine.durable_machine) -> None:
+    def create_rules(self, machine: durable_reasoner.machine) -> None:
         """Is called, when frame is direct sub to a Group"""
         action = self.generate_assert_action(machine)
         machine.add_init_action(action)
@@ -581,7 +581,7 @@ class rif_retract:
             return self.atom
 
     def generate_action(self,
-                        machine: durable_reasoner.machine.durable_machine,
+                        machine: durable_reasoner.machine,
                         ) -> Callable[[BINDING], None]:
         if getattr(self, "fact", None) is not None:
             return self.fact.generate_retract_action(machine)
@@ -627,7 +627,7 @@ class rif_modify:
         self.fact = fact
 
     def generate_action(self,
-                        machine: durable_reasoner.machine.durable_machine,
+                        machine: durable_reasoner.machine,
                         ) -> Callable[[BINDING], None]:
         return self.fact.generate_assert_action(machine)
 
@@ -655,7 +655,7 @@ class rif_assert:
         self.fact = fact
 
     def generate_action(self,
-                        machine: durable_reasoner.machine.durable_machine,
+                        machine: durable_reasoner.machine,
                         ) -> Callable[[BINDING], None]:
         return self.fact.generate_assert_action(machine)
 

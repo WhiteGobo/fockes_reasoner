@@ -7,7 +7,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 from .rif_dataobjects import rif_document
-from .durable_reasoner.machine import durable_machine as machine
+from .class_machineWithImport import machineWithImport as machine
 
 class importManager(Mapping):
     documents: Mapping[IdentifiedNode, Graph]

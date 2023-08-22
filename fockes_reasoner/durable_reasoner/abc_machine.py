@@ -152,4 +152,3 @@ class importProfile(abc.ABC):
     @abc.abstractmethod
     def create_rules(self, machine: machine, infograph: Graph) -> None:
         ...
-

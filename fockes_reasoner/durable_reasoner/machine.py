@@ -139,8 +139,8 @@ class durable_machine(abc_machine.machine):
 
     def import_data(self,
                     infograph: Graph,
-                    location: IdentifiedNode = None,
-                    profile: IdentifiedNode = None,
+                    location: Optional[IdentifiedNode] = None,
+                    profile: Union[IdentifiedNode, None] = None,
                     extraDocuments: Mapping[IdentifiedNode, Graph] = {},
                     ) -> None:
         if location in self._imported_locations:
