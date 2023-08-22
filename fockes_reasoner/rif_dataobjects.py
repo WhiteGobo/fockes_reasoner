@@ -129,10 +129,11 @@ class rif_import:
                  ) -> None:
         infograph = self.extraDocuments[self.location]
         if self.profile is not None:
-            machine.import_data(self.location, self.profile,
+            machine.import_data(infograph,
+                                self.location, self.profile,
                                 extraDocuments = self.extraDocuments)
         else:
-            machine.import_data(self.location,
+            machine.import_data(infograph, self.location,
                                 extraDocuments = self.extraDocuments)
 
     @classmethod
