@@ -1,6 +1,6 @@
 from typing import Union
 import rdflib
-from rdflib import RDF, IdentifiedNode
+from rdflib import RDF, IdentifiedNode, Graph, URIRef
 from .shared import RIF
 from collections.abc import Mapping
 import logging
@@ -10,8 +10,16 @@ from .rif_dataobjects import rif_document
 from .durable_reasoner.machine import durable_machine as machine
 
 class importManager(Mapping):
-    def __init__(self, documents: Mapping[str, rdflib.Graph]) -> None:
-        self.documents = dict(documents)
+    documents: Mapping[IdentifiedNode, Graph]
+    def __init__(self,
+                 documents: Mapping[Union[str, IdentifiedNode], rdflib.Graph],
+                 ) -> None:
+        self.documents = {}
+        for location, infograph in documents.items():
+            if isinstance(location, IdentifiedNode):
+                self.documents[location] = IdentifiedNode
+            else:
+                self.documents[URIRef(location)] = IdentifiedNode
         self._transmutedDocuments = {}
 
     def __getitem__(self, document: str):
