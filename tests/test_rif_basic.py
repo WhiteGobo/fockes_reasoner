@@ -5,12 +5,17 @@ logger = logging.getLogger(__name__)
 
 from fockes_reasoner.shared import RIF
 from rdflib import RDF
-from fockes_reasoner.rif_dataobjects import rif_forall, rif_implies, rif_assert, rif_frame, rif_do, rif_group, rif_document
+from fockes_reasoner.rif_dataobjects import rif_forall, rif_implies, rif_assert, rif_frame, rif_do, rif_group, rif_document, rif_subclass
 import fockes_reasoner
 from fockes_reasoner.class_rdfmodel import rdfmodel
 
 from data.test_suite import PET_Assert, PositiveEntailmentTests, PET_AssertRetract, PET_Modify, PET_Modify_loop, PET_AssertRetract2
 import data.test_suite
+
+_rif_type_to_constructor = {RIF.Frame: rif_frame.from_rdf,
+                            #RIF.External: rif_external.from_rdf,
+                            RIF.Subclass: rif_subclass.from_rdf,
+                            }
 
 def test_simpletestrun():
     """Small testrun for the machine and a simple task"""
@@ -77,8 +82,12 @@ def test_NegativeEntailmentTests(testinfo):
     myfacts = q.run()
     logger.info("Not expected conclusions in ttl:\n%s"
                 % nonconc_graph.serialize())
-    rif_facts = [f for f in rdfmodel().import_graph(nonconc_graph)
-                 if not isinstance(f, rdflib.term.Node)]
+    rif_facts = []
+    for typeref, generator in _rif_type_to_constructor.items():
+        for node in nonconc_graph.subjects(RDF.type, typeref):
+            rif_facts.append(generator(nonconc_graph, node))
+    #rif_facts = [f for f in rdfmodel().import_graph(nonconc_graph)
+    #             if not isinstance(f, rdflib.term.Node)]
     logger.info("All facts after machine has run:\n%s\n\nNot expected "
             "facts:\n%s" % (list(q.machine.get_facts()), rif_facts))
     assert rif_facts, "couldnt load conclusion rif_facts directly"
