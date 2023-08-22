@@ -430,6 +430,14 @@ class rif_external:
         return "external %s (%s)" % (self.op, ", ".join(self.args))
         
 
+class rif_subclass:
+    @classmethod
+    def from_rdf(cls, infograph: rdflib.Graph,
+                 rootnode: rdflib.IdentifiedNode,
+                 **kwargs: typ.Any) -> "rif_frame":
+        raise NotImplementedError()
+
+
 class rif_frame:
     facts: Tuple[machine_facts.frame, ...]
     obj: ATOM
