@@ -26,6 +26,56 @@ class external:
     def add_pattern(self, rule: abc_machine.rule) -> None:
         rule.generate_pattern_external(self.op, self.args)
 
+
+class fact_subclass(fact):
+    sub_class: typ.Union[TRANSLATEABLE_TYPES, external, Variable]
+    super_class: typ.Union[TRANSLATEABLE_TYPES, external, Variable]
+    ID: str = "subclass"
+    SUBCLASS_SUB: str = "sub"
+    SUBCLASS_SUPER: str = "super"
+    def __init__(self, 
+                 sub_class: typ.Union[TRANSLATEABLE_TYPES, external, Variable],
+                 super_class: typ.Union[TRANSLATEABLE_TYPES, external, Variable],
+                 ) -> None:
+        self.sub_class = sub_class
+        self.super_class = super_class
+
+    def check_for_pattern(self, c: abc_machine.machine,
+                          bindings: BINDING = {},
+                          ) -> bool:
+        fact = {"type": self.ID}
+        for label, x, in [
+                (self.SUBCLASS_SUB, self.sub_class),
+                (self.SUBCLASS_SUPER, self.super_class),
+                ]:
+            fact[label] = _node2string(x, c, bindings)
+        for x in c.get_facts(fact):
+            #triggers, when any corresponding fact is found
+            return True
+        return False
+
+    def assert_fact(self, c: "machine",
+               bindings: BINDING = {},
+               ) -> None:
+        raise NotImplementedError()
+
+    def add_pattern(self, rule: "rule") -> None:
+        raise NotImplementedError()
+
+    def retract_fact(self, c: "machine",
+                bindings: BINDING = {},
+                ) -> None:
+        raise NotImplementedError()
+
+    def modify_fact(self, c: "machine",
+               bindings: BINDING = {},
+               ) -> None:
+        raise NotImplementedError()
+
+    @classmethod
+    def from_fact(cls, fact: Mapping[str, str]) -> "fact_subclass":
+        raise NotImplementedError()
+
 class frame(fact):
     obj: typ.Union[TRANSLATEABLE_TYPES, external, Variable]
     slotkey: typ.Union[TRANSLATEABLE_TYPES, external, Variable]

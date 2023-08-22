@@ -43,6 +43,12 @@ class fact(abc.ABC):
     ID: str
 
     @abc.abstractmethod
+    def check_for_pattern(self, c: "machine",
+                          bindings: BINDING = {},
+                          ) -> bool:
+        ...
+
+    @abc.abstractmethod
     def assert_fact(self, c: "machine",
                bindings: BINDING = {},
                ) -> None:

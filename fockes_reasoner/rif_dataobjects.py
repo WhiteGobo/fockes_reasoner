@@ -428,14 +428,43 @@ class rif_external:
 
     def __repr__(self) -> str:
         return "external %s (%s)" % (self.op, ", ".join(self.args))
-        
 
-class rif_subclass:
+
+class rif_member:
     @classmethod
     def from_rdf(cls, infograph: rdflib.Graph,
                  rootnode: rdflib.IdentifiedNode,
-                 **kwargs: typ.Any) -> "rif_frame":
+                 **kwargs: typ.Any) -> "rif_member":
         raise NotImplementedError()
+
+class rif_subclass:
+    sub_class: ATOM
+    super_class: ATOM
+    def __init__(self, sub_class: ATOM, super_class: ATOM) -> None:
+        self.sub_class = sub_class
+        self.super_class = super_class
+
+    @classmethod
+    def from_rdf(cls, infograph: rdflib.Graph,
+                 rootnode: rdflib.IdentifiedNode,
+                 **kwargs: typ.Any) -> "rif_subclass":
+        info = dict(infograph.predicate_objects(rootnode))
+        sub_node = info[RIF["sub"]]
+        super_node = info[RIF["super"]]
+        sub_obj = slot2node(infograph, sub_node)
+        super_obj = slot2node(infograph, super_node)
+        return cls(sub_obj, super_obj)
+
+    def check(self,
+            machine: durable_reasoner.machine,
+            bindings: BINDING = {},
+            ) -> bool:
+
+        f = machine_facts.fact_subclass(self.sub_class, self.super_class)
+        return f.check_for_pattern(machine, bindings)
+
+    def __repr__(self) -> str:
+        return "%s # %s" % (self.sub_class, self.super_class)
 
 
 class rif_frame:

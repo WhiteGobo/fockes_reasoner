@@ -5,7 +5,7 @@ logger = logging.getLogger(__name__)
 
 from fockes_reasoner.shared import RIF
 from rdflib import RDF
-from fockes_reasoner.rif_dataobjects import rif_forall, rif_implies, rif_assert, rif_frame, rif_do, rif_group, rif_document, rif_subclass
+from fockes_reasoner.rif_dataobjects import rif_forall, rif_implies, rif_assert, rif_frame, rif_do, rif_group, rif_document, rif_subclass, rif_member
 import fockes_reasoner
 from fockes_reasoner.class_rdfmodel import rdfmodel
 
@@ -15,6 +15,7 @@ import data.test_suite
 _rif_type_to_constructor = {RIF.Frame: rif_frame.from_rdf,
                             #RIF.External: rif_external.from_rdf,
                             RIF.Subclass: rif_subclass.from_rdf,
+                            RIF.Member: rif_member.from_rdf,
                             }
 
 def test_simpletestrun():
