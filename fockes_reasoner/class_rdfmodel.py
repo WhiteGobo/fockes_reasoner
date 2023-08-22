@@ -5,18 +5,18 @@ from .shared import RIF
 from .durable_reasoner import fact, frame
 from .rif_dataobjects import slot2node, rif_frame, rif_assert, rif_retract, rif_modify, rif_do, rif_and, rif_external
 
-DEFAULT_REGISTER: Mapping[rdflib.URIRef, Callable[[Graph, IdentifiedNode], Any]]\
+DEFAULT_REGISTER: Mapping[URIRef, Callable[[Graph, IdentifiedNode], Any]]\
         = {RIF.Frame: rif_frame.from_rdf,
-            RIF.Assert: rif_assert.from_rdf,
-            RIF.Retract: rif_retract.from_rdf,
-            RIF.Modify: rif_modify.from_rdf,
-            RIF.Var: slot2node,
-            RIF.Do: rif_do.from_rdf,
-            RIF.And: rif_and.from_rdf,
-            RIF.External: rif_external.from_rdf,
-            #RIF.constIRI: slot2node,
-            RIF.Const: slot2node,
-            }
+           RIF.Assert: rif_assert.from_rdf,
+           RIF.Retract: rif_retract.from_rdf,
+           RIF.Modify: rif_modify.from_rdf,
+           RIF.Var: slot2node,
+           RIF.Do: rif_do.from_rdf,
+           RIF.And: rif_and.from_rdf,
+           RIF.External: rif_external.from_rdf,
+           #RIF.constIRI: slot2node,
+           RIF.Const: slot2node,
+           }
 
 class rdfmodel:
     registered_types: MutableMapping[rdflib.URIRef, Callable[[Graph, IdentifiedNode], Any]]
