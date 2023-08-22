@@ -113,10 +113,17 @@ class rif_import:
     profile: Optional[URIRef]
     location: URIRef
     def __init__(self, extraDocuments: Mapping[str, Graph],
-                 location: URIRef, profile: Optional[URIRef] = None):
+                 location: Union[IdentifiedNode, Literal],
+                 profile: Optional[URIRef] = None):
         self.extraDocuments = extraDocuments
-        self.location = location
-        self.profile = profile
+        if isinstance(location, IdentifiedNode):
+            self.location = location
+        else:
+            self.location = URIRef(location)
+        if isinstance(profile, IdentifiedNode):
+            self.profile = profile
+        else:
+            self.profile = URIRef(profile)
 
     def apply_to(self, machine: durable_reasoner.machine.durable_machine,
                  ) -> None:
