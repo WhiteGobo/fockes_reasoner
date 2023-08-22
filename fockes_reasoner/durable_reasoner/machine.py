@@ -146,7 +146,7 @@ class durable_machine(abc_machine.machine):
         if location in self._imported_locations:
             return
         usedImportProfile = self.available_import_profiles[profile]
-        usedImportProfile.createRules(self)
+        usedImportProfile.create_rules(self, infograph)
         self._imported_locations.add(location)
 
     def get_replacement_node(self, op: rdflib.term.Node, args: Iterable[rdflib.term.Node]):
