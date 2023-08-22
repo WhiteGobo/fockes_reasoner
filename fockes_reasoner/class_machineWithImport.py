@@ -9,4 +9,4 @@ class machineWithImport(machine):
         super().__init__(*args, **kwargs)
         self.available_import_profiles[None] = rifImportProfile()
         self.available_import_profiles[RIF_ENTAILMENT.Simple]\
-                = rifImportProfile()
+                = profileSimpleEntailment()

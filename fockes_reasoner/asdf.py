@@ -17,10 +17,9 @@ class importManager(Mapping):
         self.documents = {}
         for location, infograph in documents.items():
             if isinstance(location, IdentifiedNode):
-                self.documents[location] = IdentifiedNode
+                self.documents[location] = infograph
             else:
-                self.documents[URIRef(location)] = IdentifiedNode
-        self._transmutedDocuments = {}
+                self.documents[URIRef(location)] = infograph
 
     def __getitem__(self, document: IdentifiedNode):
         try:
