@@ -47,22 +47,23 @@ def slot2node(infograph: Graph, x: IdentifiedNode) -> ATOM:
 
 class rif_document:
     payload: Optional["rif_group"]
+    directives: Iterable["rif_import"]
     def __init__(self, payload: Optional["rif_group"] = None,
-                 directives: Optional["rif_import"] = None) -> None:
+                 directives: Iterable["rif_import"] = []) -> None:
         self.payload = payload
-        self.directives = directives
+        self.directives = list(directives)
 
     def create_rules(self, machine: durable_reasoner.machine.durable_machine,
                      ) -> None:
+        for directive in self.directives:
+            directive.apply_to(machine)
         if self.payload is not None:
             self.payload.create_rules(machine)
-        if self.directives is not None:
-            raise NotImplementedError()
 
     @classmethod
     def from_rdf(cls, infograph: rdflib.Graph,
                  rootnode: rdflib.IdentifiedNode,
-                 extraDocuments: Mapping[str, None] = {},
+                 extraDocuments: Mapping[str, Graph] = {},
                  **kwargs: Any) -> "rif_document":
         """
         :param extraDocuments: A Manager of all importable documents
@@ -86,17 +87,20 @@ class rif_document:
         except ValueError:
             directives_lists = []
         for directive_node in directives_lists:
-            tmp_directive = cls._generate_directive(infograph, directive_node)
+            tmp_directive = cls._generate_directive(infograph, directive_node, extraDocuments)
             kwargs.setdefault("directives", []).append(tmp_directive)
 
         return cls(**kwargs)
 
     @classmethod
     def _generate_directive(cls, infograph: Graph,
-                            directive_node: IdentifiedNode):
+                            directive_node: IdentifiedNode,
+                            extraDocuments: Mapping[str, Graph],
+                            ):
         t = infograph.value(directive_node, RDF.type)
         if t == RIF.Import:
-            return rif_import.from_rdf(infograph, directive_node)
+            return rif_import.from_rdf(infograph, directive_node,
+                                       extraDocuments)
         else:
             raise NotImplementedError(t)
 
@@ -105,21 +109,35 @@ class rif_document:
 
 
 class rif_import:
+    extraDocuments: Mapping[str, Graph]
     profile: Optional[URIRef]
     location: URIRef
-    def __init__(self, location: URIRef, profile: Optional[URIRef] = None):
+    def __init__(self, extraDocuments: Mapping[str, Graph],
+                 location: URIRef, profile: Optional[URIRef] = None):
+        self.extraDocuments = extraDocuments
         self.location = location
         self.profile = profile
+
+    def apply_to(self, machine: durable_reasoner.machine.durable_machine,
+                 ) -> None:
+        infograph = self.extraDocuments[self.location]
+        if self.profile is not None:
+            machine.import_data(self.location, self.profile,
+                                extraDocuments = self.extraDocuments)
+        else:
+            machine.import_data(self.location,
+                                extraDocuments = self.extraDocuments)
 
     @classmethod
     def from_rdf(cls, infograph: rdflib.Graph,
                  rootnode: rdflib.IdentifiedNode,
+                 extraDocuments: Mapping[str, Graph] = {},
                  **kwargs: Any) -> "rif_group":
         location, = infograph.objects(rootnode, RIF.location)
         profile = infograph.value(rootnode, RIF.profile)
         if profile:
-            return cls(location, profile)
-        return cls(location)
+            return cls(extraDocuments, location, profile)
+        return cls(extraDocuments, location)
 
 
 class rif_group:

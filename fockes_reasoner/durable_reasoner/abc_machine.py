@@ -3,6 +3,7 @@ import logging
 import typing as typ
 from typing import MutableMapping, Mapping, Union, Callable, Iterable, Optional
 import rdflib
+from rdflib import IdentifiedNode, Graph
 
 FACTTYPE = "type"
 """Labels in where the type of fact is saved"""
@@ -97,6 +98,19 @@ class machine(abc.ABC):
     def run(self, steps: Union[int, None] = None) -> None:
         ...
 
+    @abc.abstractmethod
+    def import_data(self,
+                    infograph: Graph,
+                    profile: IdentifiedNode = None,
+                    extraDocuments: Mapping[IdentifiedNode, Graph] = {},
+                    ) -> None:
+        """
+        :param profile: Defines the the model, entailment and satisfiability
+            of given graph.
+            `https://www.w3.org/TR/2013/REC-rif-rdf-owl-20130205/#Profiles_of_Imports`_
+        """
+        ...
+
 class action:
     action: Optional[Callable]
     machine: machine
@@ -131,3 +145,4 @@ class rule(abc.ABC):
         :raises NoPossibleExternal:
         """
         ...
+

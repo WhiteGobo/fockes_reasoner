@@ -7,7 +7,7 @@ import traceback
 from typing import Union, Mapping, Iterable, Callable, Any, MutableMapping, Optional
 from hashlib import sha1
 import rdflib
-from rdflib import URIRef, Variable, Literal, BNode
+from rdflib import URIRef, Variable, Literal, BNode, Graph, IdentifiedNode
 from . import abc_machine
 from .abc_machine import TRANSLATEABLE_TYPES, FACTTYPE, BINDING, VARIABLE_LOCATOR, NoPossibleExternal
 from .bridge_rdflib import rdflib2string, string2rdflib
@@ -131,6 +131,13 @@ class durable_machine(abc_machine.machine):
         self._registered_assignment_generator = {}
         self.register(pred["numeric-greater-than"], ascondition=def_ext.ascondition_pred_greater_than)
         self.register(func["numeric-subtract"], asassign=def_ext.asassign_func_numeric_subtract)
+
+    def import_data(self,
+                    infograph: Graph,
+                    profile: IdentifiedNode = None,
+                    extraDocuments: Mapping[IdentifiedNode, Graph] = {},
+                    ) -> None:
+        raise NotImplementedError()
 
     def get_replacement_node(self, op: rdflib.term.Node, args: Iterable[rdflib.term.Node]):
         raise NoPossibleExternal()
