@@ -3,7 +3,7 @@ import logging
 import typing as typ
 from typing import MutableMapping, Mapping, Union, Callable, Iterable, Optional
 import rdflib
-from rdflib import IdentifiedNode, Graph
+from rdflib import IdentifiedNode, Graph, Literal
 
 FACTTYPE = "type"
 """Labels in where the type of fact is saved"""
@@ -141,7 +141,8 @@ class rule(abc.ABC):
         ...
 
     @abc.abstractmethod
-    def generate_node_external(self, op, args) -> Union[str, rdflib.BNode, rdflib.URIRef, rdflib.Literal]:
+    def generate_node_external(self, op, args,
+                               ) -> Union[str, IdentifiedNode, Literal]:
         """
         :raises NoPossibleExternal:
         """
