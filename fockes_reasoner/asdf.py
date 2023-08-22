@@ -30,7 +30,8 @@ class importManager(Mapping):
         try:
             q = self.documents[document]
         except KeyError:
-            logger.error("tried to retrieve %s. Given documents are %s" % (document, tuple(self.documents.keys())))
+            logger.error("tried to retrieve %s. Given documents are %s"
+                         % (document, tuple(self.documents.keys())))
             raise
         raise NotImplementedError()
 
