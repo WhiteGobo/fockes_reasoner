@@ -101,6 +101,7 @@ class machine(abc.ABC):
     @abc.abstractmethod
     def import_data(self,
                     infograph: Graph,
+                    location: IdentifiedNode = None,
                     profile: IdentifiedNode = None,
                     extraDocuments: Mapping[IdentifiedNode, Graph] = {},
                     ) -> None:
@@ -144,5 +145,10 @@ class rule(abc.ABC):
         """
         :raises NoPossibleExternal:
         """
+        ...
+
+class importProfile(abc.ABC):
+    @abc.abstractmethod
+    def create_rules(self, machine: machine, infograph: Graph) -> None:
         ...
 

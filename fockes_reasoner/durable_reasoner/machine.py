@@ -4,12 +4,12 @@ import uuid
 import abc
 import logging
 import traceback
-from typing import Union, Mapping, Iterable, Callable, Any, MutableMapping, Optional
+from typing import Union, Mapping, Iterable, Callable, Any, MutableMapping, Optional, Container
 from hashlib import sha1
 import rdflib
 from rdflib import URIRef, Variable, Literal, BNode, Graph, IdentifiedNode
 from . import abc_machine
-from .abc_machine import TRANSLATEABLE_TYPES, FACTTYPE, BINDING, VARIABLE_LOCATOR, NoPossibleExternal
+from .abc_machine import TRANSLATEABLE_TYPES, FACTTYPE, BINDING, VARIABLE_LOCATOR, NoPossibleExternal, importProfile
 from .bridge_rdflib import rdflib2string, string2rdflib
 
 from ..shared import RDF, pred, func
@@ -115,6 +115,8 @@ class durable_machine(abc_machine.machine):
     errors: list
     _current_context: _context_helper
     _initialized: bool
+    _imported_location: Container[IdentifiedNode]
+    available_import_profiles: Mapping[IdentifiedNode, importProfile]
 
     def __init__(self, loggername: str = __name__) -> None:
         rulesetname = str(uuid.uuid4())
@@ -132,12 +134,20 @@ class durable_machine(abc_machine.machine):
         self.register(pred["numeric-greater-than"], ascondition=def_ext.ascondition_pred_greater_than)
         self.register(func["numeric-subtract"], asassign=def_ext.asassign_func_numeric_subtract)
 
+        self._imported_locations = set()
+        self.available_import_profiles = {}
+
     def import_data(self,
                     infograph: Graph,
+                    location: IdentifiedNode = None,
                     profile: IdentifiedNode = None,
                     extraDocuments: Mapping[IdentifiedNode, Graph] = {},
                     ) -> None:
-        raise NotImplementedError()
+        if location in self._imported_locations:
+            return
+        usedImportProfile = self.available_import_profiles[profile]
+        usedImportProfile.createRules(self)
+        self._imported_locations.add(location)
 
     def get_replacement_node(self, op: rdflib.term.Node, args: Iterable[rdflib.term.Node]):
         raise NoPossibleExternal()

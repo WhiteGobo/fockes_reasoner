@@ -24,16 +24,11 @@ class importManager(Mapping):
 
     def __getitem__(self, document: IdentifiedNode):
         try:
-            return self._transmutedDocuments[document]
-        except KeyError:
-            pass
-        try:
-            q = self.documents[document]
+            return self.documents[document]
         except KeyError:
             logger.error("tried to retrieve %s. Given documents are %s"
                          % (document, tuple(self.documents.keys())))
             raise
-        raise NotImplementedError()
 
     def __len__(self):
         return len(self.documents)
