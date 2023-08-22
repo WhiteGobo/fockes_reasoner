@@ -1,3 +1,8 @@
+NET_Local_Constant = None
+NET_Local_Predicate = None
+NET_NestedListsAreNotFlatLists = None
+NET_Non_Annotation_Entailment = None
+NET_RDF_Combination_SubClass = None
 import pytest
 import rdflib
 import logging
@@ -5,11 +10,61 @@ logger = logging.getLogger(__name__)
 
 from fockes_reasoner.shared import RIF
 from rdflib import RDF
-from fockes_reasoner.rif_dataobjects import rif_forall, rif_implies, rif_assert, rif_frame, rif_do, rif_group, rif_document, rif_subclass, rif_member
+from fockes_reasoner.rif_dataobjects import (rif_forall,
+                                             rif_implies,
+                                             rif_assert,
+                                             rif_frame,
+                                             rif_do,
+                                             rif_group,
+                                             rif_document,
+                                             rif_subclass,
+                                             rif_member,
+                                             )
 import fockes_reasoner
 from fockes_reasoner.class_rdfmodel import rdfmodel
 
-from data.test_suite import PET_Assert, PET_AssertRetract, PET_Modify, PET_Modify_loop, PET_AssertRetract2
+from data.test_suite import \
+        (PET_Assert,
+         PET_AssertRetract,
+         PET_Modify,
+         PET_Modify_loop,
+         PET_AssertRetract2,
+         PET_Builtin_literal_not_identical,
+         PET_Builtins_Binary,
+         PET_Builtins_List,
+         PET_Builtins_Numeric,
+         PET_Builtins_Numeric,
+         PET_Builtins_PlainLiteral,
+         PET_Builtins_String,
+         PET_Builtins_Time,
+         PET_Builtins_XMLLiteral,
+         PET_Builtins_anyURI,
+         PET_Builtins_boolean,
+         PET_Chaining_strategy_numeric_add_1,
+         PET_Chaining_strategy_numeric_subtract_2,
+         PET_EBusiness_Contract,
+         PET_Factorial_Forward_Chaining,
+         PET_Frame_slots_are_independent,
+         PET_Frames,
+         PET_Guards_and_subtypes,
+         PET_IRI_from_RDF_Literal,
+         PET_Modeling_Brain_Anatomy,
+         PET_OWL_Combination_Vocabulary_Separation_Inconsistency_1,
+         PET_OWL_Combination_Vocabulary_Separation_Inconsistency_2,
+         PET_Positional_Arguments,
+         PET_RDF_Combination_Blank_Node,
+         PET_RDF_Combination_Constant_Equivalence_1,
+         PET_RDF_Combination_Constant_Equivalence_2,
+         PET_RDF_Combination_Constant_Equivalence_3,
+         PET_RDF_Combination_Constant_Equivalence_4,
+         PET_RDF_Combination_Constant_Equivalence_Graph_Entailment,
+         PET_RDF_Combination_SubClass_2,
+         NET_Local_Constant,
+         NET_Local_Predicate,
+         NET_NestedListsAreNotFlatLists,
+         NET_Non_Annotation_Entailment,
+         NET_RDF_Combination_SubClass,
+         )
 import data.test_suite
 
 _rif_type_to_constructor = {RIF.Frame: rif_frame.from_rdf,
@@ -39,7 +94,8 @@ def test_simpletestrun():
 
 @pytest.mark.parametrize("testinfo",[
     pytest.param(data.test_suite.PET_Assert),
-    pytest.param(data.test_suite.PET_AssertRetract, marks=pytest.mark.skip("implications are not supported yet")),
+    pytest.param(data.test_suite.PET_AssertRetract,
+                 marks=pytest.mark.skip("implications are not supported yet")),
     pytest.param(data.test_suite.PET_AssertRetract2),
     pytest.param(data.test_suite.PET_Modify),
     pytest.param(data.test_suite.PET_Modify_loop),
