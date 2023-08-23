@@ -199,7 +199,7 @@ class durable_machine(abc_machine.machine):
                 try:
                     with _closure_helper(self, c):
                         action(bindings)
-                except FailedInteranlAction:
+                except FailedInternalAction:
                     raise
                 except Exception as err:
                     self.logger.info("Failed at action %r with bindings %s. "
@@ -405,34 +405,43 @@ class durable_rule(abc_machine.rule):
     def generate_node_external(self, op, args) -> Union[str, rdflib.BNode, rdflib.URIRef, rdflib.Literal]:
         raise NotImplementedError()
 
+    def _action_without_condition(self, bindings: BINDING) -> None:
+        self.action(bindings)
+
+    def _action_with_condition(self, bindings: BINDING) -> None:
+        for cond in self.conditions:
+            try:
+                if not cond(bindings):
+                    self.machine.logger.debug("Stopped rule because %s"
+                                              % cond)
+                    return
+            except Exception as err:
+                self.machine.logger.info("Failed at condition %r with "
+                            "bindings %s. Produced traceback:\n%s"
+                             % (cond, bindings,
+                                traceback.format_exc()))
+                raise FailedInternalAction() from err
+        try:
+            self.action(bindings)
+        except Exception as err:
+            self.machine.logger.info("Failed at action %r with bindings %s. "
+                             "Produced traceback:\n%s"
+                             % (action, bindings,
+                                traceback.format_exc()))
+            raise FailedInternalAction() from err
+
     def finalize(self) -> None:
         if self.finalized:
             raise Exception()
         if self.action is None:
             raise Exception()
         if not self.conditions:
-            self.machine._make_rule(self.patterns, self.action, self.bindings)
+            self.machine.logger.debug("Create Rule. Condition: %s\nAction %s\nBindings%s" % (self._orig_pattern, self.action, self.bindings))
+            self.machine._make_rule(self.patterns,
+                                    self._action_without_condition,
+                                    self.bindings)
         else:
-            def action(bindings: BINDING) -> None:
-                for cond in self.conditions:
-                    try:
-                        if not cond(bindings):
-                            return
-                    except Exception as err:
-                        self.machine.logger.info("Failed at condition %r with "
-                                    "bindings %s. Produced traceback:\n%s"
-                                     % (cond, bindings,
-                                        traceback.format_exc()))
-                        raise FailedInternalAction() from err
-                try:
-                    self.action(bindings)
-                except Exception as err:
-                    self.machine.logger.info("Failed at action %r with bindings %s. "
-                                     "Produced traceback:\n%s"
-                                     % (action, bindings,
-                                        traceback.format_exc()))
-                    raise FailedInternalAction() from err
-            self.machine._make_rule(self.patterns, action, self.bindings)
+            self.machine._make_rule(self.patterns, self._action_with_condition, self.bindings)
         self.finalized = True
 
     def generate_pattern_external(self, op, args) -> None:

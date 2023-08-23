@@ -268,7 +268,6 @@ class rif_implies:
 
     def create_rules(self, machine: durable_reasoner.machine) -> None:
         logger.critical("Implications are not yet supported")
-        return
         raise NotImplementedError()
         newrule = machine.create_rule_builder()
         self.formula.if_.add_pattern(newrule)
@@ -526,9 +525,14 @@ class rif_frame:
                 f.retract_fact(machine, bindings)
         return _assert
 
+    def generate_action(self,
+                        machine: durable_reasoner.machine,
+                        ) -> Callable[[machine_facts.BINDING], None]:
+        return self.generate_action
+
     def generate_assert_action(self,
-                      machine: durable_reasoner.machine,
-                      ) -> Callable[[machine_facts.BINDING], None]:
+                               machine: durable_reasoner.machine,
+                               ) -> Callable[[machine_facts.BINDING], None]:
         """
         :TODO: Creation of variable is not safe
         """
