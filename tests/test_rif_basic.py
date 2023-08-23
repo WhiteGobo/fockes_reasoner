@@ -115,7 +115,7 @@ def test_simpletestrun():
     #pytest.param(PET_EBusiness_Contract,),
     #pytest.param(PET_Factorial_Forward_Chaining,),
     #pytest.param(PET_Frame_slots_are_independent,),
-    #pytest.param(PET_Frames,),
+    pytest.param(PET_Frames,),
     #pytest.param(PET_Guards_and_subtypes,),
     #pytest.param(PET_IRI_from_RDF_Literal,),
     #pytest.param(PET_Modeling_Brain_Anatomy,),
@@ -142,10 +142,10 @@ def test_PositiveEntailmentTests(testinfo):
 
     q = fockes_reasoner.simpleLogicMachine.from_rdf(g)
     myfacts = q.run()
-    logger.info("Expected conclusions in ttl:\n%s" % conc_graph.serialize())
+    logger.debug("Expected conclusions in ttl:\n%s" % conc_graph.serialize())
     rif_facts = [f for f in rdfmodel().import_graph(conc_graph) if not isinstance(f, rdflib.term.Node)]
     logger.info("All facts after machine has run:\n%s\n\nexpected "
-            "facts:\n%s" % (list(q.machine.get_facts()), rif_facts))
+                "facts:\n%s" % (list(q.machine.get_facts()), rif_facts))
     assert rif_facts, "couldnt load conclusion rif_facts directly"
     assert q.check(rif_facts), "Missing expected conclusions"
 
