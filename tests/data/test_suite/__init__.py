@@ -41,8 +41,8 @@ PET_Modify_loop = PositiveEntailmentTest(
         )
 
 PET_Builtin_literal_not_identical = PositiveEntailmentTest(
-        _Core.joinpath("PositiveEntailmentTest/Builtin_literal_not_identical/Builtin_literal_not_identical-premise.rif"),
-        _Core.joinpath("PositiveEntailmentTest/Builtin_literal_not_identical/Builtin_literal_not_identical-conclusion.rif"),
+        _Core.joinpath("PositiveEntailmentTest/Builtin_literal-not-identical/Builtin_literal-not-identical-premise.rif"),
+        _Core.joinpath("PositiveEntailmentTest/Builtin_literal-not-identical/Builtin_literal-not-identical-conclusion.rif"),
         )
 
 PET_Builtins_Binary = PositiveEntailmentTest(
@@ -96,12 +96,12 @@ PET_Builtins_boolean = PositiveEntailmentTest(
         )
 
 PET_Chaining_strategy_numeric_add_1 = PositiveEntailmentTest(
-        _Core.joinpath("PositiveEntailmentTest/Chaining_strategy_numeric_add_1/Chaining_strategy_numeric_add_1-premise.rif"),
-        _Core.joinpath("PositiveEntailmentTest/Chaining_strategy_numeric_add_1/Chaining_strategy_numeric_add_1-conclusion.rif"),
+        _Core.joinpath("PositiveEntailmentTest/Chaining_strategy_numeric-add_1/Chaining_strategy_numeric-add_1-premise.rif"),
+        _Core.joinpath("PositiveEntailmentTest/Chaining_strategy_numeric-add_1/Chaining_strategy_numeric-add_1-conclusion.rif"),
         )
 PET_Chaining_strategy_numeric_subtract_2 = PositiveEntailmentTest(
-        _Core.joinpath("PositiveEntailmentTest/Chaining_strategy_numeric_subtract_2/Chaining_strategy_numeric_subtract_2-premise.rif"),
-        _Core.joinpath("PositiveEntailmentTest/Chaining_strategy_numeric_subtract_2/Chaining_strategy_numeric_subtract_2-conclusion.rif"),
+        _Core.joinpath("PositiveEntailmentTest/Chaining_strategy_numeric-subtract_2/Chaining_strategy_numeric-subtract_2-premise.rif"),
+        _Core.joinpath("PositiveEntailmentTest/Chaining_strategy_numeric-subtract_2/Chaining_strategy_numeric-subtract_2-conclusion.rif"),
         )
 PET_EBusiness_Contract = PositiveEntailmentTest(
         _Core.joinpath("PositiveEntailmentTest/EBusiness_Contract/EBusiness_Contract-premise.rif"),
