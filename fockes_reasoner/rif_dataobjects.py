@@ -291,12 +291,23 @@ class rif_implies:
         self.then_ = then_
 
     def create_rules(self, machine: durable_reasoner.machine) -> None:
-        logger.critical("Implications are not yet supported")
-        raise NotImplementedError()
-        newrule = machine.create_rule_builder()
-        self.formula.if_.add_pattern(newrule)
-        action = self.formula.then_.generate_action(machine)
+        newrule = machine.create_implication_builder()
+        conditions = []
+        if isinstance(self.if_, rif_and):
+            for pat in self.if_.formulas:
+                try:
+                    pat.add_pattern(newrule)
+                except Exception:
+                    raise
+                    conditions.append(pat.generate_condition(machine))
+        else:
+            self.if_.add_pattern(newrule)
+        if len(conditions) == 0:
+            action = self.then_.generate_action(machine)
+        else:
+            raise NotImplementedError()
         newrule.action = action
+        logger.info("create implication %r" % newrule)
         newrule.finalize()
 
     def generate_action(self,

@@ -8,6 +8,7 @@ class pred(DefinedNamespace):
     _extras = [
             "numeric-greater-than",
             "numeric-equal",
+            "literal-not-identical",
             #"",
             #"",
             #"",

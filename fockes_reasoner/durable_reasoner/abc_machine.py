@@ -118,6 +118,14 @@ class machine(abc.ABC):
         """
         ...
 
+    @abc.abstractmethod
+    def create_rule_builder(self) -> "rule":
+        ...
+
+    @abc.abstractmethod
+    def create_implication_builder(self) -> "implication":
+        ...
+
 class action:
     action: Optional[Callable]
     machine: machine
@@ -153,6 +161,35 @@ class rule(abc.ABC):
         :raises NoPossibleExternal:
         """
         ...
+
+class implication(abc.ABC):
+    patterns: typ.Any
+    action: Optional[Callable]
+    machine: machine
+
+    @abc.abstractmethod
+    def finalize(self) -> None:
+        ...
+
+    @abc.abstractmethod
+    def add_pattern(self,
+                    pattern: Mapping[str, Union[str, TRANSLATEABLE_TYPES]],
+                    factname: Optional[str] = None,
+                    ) -> None:
+        ...
+
+    @abc.abstractmethod
+    def generate_pattern_external(self, op, args) -> None:
+        ...
+
+    @abc.abstractmethod
+    def generate_node_external(self, op, args,
+                               ) -> Union[str, IdentifiedNode, Literal]:
+        """
+        :raises NoPossibleExternal:
+        """
+        ...
+
 
 class importProfile(abc.ABC):
     @abc.abstractmethod

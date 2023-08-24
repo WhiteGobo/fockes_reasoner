@@ -99,7 +99,7 @@ def test_simpletestrun():
     pytest.param(data.test_suite.PET_AssertRetract2),
     pytest.param(data.test_suite.PET_Modify),
     pytest.param(data.test_suite.PET_Modify_loop),
-    #pytest.param(PET_Builtin_literal_not_identical,),
+    pytest.param(PET_Builtin_literal_not_identical,),
     #pytest.param(PET_Builtins_Binary,),
     #pytest.param(PET_Builtins_List,),
     #pytest.param(PET_Builtins_Numeric,),

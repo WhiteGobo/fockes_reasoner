@@ -133,6 +133,7 @@ class durable_machine(abc_machine.machine):
         self._registered_assignment_generator = {}
         self.register(pred["numeric-greater-than"], ascondition=def_ext.ascondition_pred_greater_than)
         self.register(func["numeric-subtract"], asassign=def_ext.asassign_func_numeric_subtract)
+        self.register(pred["literal-not-identical"], ascondition=def_ext.ascondition_pred_literal_not_identical)
 
         self._imported_locations = set()
         self.available_import_profiles = {}
@@ -252,6 +253,9 @@ class durable_machine(abc_machine.machine):
         q.finalize()
 
     def create_rule_builder(self) -> "durable_rule":
+        return durable_rule(self)
+
+    def create_implication_builder(self):
         return durable_rule(self)
 
     def _create_pattern_for_external(self, op, args):
