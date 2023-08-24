@@ -27,6 +27,12 @@ class _action_gen(abc.ABC):
                         ) -> Callable[..., None]:
         ...
 
+def _generate_object(infograph: Graph, target: IdentifiedNode,
+                     type_to_generator: Mapping[IdentifiedNode, Callable[[Graph, IdentifiedNode], Any]]) -> Any:
+    target_type = infograph.value(target, RDF.type)
+    gen = type_to_generator[target_type]
+    return gen(infograph, target)
+
 
 def slot2node(infograph: Graph, x: IdentifiedNode) -> ATOM:
     """Transform
@@ -278,6 +284,8 @@ class rif_forall:
 class rif_implies:
     if_: Union["rif_frame"]
     then_: Union["rif_do"]
+    #is set at end of file
+    _then_generators: Mapping[IdentifiedNode, Callable[[Graph, IdentifiedNode], Any]]
     def __init__(self, if_: Union["rif_frame"], then_: Union["rif_do"]):
         self.if_ = if_
         self.then_ = then_
@@ -318,8 +326,10 @@ class rif_implies:
         except KeyError as err:
             raise RIFSyntaxError() from err
         if_ = model.generate_object(infograph, if_node)
-        then_ = model.generate_object(infograph, then_node)
+        #then_ = model.generate_object(infograph, then_node)
+        then_ = _generate_object(infograph, then_node, cls._then_generators)
         return cls(if_, then_)
+
 
     def __repr__(self) -> str:
         return "If %s Then %s" %(self.if_, self.then_)
@@ -394,6 +404,31 @@ class rif_do(_action_gen):
 
     def __repr__(self) -> str:
         return "Do( %s )" % ", ".join(repr(x) for x in self.actions)
+
+class rif_atom:
+    op: ATOM
+    args: Iterable[ATOM]
+    def __init__(self, op: ATOM, args: Iterable[ATOM]):
+        self.op = op
+        self.args = list(args)
+
+    @classmethod
+    def from_rdf(cls, infograph: rdflib.Graph,
+                 rootnode: rdflib.IdentifiedNode,
+                 **kwargs: typ.Any) -> "rif_retract":
+        from .class_rdfmodel import rdfmodel
+        model = rdfmodel()
+        op_node: rdflib.IdentifiedNode = infograph.value(rootnode, RIF.op)
+        op = model.generate_object(infograph, op_node)
+        arg_list_node = infograph.value(rootnode, RIF.args)
+        arg_list = rdflib.collection.Collection(infograph, arg_list_node)
+        args = []
+        for x in arg_list:
+            args.append(model.generate_object(infograph, x))
+        return cls(op, args)
+
+    def __repr__(self) -> str:
+        return "%s (%s)" % (self.op, ", ".join(self.args))
 
 class rif_external:
     op: ATOM
@@ -729,3 +764,10 @@ class rif_assert:
 
     def __repr__(self) -> str:
         return "Assert( %s )" % self.fact
+
+
+rif_implies._then_generators = {
+        RIF.Frame: rif_frame.from_rdf,
+        RIF.Do: rif_do.from_rdf,
+        RIF.Atom: rif_atom.from_rdf,
+        }
