@@ -215,10 +215,31 @@ class rif_forall:
         logger.info("create rule %r" % newrule)
         newrule.finalize()
 
+    def _create_implication(self, machine: durable_reasoner.machine) -> None:
+        newrule = machine.create_rule_builder()
+        conditions = []
+        if isinstance(self.formula.if_, rif_and):
+            for pat in self.formula.if_.formulas:
+                try:
+                    pat.add_pattern(newrule)
+                except Exception:
+                    raise
+                    conditions.append(pat.generate_condition(machine))
+        else:
+            self.formula.if_.add_pattern(newrule)
+        if len(conditions) == 0:
+            implicated_fact = self.formula.then_
+            action = implicated_fact.generate_assert_action(machine)
+        else:
+            raise NotImplementedError()
+        newrule.action = action
+        logger.info("create rule %r" % newrule)
+        newrule.finalize()
+
     def create_rules(self, machine: durable_reasoner.machine) -> None:
         if self.pattern is None and isinstance(self.formula, rif_implies)\
                 and isinstance(self.formula.then_, (rif_frame,)):
-            raise NotImplementedError()
+            return self._create_implication(machine)
         elif self.pattern is None and isinstance(self.formula, rif_implies):
             return self._create_generell_rule_without_pattern(machine)
         elif self.pattern is not None:
