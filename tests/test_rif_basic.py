@@ -19,6 +19,7 @@ from fockes_reasoner.rif_dataobjects import (rif_forall,
                                              rif_document,
                                              rif_subclass,
                                              rif_member,
+                                             rif_atom,
                                              )
 import fockes_reasoner
 from fockes_reasoner.class_rdfmodel import rdfmodel
@@ -71,6 +72,7 @@ _rif_type_to_constructor = {RIF.Frame: rif_frame.from_rdf,
                             #RIF.External: rif_external.from_rdf,
                             RIF.Subclass: rif_subclass.from_rdf,
                             RIF.Member: rif_member.from_rdf,
+                            RIF.Atom: rif_atom.from_rdf,
                             }
 
 def test_simpletestrun():
@@ -144,7 +146,10 @@ def test_PositiveEntailmentTests(testinfo):
     logger.debug("Running Machine ... ")
     myfacts = q.run()
     logger.debug("Expected conclusions in ttl:\n%s" % conc_graph.serialize())
-    rif_facts = [f for f in rdfmodel().import_graph(conc_graph) if not isinstance(f, rdflib.term.Node)]
+    rif_facts = []
+    for typeref, generator in _rif_type_to_constructor.items():
+        for node in conc_graph.subjects(RDF.type, typeref):
+            rif_facts.append(generator(conc_graph, node))
     logger.info("All facts after machine has run:\n%s\n\nexpected "
                 "facts:\n%s" % (list(q.machine.get_facts()), rif_facts))
     assert rif_facts, "couldnt load conclusion rif_facts directly"
