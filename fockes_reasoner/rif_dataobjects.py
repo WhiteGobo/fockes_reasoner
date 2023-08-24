@@ -195,16 +195,9 @@ class rif_forall:
         self.formula = formula
         self.pattern = pattern
 
-    def is_implication(self) -> bool:
-        """Checks if this is a rule for implication like in RIF-BLD"""
-        return False
-        self.pattern is None
-        isinstance(self.formula, rif_implies)
-        isinstance(self.formula.then_, (rif_frame,))
-        isinstance(self.formula.if_, (rif_frame,))
-
     def create_rules(self, machine: durable_reasoner.machine) -> None:
-        if self.is_implication():
+        if self.pattern is None and isinstance(self.formula, rif_implies)\
+                and isinstance(self.formula.then_, (rif_frame,)):
             raise NotImplementedError()
         elif self.pattern is None and isinstance(self.formula, rif_implies):
             newrule = machine.create_rule_builder()
@@ -524,11 +517,6 @@ class rif_frame:
             for f in self.facts:
                 f.retract_fact(machine, bindings)
         return _assert
-
-    def generate_action(self,
-                        machine: durable_reasoner.machine,
-                        ) -> Callable[[machine_facts.BINDING], None]:
-        return self.generate_action
 
     def generate_assert_action(self,
                                machine: durable_reasoner.machine,

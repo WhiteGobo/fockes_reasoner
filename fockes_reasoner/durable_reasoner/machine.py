@@ -406,9 +406,11 @@ class durable_rule(abc_machine.rule):
         raise NotImplementedError()
 
     def _action_without_condition(self, bindings: BINDING) -> None:
+        self.machine.logger.debug("execute %s" % self)
         self.action(bindings)
 
     def _action_with_condition(self, bindings: BINDING) -> None:
+        self.machine.logger.debug("execute %s" % self)
         for cond in self.conditions:
             try:
                 if not cond(bindings):

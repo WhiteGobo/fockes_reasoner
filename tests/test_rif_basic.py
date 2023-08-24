@@ -141,6 +141,7 @@ def test_PositiveEntailmentTests(testinfo):
     logger.info("premise in ttl:\n%s" % g.serialize())
 
     q = fockes_reasoner.simpleLogicMachine.from_rdf(g)
+    logger.debug("Running Machine ... ")
     myfacts = q.run()
     logger.debug("Expected conclusions in ttl:\n%s" % conc_graph.serialize())
     rif_facts = [f for f in rdfmodel().import_graph(conc_graph) if not isinstance(f, rdflib.term.Node)]
@@ -148,6 +149,7 @@ def test_PositiveEntailmentTests(testinfo):
                 "facts:\n%s" % (list(q.machine.get_facts()), rif_facts))
     assert rif_facts, "couldnt load conclusion rif_facts directly"
     assert q.check(rif_facts), "Missing expected conclusions"
+
 
 @pytest.mark.parametrize("testinfo",[
     pytest.param(data.test_suite.NET_Retract,
