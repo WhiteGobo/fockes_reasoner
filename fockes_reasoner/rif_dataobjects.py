@@ -220,8 +220,7 @@ class rif_forall:
                 and isinstance(self.formula.then_, (rif_frame,)):
             raise NotImplementedError()
         elif self.pattern is None and isinstance(self.formula, rif_implies):
-            self._create_generell_rule_without_pattern(machine)
-            return
+            return self._create_generell_rule_without_pattern(machine)
         elif self.pattern is not None:
             raise NotImplementedError()
         else:
