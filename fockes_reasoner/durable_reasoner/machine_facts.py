@@ -208,7 +208,15 @@ class atom(fact):
     def check_for_pattern(self, c: abc_machine.machine,
                           bindings: BINDING = {},
                           ) -> bool:
-        raise NotImplementedError()
+        fact = {"type": self.ID}
+        fact[self.ATOM_OP] = _node2string(self.op, c, bindings)
+        for i, x in enumerate(self.args):
+            label = self.ATOM_ARGS % i
+            fact[label] = _node2string(x, c, bindings)
+        for x in c.get_facts(fact):
+            #triggers, when any corresponding fact is found
+            return True
+        return False
 
     def assert_fact(self, c: "machine",
                bindings: BINDING = {},

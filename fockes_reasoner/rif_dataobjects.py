@@ -423,6 +423,14 @@ class rif_atom:
         self.op = op
         self.args = list(args)
 
+    def check(self,
+            machine: durable_reasoner.machine,
+            bindings: BINDING = {},
+            ) -> bool:
+
+        f = machine_facts.atom(self.op, self.args)
+        return f.check_for_pattern(machine, bindings)
+
     def generate_assert_action(self,
                                machine: durable_reasoner.machine,
                                ) -> Callable[[machine_facts.BINDING], None]:
