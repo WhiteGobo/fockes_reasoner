@@ -26,4 +26,8 @@ def asassign_func_numeric_subtract(first: Union[Literal, Variable], second: Unio
     return numeric_subtract
 
 def ascondition_pred_literal_not_identical(first, second) -> Callable[[BINDING], bool]:
-    return first != second
+    def literal_not_identical(bindings: BINDING) -> Literal:
+        f = bindings.get(first, first)
+        s = bindings.get(second, second)
+        return f != s
+    return literal_not_identical

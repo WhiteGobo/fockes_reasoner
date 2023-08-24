@@ -303,7 +303,7 @@ class rif_implies:
         else:
             self.if_.add_pattern(newrule)
         if len(conditions) == 0:
-            action = self.then_.generate_action(machine)
+            action = self.then_.generate_assert_action(machine)
         else:
             raise NotImplementedError()
         newrule.action = action
@@ -422,6 +422,43 @@ class rif_atom:
     def __init__(self, op: ATOM, args: Iterable[ATOM]):
         self.op = op
         self.args = list(args)
+
+    def generate_assert_action(self,
+                               machine: durable_reasoner.machine,
+                               ) -> Callable[[machine_facts.BINDING], None]:
+        """
+        :TODO: Creation of variable is not safe
+        """
+        logger.info("op: %s\nargs: %s" %(self.op,self.args))
+        binding_actions = []
+        args = [self.op, *self.args]
+        for i, arg in enumerate(args):
+            if isinstance(arg, rdflib.term.Node):
+                pass
+            elif isinstance(arg, rif_external):
+                try:
+                    args[i] = arg.get_replacement_node(machine)
+                    continue
+                except NoPossibleExternal:
+                    pass
+                try:
+                    bindact = arg.get_binding_action(machine)
+                    var = Variable("tmp%s" % uuid.uuid4().hex)
+                    binding_actions.append(lambda bindings: bindings.__setitem__(var, bindact(bindings)))
+                    args[i] = var
+                    continue
+                except NoPossibleExternal:
+                    raise
+                    pass
+                raise ValueError("Cant figure out how use '%s' as atom in %s" %(arg, self))
+            else:
+                raise NotImplementedError(x, type(x))
+        fact = machine_facts.atom(args[0], args[1:])
+        def _assert(bindings: BINDING) -> None:
+            for act in binding_actions:
+                act(bindings)
+            fact.assert_fact(machine, bindings)
+        return _assert
 
     @classmethod
     def from_rdf(cls, infograph: rdflib.Graph,

@@ -432,7 +432,7 @@ class durable_rule(abc_machine.rule):
         except Exception as err:
             self.machine.logger.info("Failed at action %r with bindings %s. "
                              "Produced traceback:\n%s"
-                             % (action, bindings,
+                             % (self.action, bindings,
                                 traceback.format_exc()))
             raise FailedInternalAction() from err
 
@@ -458,6 +458,7 @@ class durable_rule(abc_machine.rule):
             pass
         try:
             new_condition = self.machine._create_condition_from_external(op, args)
+            assert isinstance(new_condition, Callable), "something went wrong, when external function was created: %s %s" % (op, args)
             self.conditions.append(new_condition)
             return
         except NoPossibleExternal:

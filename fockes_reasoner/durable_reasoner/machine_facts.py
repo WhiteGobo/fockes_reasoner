@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 import rdflib
 from rdflib import URIRef, BNode, Literal, Variable
 import typing as typ
-from typing import MutableMapping, Mapping, Union, Callable
+from typing import MutableMapping, Mapping, Union, Callable, Iterable, Tuple
 
 
 from .abc_machine import BINDING, CLOSURE_BINDINGS, VARIABLE_LOCATOR, TRANSLATEABLE_TYPES
@@ -192,6 +192,46 @@ class subclass(fact):
     ID: str = "subclass"
     """facttype :term:`subclass` are labeled with this."""
 
+class atom(fact):
+    ID: str = "atom"
+    op: typ.Union[TRANSLATEABLE_TYPES, external, Variable]
+    args: Tuple[typ.Union[TRANSLATEABLE_TYPES, external, Variable]]
+    """facttype :term:`atom` are labeled with this."""
+    def __init__(self, op: typ.Union[TRANSLATEABLE_TYPES, external, Variable],
+                 args: Iterable[typ.Union[TRANSLATEABLE_TYPES, external, Variable]],
+                 ) -> None:
+        self.op = op
+        self.args = tuple(args)
+
+    def check_for_pattern(self, c: abc_machine.machine,
+                          bindings: BINDING = {},
+                          ) -> bool:
+        raise NotImplementedError()
+
+    def assert_fact(self, c: "machine",
+               bindings: BINDING = {},
+               ) -> None:
+        raise NotImplementedError()
+
+    def add_pattern(self, rule: "rule") -> None:
+        raise NotImplementedError()
+
+    def retract_fact(self, c: "machine",
+                bindings: BINDING = {},
+                ) -> None:
+        raise NotImplementedError()
+
+    def modify_fact(self, c: "machine",
+               bindings: BINDING = {},
+               ) -> None:
+        raise NotImplementedError()
+
+    @classmethod
+    def from_fact(cls, fact: Mapping[str, str]) -> "atom":
+        raise NotImplementedError()
+
+    def __repr__(self) -> str:
+        return "%s%s" % (self.op, self.args)
 
 def _node2string(x: Union[TRANSLATEABLE_TYPES, Variable, str, external],
                  c: typ.Union[durable.engine.Closure, str],
