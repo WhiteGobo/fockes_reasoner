@@ -14,7 +14,7 @@ from .bridge_rdflib import rdflib2string, string2rdflib
 
 from ..shared import RDF, pred, func
 from . import machine_facts
-from .machine_facts import frame, member, subclass, fact, external
+from .machine_facts import frame, member, subclass, fact, external, atom
 #from .machine_facts import frame, member, subclass, fact
 
 from . import default_externals as def_ext
@@ -177,7 +177,9 @@ class durable_machine(abc_machine.machine):
             ) -> Iterable[abc_machine.fact]:
         q: Mapping[str, type[fact]] = {frame.ID: frame,
                                        member.ID: member,
-                                       subclass.ID: subclass}
+                                       subclass.ID: subclass,
+                                       atom.ID: atom,
+                                       }
         for f in self._current_context.get_facts(fact_filter):
             fact_id = f[FACTTYPE]
             yield q[fact_id].from_fact(f)

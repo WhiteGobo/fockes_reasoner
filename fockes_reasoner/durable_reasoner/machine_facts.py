@@ -197,6 +197,8 @@ class atom(fact):
     op: typ.Union[TRANSLATEABLE_TYPES, external, Variable]
     args: Tuple[typ.Union[TRANSLATEABLE_TYPES, external, Variable]]
     """facttype :term:`atom` are labeled with this."""
+    ATOM_OP = "op"
+    ATOM_ARGS = "args%d"
     def __init__(self, op: typ.Union[TRANSLATEABLE_TYPES, external, Variable],
                  args: Iterable[typ.Union[TRANSLATEABLE_TYPES, external, Variable]],
                  ) -> None:
@@ -211,7 +213,12 @@ class atom(fact):
     def assert_fact(self, c: "machine",
                bindings: BINDING = {},
                ) -> None:
-        raise NotImplementedError()
+        fact = {"type": self.ID}
+        fact[self.ATOM_OP] = _node2string(self.op, c, bindings)
+        for i, x in enumerate(self.args):
+            label = self.ATOM_ARGS % i
+            fact[label] = _node2string(x, c, bindings)
+        c.assert_fact(fact)
 
     def add_pattern(self, rule: "rule") -> None:
         raise NotImplementedError()
