@@ -195,29 +195,32 @@ class rif_forall:
         self.formula = formula
         self.pattern = pattern
 
+    def _create_generell_rule_without_pattern(self, machine: durable_reasoner.machine) -> None:
+        newrule = machine.create_rule_builder()
+        conditions = []
+        if isinstance(self.formula.if_, rif_and):
+            for pat in self.formula.if_.formulas:
+                try:
+                    pat.add_pattern(newrule)
+                except Exception:
+                    raise
+                    conditions.append(pat.generate_condition(machine))
+        else:
+            self.formula.if_.add_pattern(newrule)
+        if len(conditions) == 0:
+            action = self.formula.then_.generate_action(machine)
+        else:
+            raise NotImplementedError()
+        newrule.action = action
+        logger.info("create rule %r" % newrule)
+        newrule.finalize()
+
     def create_rules(self, machine: durable_reasoner.machine) -> None:
         if self.pattern is None and isinstance(self.formula, rif_implies)\
                 and isinstance(self.formula.then_, (rif_frame,)):
             raise NotImplementedError()
         elif self.pattern is None and isinstance(self.formula, rif_implies):
-            newrule = machine.create_rule_builder()
-            conditions = []
-            if isinstance(self.formula.if_, rif_and):
-                for pat in self.formula.if_.formulas:
-                    try:
-                        pat.add_pattern(newrule)
-                    except Exception:
-                        raise
-                        conditions.append(pat.generate_condition(machine))
-            else:
-                self.formula.if_.add_pattern(newrule)
-            if len(conditions) == 0:
-                action = self.formula.then_.generate_action(machine)
-            else:
-                raise NotImplementedError()
-            newrule.action = action
-            logger.info("create rule %r" % newrule)
-            newrule.finalize()
+            self._create_generell_rule_without_pattern(machine)
             return
         elif self.pattern is not None:
             raise NotImplementedError()
