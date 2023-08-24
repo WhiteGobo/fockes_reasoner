@@ -235,7 +235,15 @@ class atom(fact):
 
     @classmethod
     def from_fact(cls, fact: Mapping[str, str]) -> "atom":
-        raise NotImplementedError()
+        op = string2rdflib(fact[cls.ATOM_OP])
+        args = []
+        for i in range(len(fact)):
+            try:
+                arg = string2rdflib(fact[cls.ATOM_ARGS % i])
+            except KeyError:
+                break
+            args.append(arg)
+        return cls(op, args)
 
     def __repr__(self) -> str:
         return "%s%s" % (self.op, self.args)
