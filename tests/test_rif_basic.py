@@ -114,7 +114,7 @@ def test_simpletestrun():
     #pytest.param(PET_Chaining_strategy_numeric_subtract_2,),
     #pytest.param(PET_EBusiness_Contract,),
     #pytest.param(PET_Factorial_Forward_Chaining,),
-    #pytest.param(PET_Frame_slots_are_independent,),
+    pytest.param(PET_Frame_slots_are_independent,),
     pytest.param(PET_Frames,),
     #pytest.param(PET_Guards_and_subtypes,),
     #pytest.param(PET_IRI_from_RDF_Literal,),
