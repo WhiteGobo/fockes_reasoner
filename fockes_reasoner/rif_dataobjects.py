@@ -822,11 +822,22 @@ class rif_assert:
         return "Assert( %s )" % self.fact
 
 class rif_equal:
+    #_side_generators: Mapping
+    def __init__(self, left, right):
+        self.left = left
+        self.right = right
+
     @classmethod
     def from_rdf(cls, infograph: rdflib.Graph,
                  rootnode: rdflib.IdentifiedNode,
                  **kwargs: typ.Any) -> "rif_equal":
-        raise NotImplementedError()
+        leftnode = infograph.value(rootnode, RIF.left)
+        rightnode = infograph.value(rootnode, RIF.right)
+        left = slot2node(infograph, leftnode)
+        right = slot2node(infograph, rightnode)
+        #left = _generate_object(infograph, leftnode, cls._side_generators)
+        #right = _generate_object(infograph, rightnode, cls._side_generators)
+        return cls(left, right)
 
 
 rif_implies._then_generators = {
@@ -840,3 +851,4 @@ _formulas = {RIF.External: rif_external.from_rdf,
              RIF.Equal: rif_equal.from_rdf,
              }
 rif_and._formulas_generators = dict(_formulas)
+#rif_equal._side_generators = {}
