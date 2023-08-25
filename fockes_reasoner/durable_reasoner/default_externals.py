@@ -3,6 +3,7 @@ import rdflib
 from rdflib import Literal, Variable, XSD, IdentifiedNode, Literal
 
 from .abc_machine import BINDING
+from ..shared import pred, func
 
 def _resolve(x, bindings: BINDING):
     """Resolve variables and externals
@@ -13,6 +14,7 @@ def _resolve(x, bindings: BINDING):
         return x
     else:
         return x(bindings)
+
 
 def ascondition_pred_greater_than(bigger: Union[Literal, Variable], smaller: Union[Literal, Variable]) -> Callable[[BINDING], bool]:
     valid1 = bigger.isnumeric() or isinstance(bigger, Variable)
