@@ -119,7 +119,7 @@ def _transform_all_externals_to_calls(args, tmp_machine):
             useable_args.append(tmp_assign)
     return useable_args
 
-class durable_machine(abc_machine.machine):
+class _base_durable_machine(abc_machine.machine):
     _ruleset: rls.ruleset
     logger: logging.Logger
     errors: list
@@ -141,15 +141,6 @@ class durable_machine(abc_machine.machine):
         self._registered_condition_generator = {}
         self._registered_action_generator = {}
         self._registered_assignment_generator = {}
-        self.register(pred["numeric-greater-than"], ascondition=def_ext.ascondition_pred_greater_than)
-        self.register(func["numeric-subtract"], asassign=def_ext.asassign_func_numeric_subtract)
-        self.register(pred["literal-not-identical"], ascondition=def_ext.ascondition_pred_literal_not_identical)
-        self.register(pred["is-literal-hexBinary"], ascondition=def_ext.ascondition_is_literal_hexBinary)
-        self.register(pred["is-literal-base64Binary"], ascondition=def_ext.condition_pred_is_literal_base64Binary)
-        #self.register(pred["is-literal-base64Binary"], ascondition=def_ext.ascondition_is_literal_base64Binary)
-        self.register(pred["is-literal-not-base64Binary"], ascondition=def_ext.ascondition_is_literal_not_base64Binary)
-        self.register(XSD["base64Binary"], asassign=def_ext.asassign_xs_base64Binary)
-
 
         self._imported_locations = set()
         self.available_import_profiles = {}
@@ -317,7 +308,7 @@ class durable_machine(abc_machine.machine):
             self._registered_pattern_generator[op] = aspattern
 
 
-class RDFmachine(durable_machine):
+class RDFmachine(_base_durable_machine):
     """Implements translation of as in RDF specified syntax for the machine
     """
     def __init__(self, loggername: str = __name__) -> None:
@@ -398,11 +389,11 @@ class RDFmachine(durable_machine):
 class durable_action(abc_machine.action):
     action: Optional[Callable[[BINDING], None]]
     """action that is executed in initstate (machinestate==init)"""
-    machine: durable_machine
+    machine: _base_durable_machine
     """Rulemachine for this action"""
     finalized: bool
     """Shows if action is already implemented in machine"""
-    def __init__(self, machine: durable_machine,
+    def __init__(self, machine: _base_durable_machine,
                  action: Union[None, Callable] = None) -> None:
         self.machine = machine
         self.action = action
@@ -426,8 +417,8 @@ class durable_rule(abc_machine.rule):
     patterns: list[rls.value]
     action: Optional[Callable]
     bindings: MutableMapping[Variable, VARIABLE_LOCATOR]
-    machine: durable_machine
-    def __init__(self, machine: durable_machine):
+    machine: _base_durable_machine
+    def __init__(self, machine: _base_durable_machine):
         self.machine = machine
         self.patterns = [getattr(rls.m, MACHINESTATE) == RUNNING_STATE]
         self.action = None
@@ -577,3 +568,28 @@ class _value_locator:
     def __repr__(self) -> str:
         return f"%s(c.{self.factname}.{self.in_fact_label})"\
                 % type(self).__name__
+
+class _machine_default_externals(_base_durable_machine):
+    """Implements all default externals
+    """
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.register(pred["numeric-greater-than"],
+                      ascondition=def_ext.ascondition_pred_greater_than)
+        self.register(func["numeric-subtract"],
+                      asassign=def_ext.asassign_func_numeric_subtract)
+        self.register(pred["literal-not-identical"],
+                      ascondition=def_ext.ascondition_pred_literal_not_identical)
+        self.register(pred["is-literal-hexBinary"],
+                      ascondition=def_ext.ascondition_is_literal_hexBinary)
+        self.register(pred["is-literal-base64Binary"],
+                      ascondition=def_ext.condition_pred_is_literal_base64Binary)
+        #self.register(pred["is-literal-base64Binary"], ascondition=def_ext.ascondition_is_literal_base64Binary)
+        self.register(pred["is-literal-not-base64Binary"],
+                      ascondition=def_ext.ascondition_is_literal_not_base64Binary)
+        self.register(XSD["base64Binary"],
+                      asassign=def_ext.asassign_xs_base64Binary)
+
+
+class durable_machine(_machine_default_externals, _base_durable_machine):
+    pass
