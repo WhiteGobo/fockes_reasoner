@@ -347,6 +347,7 @@ class rif_implies:
 
 class rif_and:
     formulas: Iterable[Union["rif_frame"]]
+    _formulas_generators: Mapping
     def __init__(self, formulas: Iterable[Union["rif_frame"]]):
         self.formulas = list(formulas)
 
@@ -369,8 +370,7 @@ class rif_and:
         formula_list: Iterable[IdentifiedNode] = rdflib.collection.Collection(infograph, formula_list_node) #type: ignore[assignment]
         formulas: List[Union[rif_assert]] = []
         for formula_node in formula_list:
-            next_formula = model.generate_object(infograph, formula_node)
-            #assert isinstance(next_formula, (rif_assert, rif_retract, rif_modify)), "got unexpected rif object. Invalid RIF document?"
+            next_formula = _generate_object(infograph, formula_node, cls._formulas_generators)
             formulas.append(next_formula)
         return cls(formulas)
 
@@ -827,3 +827,8 @@ rif_implies._then_generators = {
         RIF.Do: rif_do.from_rdf,
         RIF.Atom: rif_atom.from_rdf,
         }
+
+_formulas = {RIF.External: rif_external.from_rdf,
+             RIF.Frame: rif_frame.from_rdf,
+             }
+rif_and._formulas_generators = dict(_formulas)
