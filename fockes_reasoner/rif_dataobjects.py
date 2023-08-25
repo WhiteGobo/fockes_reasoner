@@ -821,6 +821,13 @@ class rif_assert:
     def __repr__(self) -> str:
         return "Assert( %s )" % self.fact
 
+class rif_equal:
+    @classmethod
+    def from_rdf(cls, infograph: rdflib.Graph,
+                 rootnode: rdflib.IdentifiedNode,
+                 **kwargs: typ.Any) -> "rif_equal":
+        raise NotImplementedError()
+
 
 rif_implies._then_generators = {
         RIF.Frame: rif_frame.from_rdf,
@@ -830,5 +837,6 @@ rif_implies._then_generators = {
 
 _formulas = {RIF.External: rif_external.from_rdf,
              RIF.Frame: rif_frame.from_rdf,
+             RIF.Equal: rif_equal.from_rdf,
              }
 rif_and._formulas_generators = dict(_formulas)
