@@ -97,15 +97,16 @@ def test_simpletestrun():
 @pytest.mark.parametrize("testinfo",[
     pytest.param(data.test_suite.PET_Assert),
     pytest.param(data.test_suite.PET_AssertRetract,
-                 marks=pytest.mark.skip("implications are not supported yet")),
-    pytest.param(data.test_suite.PET_AssertRetract2),
+                 marks=pytest.mark.skip("implications are not supported yet"),
+                 id="PET AssertRetract"),
+    pytest.param(data.test_suite.PET_AssertRetract2,
+                 id="PET_AssertRetract2"),
     pytest.param(data.test_suite.PET_Modify),
     pytest.param(data.test_suite.PET_Modify_loop),
     pytest.param(PET_Builtin_literal_not_identical,),
     pytest.param(PET_Builtins_Binary,),
     #pytest.param(PET_Builtins_List,),
-    #pytest.param(PET_Builtins_Numeric,),
-    #pytest.param(PET_Builtins_Numeric,),
+    pytest.param(PET_Builtins_Numeric, id="PET Builtins_Numeric"),
     #pytest.param(PET_Builtins_PlainLiteral,),
     #pytest.param(PET_Builtins_String,),
     #pytest.param(PET_Builtins_Time,),
@@ -135,12 +136,13 @@ def test_simpletestrun():
 def test_PositiveEntailmentTests(testinfo):
     testfile = str(testinfo.premise)
     conclusionfile = str(testinfo.conclusion)
+    logger.debug("Premise: %s\nConclusion: %s" %(testfile, conclusionfile))
     try:
         g = rdflib.Graph().parse(testfile, format="rif")
         conc_graph = rdflib.Graph().parse(conclusionfile, format="rif")
     except rdflib.plugin.PluginException:
         pytest.skip("Need rdflib parser plugin to load RIF-file")
-    logger.info("premise in ttl:\n%s" % g.serialize())
+    logger.debug("premise in ttl:\n%s" % g.serialize())
 
     q = fockes_reasoner.simpleLogicMachine.from_rdf(g)
     logger.debug("Running Machine ... ")
