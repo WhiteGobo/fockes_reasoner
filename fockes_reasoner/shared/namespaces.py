@@ -9,9 +9,9 @@ class pred(DefinedNamespace):
             "numeric-greater-than",
             "numeric-equal",
             "literal-not-identical",
-            #"",
-            #"",
-            #"",
+            "is-literal-hexBinary",
+            "is-literal-base64Binary",
+            "is-literal-not-base64Binary",
             #"",
             ]
     _NS = Namespace("http://www.w3.org/2007/rif-builtin-predicate#")

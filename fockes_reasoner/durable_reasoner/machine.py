@@ -7,7 +7,7 @@ import traceback
 from typing import Union, Mapping, Iterable, Callable, Any, MutableMapping, Optional, Container
 from hashlib import sha1
 import rdflib
-from rdflib import URIRef, Variable, Literal, BNode, Graph, IdentifiedNode
+from rdflib import URIRef, Variable, Literal, BNode, Graph, IdentifiedNode, XSD
 from . import abc_machine
 from .abc_machine import TRANSLATEABLE_TYPES, FACTTYPE, BINDING, VARIABLE_LOCATOR, NoPossibleExternal, importProfile
 from .bridge_rdflib import rdflib2string, string2rdflib
@@ -134,6 +134,11 @@ class durable_machine(abc_machine.machine):
         self.register(pred["numeric-greater-than"], ascondition=def_ext.ascondition_pred_greater_than)
         self.register(func["numeric-subtract"], asassign=def_ext.asassign_func_numeric_subtract)
         self.register(pred["literal-not-identical"], ascondition=def_ext.ascondition_pred_literal_not_identical)
+        self.register(pred["is-literal-hexBinary"], ascondition=def_ext.ascondition_is_literal_hexBinary)
+        self.register(pred["is-literal-base64Binary"], ascondition=def_ext.ascondition_is_literal_base64Binary)
+        self.register(pred["is-literal-not-base64Binary"], ascondition=def_ext.ascondition_is_literal_not_base64Binary)
+        self.register(XSD["asassign-xs-base64Binary"], asassign=def_ext.asassign_xs_base64Binary)
+
 
         self._imported_locations = set()
         self.available_import_profiles = {}
@@ -453,10 +458,12 @@ class durable_rule(abc_machine.rule):
         self.finalized = True
 
     def generate_pattern_external(self, op, args) -> None:
+        err_messages = []
         try:
             self.machine._create_pattern_for_external(op, args)
             return
         except NoPossibleExternal:
+            err_messages.append(traceback.format_exc())
             pass
         try:
             new_condition = self.machine._create_condition_from_external(op, args)
@@ -464,8 +471,13 @@ class durable_rule(abc_machine.rule):
             self.conditions.append(new_condition)
             return
         except NoPossibleExternal:
+            err_messages.append(traceback.format_exc())
             pass
-        raise ValueError("Cant process external: %s %s" % (op, args))
+        self.machine.logger.error("Couldnt process external %s %s with "
+                                  "errors:\n%s"
+                                  % (op, args, "\n---\n".join(err_messages)))
+        raise ValueError("Cant process external: %s %s\nMore info in "
+                         "logging" % (op, args))
 
     def add_pattern(self,
                     pattern: Mapping[str, Union[Variable, str, TRANSLATEABLE_TYPES]],

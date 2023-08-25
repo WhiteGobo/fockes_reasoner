@@ -1,6 +1,6 @@
 from typing import Callable, Union
 import rdflib
-from rdflib import Literal, Variable
+from rdflib import Literal, Variable, XSD
 
 from .abc_machine import BINDING
 
@@ -31,3 +31,30 @@ def ascondition_pred_literal_not_identical(first, second) -> Callable[[BINDING],
         s = bindings.get(second, second)
         return f != s
     return literal_not_identical
+
+def ascondition_is_literal_hexBinary(target) -> Callable[[BINDING], bool]:
+    def literal_not_identical(bindings: BINDING) -> Literal:
+        t = bindings.get(target, target)
+        return target.datatype == XSD.hexBinary
+    return literal_not_identical
+
+
+def ascondition_is_literal_base64Binary(target) -> Callable[[BINDING], bool]:
+    def literal_not_identical(bindings: BINDING) -> Literal:
+        t = bindings.get(target, target)
+        return target.datatype == XSD.base64Binary
+    return literal_not_identical
+
+def ascondition_is_literal_not_base64Binary(target) -> Callable[[BINDING], bool]:
+    def literal_not_identical(bindings: BINDING) -> Literal:
+        t = bindings.get(target, target)
+        return target.datatype != XSD.base64Binary
+    return literal_not_identical
+
+
+def asassign_xs_base64Binary(target: Union[Literal, Variable]) -> Callable[[BINDING], Literal]:
+    def numeric_subtract(bindings: BINDING) -> Literal:
+        target = bindings.get(target, target)
+        return Literal(target,
+                       datatype=XSD.base64Binary)
+    return numeric_subtract
