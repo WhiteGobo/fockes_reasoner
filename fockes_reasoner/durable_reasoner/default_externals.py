@@ -1,8 +1,18 @@
-from typing import Callable, Union
+from typing import Callable, Union, TypeVar
 import rdflib
-from rdflib import Literal, Variable, XSD
+from rdflib import Literal, Variable, XSD, IdentifiedNode, Literal
 
 from .abc_machine import BINDING
+
+def _resolve(x, bindings: BINDING):
+    """Resolve variables and externals
+    """
+    if isinstance(x, Variable):
+        return bindings[x]
+    elif isinstance(x, (IdentifiedNode, Literal)):
+        return x
+    else:
+        return x(bindings)
 
 def ascondition_pred_greater_than(bigger: Union[Literal, Variable], smaller: Union[Literal, Variable]) -> Callable[[BINDING], bool]:
     valid1 = bigger.isnumeric() or isinstance(bigger, Variable)
@@ -39,11 +49,17 @@ def ascondition_is_literal_hexBinary(target) -> Callable[[BINDING], bool]:
     return literal_not_identical
 
 
-def ascondition_is_literal_base64Binary(target) -> Callable[[BINDING], bool]:
-    def literal_not_identical(bindings: BINDING) -> Literal:
-        t = bindings.get(target, target)
-        return target.datatype == XSD.base64Binary
-    return literal_not_identical
+class condition_pred_is_literal_base64Binary:
+    def __init__(self, target, mode="ascondition") -> None:
+        self.target = target
+        self.mode = mode
+
+    def __call__(self, bindings: BINDING) -> bool:
+        t = _resolve(self.target, bindings)
+        return t.datatype == XSD.base64Binary
+
+    def __repr__(self):
+        return "pred:is-literal-base64Binary(%s)[ascondition]" % self.target
 
 def ascondition_is_literal_not_base64Binary(target) -> Callable[[BINDING], bool]:
     def literal_not_identical(bindings: BINDING) -> Literal:
@@ -54,7 +70,6 @@ def ascondition_is_literal_not_base64Binary(target) -> Callable[[BINDING], bool]
 
 def asassign_xs_base64Binary(target: Union[Literal, Variable]) -> Callable[[BINDING], Literal]:
     def numeric_subtract(bindings: BINDING) -> Literal:
-        target = bindings.get(target, target)
-        return Literal(target,
-                       datatype=XSD.base64Binary)
+        t = _resolve(target, bindings)
+        return Literal(t, datatype=XSD.base64Binary)
     return numeric_subtract

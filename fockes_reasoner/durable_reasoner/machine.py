@@ -14,7 +14,7 @@ from .bridge_rdflib import rdflib2string, string2rdflib
 
 from ..shared import RDF, pred, func
 from . import machine_facts
-from .machine_facts import frame, member, subclass, fact, external, atom
+from .machine_facts import frame, member, subclass, fact, external, atom, rdflib2string
 #from .machine_facts import frame, member, subclass, fact
 
 from . import default_externals as def_ext
@@ -108,6 +108,16 @@ class _closure_helper(_context_helper):
     def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         self.machine._current_context = self.previous_context
 
+def _transform_all_externals_to_calls(args, tmp_machine):
+    useable_args = []
+    for arg in args:
+        if isinstance(arg, (IdentifiedNode, Literal, Variable)):
+            useable_args.append(arg)
+        else:
+            tmp_assign = tmp_machine._create_assignment_from_external(arg.op,
+                                                                      arg.args)
+            useable_args.append(tmp_assign)
+    return useable_args
 
 class durable_machine(abc_machine.machine):
     _ruleset: rls.ruleset
@@ -135,9 +145,10 @@ class durable_machine(abc_machine.machine):
         self.register(func["numeric-subtract"], asassign=def_ext.asassign_func_numeric_subtract)
         self.register(pred["literal-not-identical"], ascondition=def_ext.ascondition_pred_literal_not_identical)
         self.register(pred["is-literal-hexBinary"], ascondition=def_ext.ascondition_is_literal_hexBinary)
-        self.register(pred["is-literal-base64Binary"], ascondition=def_ext.ascondition_is_literal_base64Binary)
+        self.register(pred["is-literal-base64Binary"], ascondition=def_ext.condition_pred_is_literal_base64Binary)
+        #self.register(pred["is-literal-base64Binary"], ascondition=def_ext.ascondition_is_literal_base64Binary)
         self.register(pred["is-literal-not-base64Binary"], ascondition=def_ext.ascondition_is_literal_not_base64Binary)
-        self.register(XSD["asassign-xs-base64Binary"], asassign=def_ext.asassign_xs_base64Binary)
+        self.register(XSD["base64Binary"], asassign=def_ext.asassign_xs_base64Binary)
 
 
         self._imported_locations = set()
@@ -272,6 +283,14 @@ class durable_machine(abc_machine.machine):
         """
         raise NoPossibleExternal()
 
+    def _create_assignment_from_external(self, op, args) -> Callable[[BINDING], Union[IdentifiedNode, Literal]]:
+        try:
+            mygen = self._registered_assignment_generator[op]
+        except KeyError as err:
+            raise NoPossibleExternal(op) from err
+        useable_args = _transform_all_externals_to_calls(args, self)
+        return mygen(*useable_args)
+
     def _create_condition_from_external(self, op, args) -> Callable[[BINDING], bool]:
         """Create a condition from given external.
         :raises NoPossibleExternal: If given external is not defined or cant be used to
@@ -281,7 +300,8 @@ class durable_machine(abc_machine.machine):
             mygen = self._registered_condition_generator[op]
         except KeyError as err:
             raise NoPossibleExternal(op) from err
-        return mygen(*args)
+        useable_args = _transform_all_externals_to_calls(args, self)
+        return mygen(*useable_args)
 
     def register(self, op: rdflib.URIRef, asaction: Optional[Callable] = None,
             ascondition: Optional[Callable] = None,
@@ -397,6 +417,10 @@ class durable_action(abc_machine.action):
         patterns = [getattr(rls.m, MACHINESTATE) == INIT_STATE]
         self.machine._make_rule(patterns, self.action, {})
 
+    @property
+    def logger(self):
+        return self.machine.logger
+
 
 class durable_rule(abc_machine.rule):
     patterns: list[rls.value]
@@ -479,12 +503,15 @@ class durable_rule(abc_machine.rule):
         raise ValueError("Cant process external: %s %s\nMore info in "
                          "logging" % (op, args))
 
+    @property
+    def logger(self):
+        return self.machine.logger
+
     def add_pattern(self,
                     pattern: Mapping[str, Union[Variable, str, TRANSLATEABLE_TYPES]],
                     factname: Union[str, None] = None,
                     ) -> None:
         self._orig_pattern.append(dict(pattern))
-        from .machine_facts import rdflib2string
         pattern = dict(pattern)
         if factname is None:
             _as_string = repr(sorted(pattern.items()))
