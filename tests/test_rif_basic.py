@@ -162,6 +162,7 @@ def test_PositiveEntailmentTests(testinfo):
     pytest.param(data.test_suite.NET_Retract,
                  id="NET_Retract"),
     pytest.param(data.test_suite.NET_RDF_Combination_SubClass_5,
+                 marks=pytest.mark.skip("version of rdflib_rif is too old"),
                  id="NET_RDF_Combination_SubClass_5"),
     ])
 def test_NegativeEntailmentTests(testinfo):
