@@ -317,8 +317,11 @@ class rif_implies:
             for pat in self.if_.formulas:
                 try:
                     pat.add_pattern(newrule)
+                    logger.debug("added pat %s" % pat)
                 except NotPossibleAction:
-                    conditions.append(pat.generate_condition(machine))
+                    tmp_cond = pat.generate_condition(machine)
+                    conditions.append(tmp_cond)
+                    logger.debug("added with %s cond %s" % (pat, tmp_cond))
         else:
             self.if_.add_pattern(newrule)
         if len(conditions) == 0:
@@ -552,7 +555,7 @@ class rif_external:
         return cls(op, args)
 
     def __repr__(self) -> str:
-        return "external %s (%s)" % (self.op, ", ".join(self.args))
+        return "external %s (%s)" % (self.op, ", ".join(str(x) for x in self.args))
 
 
 class rif_member:
