@@ -611,15 +611,15 @@ class _machine_default_externals(_base_durable_machine):
         self.register(pred["is-literal-decimal"],
                       ascondition=def_ext.condition_pred_is_literal_decimal)
         self.register(pred["is-literal-not-decimal"],
-                      ascondition=def_ext.condition_pred_is_literal_decimal)
+                      ascondition=invert.gen(def_ext.condition_pred_is_literal_decimal))
         self.register(pred["is-literal-integer"],
                       ascondition=def_ext.condition_pred_is_literal_integer)
         self.register(pred["is-literal-not-integer"],
-                      ascondition=def_ext.condition_pred_is_literal_integer)
+                      ascondition=invert.gen(def_ext.condition_pred_is_literal_integer))
         self.register(pred["is-literal-int"],
                       ascondition=def_ext.condition_pred_is_literal_int)
         self.register(pred["is-literal-not-int"],
-                      ascondition=def_ext.condition_pred_is_literal_not_int)
+                      ascondition=invert.gen(def_ext.condition_pred_is_literal_int))
         self.register(pred["is-literal-long"],
                       ascondition=def_ext.condition_pred_is_literal_long)
         self.register(pred["is-literal-not-long"],
@@ -635,11 +635,11 @@ class _machine_default_externals(_base_durable_machine):
         self.register(pred["is-literal-nonNegativeInteger"],
                       ascondition=def_ext.condition_pred_is_literal_positiveInteger)
         self.register(pred["is-literal-not-nonNegativeInteger"],
-                      ascondition=def_ext.condition_pred_is_literal_not_nonNegativeInteger)
+                      ascondition=invert.gen(def_ext.condition_pred_is_literal_positiveInteger))
         self.register(pred["is-literal-positiveInteger"],
                       ascondition=def_ext.condition_pred_is_literal_positiveInteger)
         self.register(pred["is-literal-not-positiveInteger"],
-                      ascondition=def_ext.condition_pred_is_literal_not_positiveInteger)
+                      ascondition=invert.gen(def_ext.condition_pred_is_literal_positiveInteger))
         self.register(pred["is-literal-nonPositiveInteger"],
                       ascondition=def_ext.condition_pred_is_literal_negativeInteger)
         self.register(pred["is-literal-not-nonPositiveInteger"],
@@ -651,7 +651,7 @@ class _machine_default_externals(_base_durable_machine):
         self.register(pred["is-literal-unsignedLong"],
                       ascondition=def_ext.condition_pred_is_literal_unsignedLong)
         self.register(pred["is-literal-not-unsignedLong"],
-                      ascondition=def_ext.condition_pred_is_literal_not_unsignedLong)
+                      ascondition=invert.gen(def_ext.condition_pred_is_literal_unsignedLong))
         self.register(pred["is-literal-unsignedInt"],
                       ascondition=def_ext.condition_pred_is_literal_unsignedInt)
         self.register(pred["is-literal-not-unsignedInt"],

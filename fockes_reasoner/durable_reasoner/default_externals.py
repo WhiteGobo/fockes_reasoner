@@ -1,6 +1,9 @@
 from typing import Callable, Union, TypeVar
 import rdflib
 from rdflib import Literal, Variable, XSD, IdentifiedNode, Literal, URIRef
+import logging
+logger = logging.getLogger()
+from dataclasses import dataclass
 
 from .abc_machine import BINDING
 from ..shared import pred, func
@@ -123,16 +126,12 @@ class condition_pred_is_literal_float:
     def __repr__(self):
         return "pred:is-literal-float(%s)[ascondition]" % self.target
 
+@dataclass
 class condition_pred_is_literal_not_float:
-    def __init__(self, target) -> None:
-        self.target = target
-
+    target: IdentifiedNode
     def __call__(self, bindings: BINDING) -> bool:
         t = _resolve(self.target, bindings)
         return t.datatype != XSD.float
-
-    def __repr__(self):
-        return "pred:is-literal-float(%s)[ascondition]" % self.target
 
 class condition_pred_is_literal_integer:
     def __init__(self, target) -> None:
@@ -141,17 +140,6 @@ class condition_pred_is_literal_integer:
     def __call__(self, bindings: BINDING) -> bool:
         t = _resolve(self.target, bindings)
         return t.datatype == XSD.integer
-
-    def __repr__(self):
-        return "pred:is-literal-integer(%s)[ascondition]" % self.target
-
-class condition_pred_is_literal_not_integer:
-    def __init__(self, target) -> None:
-        self.target = target
-
-    def __call__(self, bindings: BINDING) -> bool:
-        t = _resolve(self.target, bindings)
-        return t.datatype != XSD.integer
 
     def __repr__(self):
         return "pred:is-literal-integer(%s)[ascondition]" % self.target
@@ -202,16 +190,6 @@ class condition_pred_is_literal_unsignedLong:
         if int(t).bit_length() > 32:
             return False
         return t >= Literal(0)
-
-class condition_pred_is_literal_not_unsignedLong:
-    """
-    :TODO: The limitsize should be system dependent
-    """
-    def __init__(self, target) -> None:
-        self.target = target
-
-    def __call__(self, bindings: BINDING) -> bool:
-        return not condition_pred_is_literal_not_unsignedLong.__call__(self, bindings)
 
 class condition_pred_is_literal_unsignedInt:
     def __init__(self, target) -> None:
@@ -312,13 +290,6 @@ class condition_pred_is_literal_not_negativeInteger:
     def __call__(self, bindings: BINDING) -> bool:
         return not condition_pred_is_literal_negativeInteger.__call__(self, bindings)
 
-class condition_pred_is_literal_not_nonNegativeInteger:
-    def __init__(self, target) -> None:
-        self.target = target
-
-    def __call__(self, bindings: BINDING) -> bool:
-        return not condition_pred_is_literal_nonNegativeInteger.__call__(self, bindings)
-
 class condition_pred_is_literal_positiveInteger:
     def __init__(self, target) -> None:
         self.target = target
@@ -329,34 +300,19 @@ class condition_pred_is_literal_positiveInteger:
             return False
         return t >= Literal(0)
 
-class condition_pred_is_literal_not_positiveInteger:
-    def __init__(self, target) -> None:
-        self.target = target
-
-    def __call__(self, bindings: BINDING) -> bool:
-        return not condition_pred_is_literal_not_positiveInteger.__call__(self, bindings)
-
+@dataclass
 class condition_pred_is_literal_decimal:
-    def __init__(self, target) -> None:
-        self.target = target
-
+    target: Union[IdentifiedNode]
     def __call__(self, bindings: BINDING) -> bool:
         t = _resolve(self.target, bindings)
         return t.isdecimal()
 
-    def __repr__(self):
-        return "pred:is-literal-float(%s)[ascondition]" % self.target
-
+@dataclass
 class condition_pred_is_literal_base64Binary:
-    def __init__(self, target) -> None:
-        self.target = target
-
+    target: Union[IdentifiedNode]
     def __call__(self, bindings: BINDING) -> bool:
         t = _resolve(self.target, bindings)
         return t.datatype == XSD.base64Binary
-
-    def __repr__(self):
-        return "pred:is-literal-base64Binary(%s)[ascondition]" % self.target
 
 def ascondition_is_literal_not_base64Binary(target) -> Callable[[BINDING], bool]:
     def literal_not_identical(bindings: BINDING) -> Literal:
