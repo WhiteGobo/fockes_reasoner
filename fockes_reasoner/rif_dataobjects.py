@@ -13,6 +13,7 @@ from rdflib import RDF
 from . import durable_reasoner
 from .durable_reasoner import machine
 from .durable_reasoner import BINDING
+from dataclasses import dataclass
 
 ATOM = typ.Union[TRANSLATEABLE_TYPES, external, Variable]
 SLOT = Tuple[ATOM, ATOM]
@@ -293,6 +294,19 @@ class rif_implies:
         self.if_ = if_
         self.then_ = then_
 
+    @dataclass
+    class conditional:
+        parent: "rif_implies"
+        conditions: list[Callable]
+        action: Callable
+        def __call__(self, bindings: BINDING):
+            if all(c(bindings) for c in self.conditions):
+                self.action(bindings)
+
+        def __repr__(self):
+            return f"condition {self.parent}"
+
+
     def create_rules(self, machine: durable_reasoner.machine) -> None:
         """Create this as a rule for an expertsystem.
 
@@ -308,10 +322,10 @@ class rif_implies:
         else:
             self.if_.add_pattern(newrule)
         if len(conditions) == 0:
-            action = self.then_.generate_assert_action(machine)
+            newrule.action = self.then_.generate_assert_action(machine)
         else:
-            raise NotImplementedError()
-        newrule.action = action
+            action = self.then_.generate_assert_action(machine)
+            newrule.action = self.conditional(self, conditions, action)
         logger.info("create implication %r" % newrule)
         newrule.finalize()
 
@@ -831,6 +845,9 @@ class rif_equal:
     def __init__(self, left, right):
         self.left = left
         self.right = right
+
+    def __repr__(self):
+        return "(%s = %s)" % (self.left, self.right)
 
     def add_pattern(self, rule: durable_reasoner.rule) -> None:
         raise NotPossibleAction("generate pattern currently not implemented for rif_equal")
