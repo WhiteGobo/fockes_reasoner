@@ -291,14 +291,16 @@ class rif_implies:
         self.then_ = then_
 
     def create_rules(self, machine: durable_reasoner.machine) -> None:
+        """Create this as a rule for an expertsystem.
+
+        """
         newrule = machine.create_implication_builder()
         conditions = []
         if isinstance(self.if_, rif_and):
             for pat in self.if_.formulas:
                 try:
                     pat.add_pattern(newrule)
-                except Exception:
-                    raise
+                except AttributeError:
                     conditions.append(pat.generate_condition(machine))
         else:
             self.if_.add_pattern(newrule)
