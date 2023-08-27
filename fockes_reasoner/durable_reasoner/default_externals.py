@@ -201,7 +201,7 @@ class condition_pred_is_literal_unsignedLong:
             return False
         if int(t).bit_length() > 32:
             return False
-        return t >= 0
+        return t >= Literal(0)
 
 class condition_pred_is_literal_not_unsignedLong:
     """
@@ -223,7 +223,7 @@ class condition_pred_is_literal_unsignedInt:
             return False
         if int(t).bit_length() > 16:
             return False
-        return t >= 0
+        return t >= Literal(0)
 
     def __repr__(self):
         return "pred:is-literal-long(%s)[ascondition]" % self.target
@@ -239,7 +239,7 @@ class condition_pred_is_literal_unsignedShort:
             return False
         if int(t).bit_length() > 8:
             return False
-        return t >= 0
+        return t >= Literal(0)
 
     def __repr__(self):
         return "pred:is-literal-unsignedShort(%s)[ascondition]" % self.target
@@ -303,7 +303,7 @@ class condition_pred_is_literal_negativeInteger:
         t = _resolve(self.target, bindings)
         if t.datatype != XSD.integer:
             return False
-        return t < 0
+        return t < Literal(0)
 
 class condition_pred_is_literal_not_negativeInteger:
     def __init__(self, target) -> None:
@@ -327,7 +327,7 @@ class condition_pred_is_literal_positiveInteger:
         t = _resolve(self.target, bindings)
         if t.datatype != XSD.integer:
             return False
-        return t >= 0
+        return t >= Literal(0)
 
 class condition_pred_is_literal_not_positiveInteger:
     def __init__(self, target) -> None:
