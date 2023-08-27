@@ -30,6 +30,25 @@ class invert:
     def __repr__(self):
         return "invert(%s)" % self.to_invert
 
+class equal:
+    def __init__(self, left, right):
+        self.left = left
+        self.right = right
+
+    def __call__(bindings:BINDING) -> bool:
+        left = _resolve(self.left, bindings)
+        right = _resolve(self.right, bindings)
+        return Literal(left == right)
+
+class pred_less_than:
+    def __init__(self, smaller, bigger):
+        self.smaller = smaller
+        self.bigger = bigger
+
+    def __call__(self, bindings:BINDING) -> Literal:
+        s = _resolve(self.smaller, bindings)
+        b = _resolve(self.bigger, bindings)
+        return Literal(s < b)
 
 def ascondition_pred_greater_than(bigger: Union[Literal, Variable], smaller: Union[Literal, Variable]) -> Callable[[BINDING], bool]:
     valid1 = bigger.isnumeric() or isinstance(bigger, Variable)

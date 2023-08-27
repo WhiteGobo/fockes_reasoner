@@ -292,7 +292,10 @@ class _base_durable_machine(abc_machine.machine):
         except KeyError as err:
             raise NoPossibleExternal(op) from err
         useable_args = _transform_all_externals_to_calls(args, self)
-        return mygen(*useable_args)
+        try:
+            return mygen(*useable_args)
+        except TypeError as err:
+            raise Exception(mygen, useable_args) from err
 
     def register(self, op: rdflib.URIRef, asaction: Optional[Callable] = None,
             ascondition: Optional[Callable] = None,
@@ -575,8 +578,18 @@ class _machine_default_externals(_base_durable_machine):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         invert = def_ext.invert
+        self.register(pred["numeric-equal"],
+                      ascondition=def_ext.equal)
+        self.register(pred["numeric-not-equal"],
+                      ascondition=invert.gen(def_ext.equal))
         self.register(pred["numeric-greater-than"],
                       ascondition=def_ext.ascondition_pred_greater_than)
+        self.register(pred["numeric-less-than-or-equal"],
+                      ascondition=invert.gen(def_ext.ascondition_pred_greater_than))
+        self.register(pred["numeric-less-than"],
+                      ascondition=def_ext.pred_less_than)
+        self.register(pred["numeric-greater-than-or-equal"],
+                      ascondition=invert.gen(def_ext.pred_less_than))
         self.register(func["numeric-subtract"],
                       asassign=def_ext.asassign_func_numeric_subtract)
         self.register(pred["literal-not-identical"],

@@ -7,7 +7,11 @@ class pred(DefinedNamespace):
     _fail = True
     _extras = [
             "numeric-greater-than",
+            "numeric-greater-than-or-equal",
+            "numeric-less-than",
+            "numeric-less-than-or-equal",
             "numeric-equal",
+            "numeric-not-equal",
             "literal-not-identical",
             "is-literal-hexBinary",
             "is-literal-not-hexBinary",

@@ -2,7 +2,7 @@ import abc
 import logging
 logger = logging.getLogger(__name__)
 import uuid
-from .durable_reasoner import machine_facts, fact, NoPossibleExternal
+from .durable_reasoner import machine_facts, fact, NoPossibleExternal, _resolve
 from .durable_reasoner.machine_facts import external, TRANSLATEABLE_TYPES
 import rdflib
 from rdflib import IdentifiedNode, Graph, Variable, Literal, URIRef
@@ -16,6 +16,9 @@ from .durable_reasoner import BINDING
 
 ATOM = typ.Union[TRANSLATEABLE_TYPES, external, Variable]
 SLOT = Tuple[ATOM, ATOM]
+
+class NotPossibleAction(SyntaxError):
+    """Raise if wanted action is not available for this rif object"""
 
 class RIFSyntaxError(Exception):
     """The given RIF Document has syntaxerrors"""
@@ -300,7 +303,7 @@ class rif_implies:
             for pat in self.if_.formulas:
                 try:
                     pat.add_pattern(newrule)
-                except AttributeError:
+                except NotPossibleAction:
                     conditions.append(pat.generate_condition(machine))
         else:
             self.if_.add_pattern(newrule)
@@ -828,6 +831,21 @@ class rif_equal:
     def __init__(self, left, right):
         self.left = left
         self.right = right
+
+    def add_pattern(self, rule: durable_reasoner.rule) -> None:
+        raise NotPossibleAction("generate pattern currently not implemented for rif_equal")
+
+    def generate_condition(self,
+                           machine: durable_reasoner.machine,
+                           ) -> Callable[[BINDING], bool]:
+        return self._ascondition
+
+    def _ascondition(self, bindings: BINDING) -> bool:
+        left = _resolve(self.left)
+        right = _resolve(self.right)
+        raise Exception(left, right)
+        return left == right
+
 
     @classmethod
     def from_rdf(cls, infograph: rdflib.Graph,
