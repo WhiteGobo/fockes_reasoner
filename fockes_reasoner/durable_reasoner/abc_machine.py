@@ -3,7 +3,7 @@ import logging
 import typing as typ
 from typing import MutableMapping, Mapping, Union, Callable, Iterable, Optional
 import rdflib
-from rdflib import IdentifiedNode, Graph, Literal
+from rdflib import IdentifiedNode, Graph, Literal, Variable
 
 FACTTYPE = "type"
 """Labels in where the type of fact is saved"""
@@ -12,9 +12,22 @@ from .bridge_rdflib import TRANSLATEABLE_TYPES
 
 BINDABLE_TYPES = Union[TRANSLATEABLE_TYPES, "external"]
 BINDING = MutableMapping[rdflib.Variable, TRANSLATEABLE_TYPES]
+_RESOLVABLE_SIMPLE = Union[IdentifiedNode, TRANSLATEABLE_TYPES]
+RESOLVABLE = Union[_RESOLVABLE_SIMPLE, Callable[[BINDING], _RESOLVABLE_SIMPLE]]
 #VARIABLE_LOCATOR = Callable[[typ.Union[durable.engine.Closure, None]], TRANSLATEABLE_TYPES]
 VARIABLE_LOCATOR = Callable[[typ.Any], TRANSLATEABLE_TYPES]
 CLOSURE_BINDINGS = MutableMapping[rdflib.Variable, VARIABLE_LOCATOR]
+
+def _resolve(x, bindings: BINDING):
+    """Resolve variables and externals
+    """
+    if isinstance(x, Variable):
+        return bindings[x]
+    elif isinstance(x, (IdentifiedNode, Literal)):
+        return x
+    else:
+        return x(bindings)
+
 
 class NoPossibleExternal(ValueError):
     """Raise this, if wanted functionality is not implemented for this external

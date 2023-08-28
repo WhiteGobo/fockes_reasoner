@@ -5,18 +5,8 @@ import logging
 logger = logging.getLogger()
 from dataclasses import dataclass
 
-from .abc_machine import BINDING
+from .abc_machine import BINDING, RESOLVABLE, _resolve
 from ..shared import pred, func
-
-def _resolve(x, bindings: BINDING):
-    """Resolve variables and externals
-    """
-    if isinstance(x, Variable):
-        return bindings[x]
-    elif isinstance(x, (IdentifiedNode, Literal)):
-        return x
-    else:
-        return x(bindings)
 
 class invert:
     def __init__(self, to_invert) -> None:
