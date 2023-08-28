@@ -12,7 +12,7 @@ from .shared import RIF
 from rdflib import RDF
 from . import durable_reasoner
 from .durable_reasoner import machine
-from .durable_reasoner import BINDING
+from .durable_reasoner import BINDING, RESOLVABLE
 from dataclasses import dataclass
 
 ATOM = typ.Union[TRANSLATEABLE_TYPES, external, Variable]
@@ -868,6 +868,9 @@ class rif_equal:
     def generate_condition(self,
                            machine: durable_reasoner.machine,
                            ) -> Callable[[BINDING], bool]:
+        left_assign = get_resolveable(self.left, machine)
+        right_assign = get_resolveable(self.right, machine)
+        raise Exception(right_assign)
         raise Exception(type(self.right), self.right)
         left_assign = self.left.asassign
         right_assign = self.right.asassign
@@ -899,4 +902,7 @@ _formulas = {RIF.External: rif_external.from_rdf,
 rif_and._formulas_generators = dict(_formulas)
 #rif_equal._side_generators = {}
 
-#def get_resolveable() -> Union[IdentifiedNode, Literal, Variable, Callable[[BINDING], Union[IdentifiedNode, Literal, Variable]]]
+def get_resolveable(x: Union[IdentifiedNode, Literal, Variable], machine: durable_reasoner.machine) -> RESOLVABLE:
+    if isinstance(x, (IdentifiedNode, Literal, Variable)):
+        return x
+    raise TypeError(x)
