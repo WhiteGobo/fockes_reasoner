@@ -81,17 +81,13 @@ def ascondition_pred_literal_not_identical(first, second) -> Callable[[BINDING],
         return f != s
     return literal_not_identical
 
-def ascondition_is_literal_hexBinary(target) -> Callable[[BINDING], bool]:
-    def literal_not_identical(bindings: BINDING) -> Literal:
-        t = bindings.get(target, target)
-        return target.datatype == XSD.hexBinary
-    return literal_not_identical
+@dataclass
+class is_literal_hexBinary:
+    target: Union[IdentifiedNode, Literal]
+    def __call__(self, bindings: BINDING) -> Literal:
+        t = _resolve(self.target, bindings)
+        return Literal(t.datatype == XSD.hexBinary)
 
-def ascondition_is_literal_not_hexBinary(target) -> Callable[[BINDING], bool]:
-    def literal_not_identical(bindings: BINDING) -> Literal:
-        t = bindings.get(target, target)
-        return target.datatype != XSD.hexBinary
-    return literal_not_identical
 
 class condition_pred_is_literal_double:
     def __init__(self, target) -> None:
@@ -115,16 +111,12 @@ class condition_pred_is_literal_not_double:
     def __repr__(self):
         return "pred:is-literal-double(%s)[ascondition]" % self.target
 
+@dataclass
 class condition_pred_is_literal_float:
-    def __init__(self, target) -> None:
-        self.target = target
-
+    target: Union[IdentifiedNode, Literal, Variable]
     def __call__(self, bindings: BINDING) -> bool:
         t = _resolve(self.target, bindings)
         return t.datatype == XSD.float
-
-    def __repr__(self):
-        return "pred:is-literal-float(%s)[ascondition]" % self.target
 
 @dataclass
 class condition_pred_is_literal_not_float:
@@ -144,144 +136,117 @@ class condition_pred_is_literal_integer:
     def __repr__(self):
         return "pred:is-literal-integer(%s)[ascondition]" % self.target
 
+@dataclass
 class condition_pred_is_literal_long:
     """
     :TODO: The limitsize should be system dependent
     """
-    def __init__(self, target) -> None:
-        self.target = target
-
+    target: Union[IdentifiedNode, Literal, Variable]
     def __call__(self, bindings: BINDING) -> bool:
         t = _resolve(self.target, bindings)
-        if t.datatype != XSD.integer:
-            return False
-        return int(t).bit_length() <= 32
-
-    def __repr__(self):
-        return "pred:is-literal-long(%s)[ascondition]" % self.target
-
-class condition_pred_is_literal_not_long:
-    """
-    :TODO: The limitsize should be system dependent
-    """
-    def __init__(self, target) -> None:
-        self.target = target
-
-    def __call__(self, bindings: BINDING) -> bool:
-        t = _resolve(self.target, bindings)
-        if t.datatype != XSD.integer:
+        if t.datatype == XSD.long:
             return True
-        return int(t).bit_length() > 32
+        elif t.datatype == XSD.integer:
+            if t.value.bit_length() <= 32:
+                return True
+        return False
 
-    def __repr__(self):
-        return "pred:is-literal-long(%s)[ascondition]" % self.target
-
+@dataclass
 class condition_pred_is_literal_unsignedLong:
     """
     :TODO: The limitsize should be system dependent
     """
-    def __init__(self, target) -> None:
-        self.target = target
+    target: Union[IdentifiedNode, Literal, Variable]
 
     def __call__(self, bindings: BINDING) -> bool:
         t = _resolve(self.target, bindings)
-        if t.datatype != XSD.integer:
+        if t.datatype not in (XSD.integer, XSD.long, XSD.unsignedLong):
             return False
         if int(t).bit_length() > 32:
             return False
         return t >= Literal(0)
 
+@dataclass
 class condition_pred_is_literal_unsignedInt:
-    def __init__(self, target) -> None:
-        self.target = target
+    target: Union[IdentifiedNode, Literal, Variable]
 
     def __call__(self, bindings: BINDING) -> bool:
         t = _resolve(self.target, bindings)
-        if t.datatype != XSD.integer:
+        if t.datatype not in (XSD.integer, XSD.int, XSD.unsignedInt):
             return False
         if int(t).bit_length() > 16:
             return False
         return t >= Literal(0)
 
-    def __repr__(self):
-        return "pred:is-literal-long(%s)[ascondition]" % self.target
 
-
+@dataclass
 class condition_pred_is_literal_unsignedShort:
-    def __init__(self, target) -> None:
-        self.target = target
+    target: Union[IdentifiedNode, Literal, Variable]
 
     def __call__(self, bindings: BINDING) -> bool:
         t = _resolve(self.target, bindings)
-        if t.datatype != XSD.integer:
-            return False
-        if int(t).bit_length() > 8:
-            return False
-        return t >= Literal(0)
+        if t.datatype == XSD.unsignedShort:
+            return True
+        elif t.datatype == XSD.integer and t.value.bit_length() <= 8 and t.value >= 0:
+            return True
+        return False
 
-    def __repr__(self):
-        return "pred:is-literal-unsignedShort(%s)[ascondition]" % self.target
+@dataclass
+class condition_pred_is_literal_unsignedByte:
+    target: Union[IdentifiedNode, Literal, Variable]
 
+    def __call__(self, bindings: BINDING) -> bool:
+        t = _resolve(self.target, bindings)
+        if t.datatype == XSD.unsignedByte:
+            return True
+        elif t.datatype == XSD.integer and t.value.bit_length() <= 8 and t.value >= 0:
+            return True
+        return False
+
+@dataclass
 class condition_pred_is_literal_int:
-    def __init__(self, target) -> None:
-        self.target = target
-
+    target: Union[IdentifiedNode, Literal, Variable]
     def __call__(self, bindings: BINDING) -> bool:
         t = _resolve(self.target, bindings)
-        if t.datatype != XSD.integer:
-            return False
-        return int(t).bit_length() <= 16
+        if t.datatype == XSD.int:
+            return True
+        elif t.datatype == XSD.integer:
+            if t.value.bit_length() <= 16:
+                return True
+        return False
 
-    def __repr__(self):
-        return "pred:is-literal-int(%s)[ascondition]" % self.target
-
-class condition_pred_is_literal_not_int:
-    def __init__(self, target) -> None:
-        self.target = target
-
-    def __call__(self, bindings: BINDING) -> bool:
-        t = _resolve(self.target, bindings)
-        if t.datatype == XSD.integer:
-            return False
-        elif int(t).bit_length() <= 16:
-            return False
-        return True
-
-    def __repr__(self):
-        return "pred:is-literal-int(%s)[ascondition]" % self.target
-
+@dataclass
 class condition_pred_is_literal_short:
-    def __init__(self, target) -> None:
-        self.target = target
-
+    target: Union[IdentifiedNode, Literal, Variable]
     def __call__(self, bindings: BINDING) -> bool:
         t = _resolve(self.target, bindings)
-        if t.datatype != XSD.integer:
-            return False
-        return int(t).bit_length() <= 8
+        if t.datatype == XSD.short:
+            return True
+        elif t.datatype == XSD.integer:
+            return t.value.bit_length() <= 8
+        return False
 
-    def __repr__(self):
-        return "pred:is-literal-short(%s)[ascondition]" % self.target
-
-class condition_pred_is_literal_not_short:
-    def __init__(self, target) -> None:
-        self.target = target
-
+@dataclass
+class condition_pred_is_literal_byte:
+    target: Union[IdentifiedNode, Literal, Variable]
     def __call__(self, bindings: BINDING) -> bool:
-        return not condition_pred_is_literal_short.__call__(self, bindings)
+        t = _resolve(self.target, bindings)
+        if t.datatype == XSD.byte:
+            return True
+        elif t.datatype == XSD.integer:
+            return t.value.bit_length() <= 8
+        return False
 
-    def __repr__(self):
-        return "pred:is-literal-short(%s)[ascondition]" % self.target
 
+@dataclass
 class condition_pred_is_literal_negativeInteger:
-    def __init__(self, target) -> None:
-        self.target = target
+    target: Union[IdentifiedNode, Literal, Variable]
 
     def __call__(self, bindings: BINDING) -> bool:
         t = _resolve(self.target, bindings)
-        if t.datatype != XSD.integer:
+        if t.datatype not in (XSD.integer, XSD.nonPositiveInteger, XSD.negativeInteger, XSD.long, XSD.short, XSD.byte, XSD.int):
             return False
-        return t < Literal(0)
+        return t.value < 0
 
 class condition_pred_is_literal_not_negativeInteger:
     def __init__(self, target) -> None:
@@ -290,15 +255,14 @@ class condition_pred_is_literal_not_negativeInteger:
     def __call__(self, bindings: BINDING) -> bool:
         return not condition_pred_is_literal_negativeInteger.__call__(self, bindings)
 
+@dataclass
 class condition_pred_is_literal_positiveInteger:
-    def __init__(self, target) -> None:
-        self.target = target
-
+    target: Union[IdentifiedNode, Variable, Literal]
     def __call__(self, bindings: BINDING) -> bool:
         t = _resolve(self.target, bindings)
-        if t.datatype != XSD.integer:
+        if t.datatype not in (XSD.integer, XSD.int, XSD.short, XSD.byte, XSD.long, XSD.nonNegativeInteger, XSD.positiveInteger):
             return False
-        return t >= Literal(0)
+        return t.value >= 0
 
 @dataclass
 class condition_pred_is_literal_decimal:
@@ -328,13 +292,6 @@ def asassign_xs_base64Binary(target: Union[Literal, Variable],
         return Literal(t, datatype=XSD.base64Binary)
     return numeric_subtract
 
-def asassign_xs_double(target: Union[Literal, Variable],
-                             ) -> Callable[[BINDING], Literal]:
-    def numeric_subtract(bindings: BINDING) -> Literal:
-        t = _resolve(target, bindings)
-        return Literal(t, datatype=XSD.double)
-    return numeric_subtract
-
 class assign_rdflib:
     def __init__(self, target, type_uri):
         self.target = target
@@ -343,6 +300,9 @@ class assign_rdflib:
     def __call__(self, bindings: BINDING) -> Literal:
         t = _resolve(self.target, bindings)
         return Literal(t, datatype=self.type_uri)
+
+    def __repr__(self) -> str:
+        return "%s: %s" % (self.type_uri, self.target)
 
     @classmethod
     def gen(cls, type_uri: URIRef):

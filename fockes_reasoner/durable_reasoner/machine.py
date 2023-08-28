@@ -595,9 +595,9 @@ class _machine_default_externals(_base_durable_machine):
         self.register(pred["literal-not-identical"],
                       ascondition=def_ext.ascondition_pred_literal_not_identical)
         self.register(pred["is-literal-hexBinary"],
-                      ascondition=def_ext.ascondition_is_literal_hexBinary)
+                      ascondition=def_ext.is_literal_hexBinary)
         self.register(pred["is-literal-not-hexBinary"],
-                      ascondition=def_ext.ascondition_is_literal_not_hexBinary)
+                      ascondition=invert.gen(def_ext.is_literal_hexBinary))
         self.register(pred["is-literal-base64Binary"],
                       ascondition=def_ext.condition_pred_is_literal_base64Binary)
         self.register(pred["is-literal-double"],
@@ -623,15 +623,15 @@ class _machine_default_externals(_base_durable_machine):
         self.register(pred["is-literal-long"],
                       ascondition=def_ext.condition_pred_is_literal_long)
         self.register(pred["is-literal-not-long"],
-                      ascondition=def_ext.condition_pred_is_literal_not_long)
+                      ascondition=invert.gen(def_ext.condition_pred_is_literal_long))
         self.register(pred["is-literal-short"],
                       ascondition=def_ext.condition_pred_is_literal_short)
         self.register(pred["is-literal-not-short"],
-                      ascondition=def_ext.condition_pred_is_literal_not_short)
+                      ascondition=invert.gen(def_ext.condition_pred_is_literal_short))
         self.register(pred["is-literal-byte"],
-                      ascondition=def_ext.condition_pred_is_literal_short)
+                      ascondition=def_ext.condition_pred_is_literal_byte)
         self.register(pred["is-literal-not-byte"],
-                      ascondition=def_ext.condition_pred_is_literal_not_short)
+                      ascondition=invert.gen(def_ext.condition_pred_is_literal_byte))
         self.register(pred["is-literal-nonNegativeInteger"],
                       ascondition=def_ext.condition_pred_is_literal_positiveInteger)
         self.register(pred["is-literal-not-nonNegativeInteger"],
@@ -661,18 +661,18 @@ class _machine_default_externals(_base_durable_machine):
         self.register(pred["is-literal-not-unsignedShort"],
                       ascondition=invert.gen(def_ext.condition_pred_is_literal_unsignedShort))
         self.register(pred["is-literal-unsignedByte"],
-                      ascondition=def_ext.condition_pred_is_literal_unsignedShort)
+                      ascondition=def_ext.condition_pred_is_literal_unsignedByte)
         self.register(pred["is-literal-not-unsignedByte"],
-                      ascondition=invert.gen(def_ext.condition_pred_is_literal_unsignedShort))
+                      ascondition=invert.gen(def_ext.condition_pred_is_literal_unsignedByte))
         #self.register(pred["is-literal-base64Binary"], ascondition=def_ext.ascondition_is_literal_base64Binary)
         self.register(pred["is-literal-not-base64Binary"],
                       ascondition=def_ext.ascondition_is_literal_not_base64Binary)
         self.register(XSD["base64Binary"],
                       asassign=def_ext.asassign_xs_base64Binary)
         self.register(XSD["double"],
-                      asassign=def_ext.asassign_xs_double)
+                      asassign=def_ext.assign_rdflib.gen(XSD["double"]))
         self.register(XSD["float"],
-                      asassign=def_ext.asassign_xs_double)
+                      asassign=def_ext.assign_rdflib.gen(XSD["float"]))
         self.register(XSD["hexBinary"],
                       asassign=def_ext.assign_rdflib.gen(XSD["hexBinary"]))
         self.register(XSD["decimal"],
