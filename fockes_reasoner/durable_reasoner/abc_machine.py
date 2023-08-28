@@ -18,15 +18,16 @@ RESOLVABLE = Union[_RESOLVABLE_SIMPLE, Callable[[BINDING], _RESOLVABLE_SIMPLE]]
 VARIABLE_LOCATOR = Callable[[typ.Any], TRANSLATEABLE_TYPES]
 CLOSURE_BINDINGS = MutableMapping[rdflib.Variable, VARIABLE_LOCATOR]
 
-def _resolve(x, bindings: BINDING):
+def _resolve(x: RESOLVABLE, bindings: BINDING) -> TRANSLATEABLE_TYPES:
     """Resolve variables and externals
     """
     if isinstance(x, Variable):
         return bindings[x]
     elif isinstance(x, (IdentifiedNode, Literal)):
         return x
-    else:
+    elif isinstance(x, Callable):
         return x(bindings)
+    raise TypeError("cant resolve %s" % x)
 
 
 class NoPossibleExternal(ValueError):
