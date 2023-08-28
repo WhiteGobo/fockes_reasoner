@@ -33,15 +33,15 @@ class invert:
     def __repr__(self):
         return "invert(%s)" % self.to_invert
 
-class equal:
-    def __init__(self, left, right):
-        self.left = left
-        self.right = right
+@dataclass
+class numeric_equal:
+    left: Union[IdentifiedNode, Literal, Variable]
+    right: Union[IdentifiedNode, Literal, Variable]
 
-    def __call__(bindings:BINDING) -> bool:
+    def __call__(self, bindings:BINDING) -> bool:
         left = _resolve(self.left, bindings)
         right = _resolve(self.right, bindings)
-        return Literal(left == right)
+        return Literal(left.value == right.value)
 
 class pred_less_than:
     def __init__(self, smaller, bigger):
@@ -65,14 +65,15 @@ def ascondition_pred_greater_than(bigger: Union[Literal, Variable], smaller: Uni
         return Literal(b > s)
     return greater_than
 
-def asassign_func_numeric_subtract(first: Union[Literal, Variable], second: Union[Literal, Variable]) -> Callable[[BINDING], Literal]:
-    valid1 = first.isnumeric() or isinstance(first, Variable)
-    valid2 = second.isnumeric() or isinstance(second, Variable)
-    def numeric_subtract(bindings: BINDING) -> Literal:
-        f = bindings.get(first, first)
-        s = bindings.get(second, second)
+@dataclass
+class func_numeric_subtract:
+    first: Union[IdentifiedNode, Literal, Variable]
+    second: Union[IdentifiedNode, Literal, Variable]
+    
+    def __call__(self, bindings: BINDING) -> Literal:
+        f = _resolve(self.first, bindings)
+        s = _resolve(self.second, bindings)
         return Literal(f - s)
-    return numeric_subtract
 
 def ascondition_pred_literal_not_identical(first, second) -> Callable[[BINDING], bool]:
     def literal_not_identical(bindings: BINDING) -> Literal:

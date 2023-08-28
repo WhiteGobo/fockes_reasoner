@@ -579,9 +579,9 @@ class _machine_default_externals(_base_durable_machine):
         super().__init__(*args, **kwargs)
         invert = def_ext.invert
         self.register(pred["numeric-equal"],
-                      ascondition=def_ext.equal)
+                      ascondition=def_ext.numeric_equal)
         self.register(pred["numeric-not-equal"],
-                      ascondition=invert.gen(def_ext.equal))
+                      ascondition=invert.gen(def_ext.numeric_equal))
         self.register(pred["numeric-greater-than"],
                       ascondition=def_ext.ascondition_pred_greater_than)
         self.register(pred["numeric-less-than-or-equal"],
@@ -591,7 +591,7 @@ class _machine_default_externals(_base_durable_machine):
         self.register(pred["numeric-greater-than-or-equal"],
                       ascondition=invert.gen(def_ext.pred_less_than))
         self.register(func["numeric-subtract"],
-                      asassign=def_ext.asassign_func_numeric_subtract)
+                      asassign=def_ext.func_numeric_subtract)
         self.register(pred["literal-not-identical"],
                       ascondition=def_ext.ascondition_pred_literal_not_identical)
         self.register(pred["is-literal-hexBinary"],

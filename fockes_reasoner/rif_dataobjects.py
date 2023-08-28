@@ -849,6 +849,14 @@ class rif_equal:
         self.left = left
         self.right = right
 
+    @dataclass
+    class _condition:
+        parent: "rif_equal"
+        def __call__(self, bindings: BINDING) -> bool:
+            left = _resolve(self.parent.left, bindings)
+            right = _resolve(self.parent.right, bindings)
+            return Literal(left == right)
+
     def __repr__(self):
         return "(%s = %s)" % (self.left, self.right)
 
@@ -858,14 +866,7 @@ class rif_equal:
     def generate_condition(self,
                            machine: durable_reasoner.machine,
                            ) -> Callable[[BINDING], bool]:
-        return self._ascondition
-
-    def _ascondition(self, bindings: BINDING) -> bool:
-        left = _resolve(self.left)
-        right = _resolve(self.right)
-        raise Exception(left, right)
-        return left == right
-
+        return self._condition(self)
 
     @classmethod
     def from_rdf(cls, infograph: rdflib.Graph,
