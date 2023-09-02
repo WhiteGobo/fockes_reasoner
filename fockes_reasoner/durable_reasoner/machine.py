@@ -602,6 +602,7 @@ class _machine_default_externals(_base_durable_machine):
                       asassign=def_ext.numeric_integer_divide)
         self.register(func["numeric-mod"],
                       asassign=def_ext.numeric_mod)
+
         self.register(func["numeric-integer-mod"],
                       asassign=def_ext.numeric_integer_mod)
         self.register(pred["literal-not-identical"],
