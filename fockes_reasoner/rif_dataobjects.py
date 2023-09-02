@@ -517,14 +517,15 @@ class rif_atom:
         return "%s (%s)" % (self.op, ", ".join(self.args))
 
 class rif_external(_resolvable_gen):
-    op: ATOM
+    op: URIRef
     args: Iterable[ATOM]
     def __init__(self, op: ATOM, args: Iterable[ATOM]):
         self.op = op
         self.args = list(args)
 
     def as_resolvable(self, machine: durable_reasoner.machine) -> RESOLVABLE:
-        raise NotImplementedError()
+        args = [_get_resolveable(x, machine) for x in self.args]
+        return machine.get_binding_action(self.op, args)
 
     def get_replacement_node(self,
                       machine: durable_reasoner.machine,
