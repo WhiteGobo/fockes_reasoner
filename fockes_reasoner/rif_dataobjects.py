@@ -879,8 +879,8 @@ class rif_equal:
     def generate_condition(self,
                            machine: durable_reasoner.machine,
                            ) -> Callable[[BINDING], bool]:
-        left_assign = get_resolveable(self.left, machine)
-        right_assign = get_resolveable(self.right, machine)
+        left_assign = _get_resolveable(self.left, machine)
+        right_assign = _get_resolveable(self.right, machine)
         raise Exception(right_assign)
         raise Exception(type(self.right), self.right)
         left_assign = self.left.asassign
@@ -913,7 +913,7 @@ _formulas = {RIF.External: rif_external.from_rdf,
 rif_and._formulas_generators = dict(_formulas)
 #rif_equal._side_generators = {}
 
-def get_resolveable(x: Union[IdentifiedNode, Literal, Variable, _resolvable_gen], machine: durable_reasoner.machine) -> RESOLVABLE:
+def _get_resolveable(x: Union[IdentifiedNode, Literal, Variable, _resolvable_gen], machine: durable_reasoner.machine) -> RESOLVABLE:
     if isinstance(x, (IdentifiedNode, Literal, Variable)):
         return x
     return x.as_resolvable(machine)
