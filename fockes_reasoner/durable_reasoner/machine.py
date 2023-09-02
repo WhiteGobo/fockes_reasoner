@@ -9,7 +9,7 @@ from hashlib import sha1
 import rdflib
 from rdflib import URIRef, Variable, Literal, BNode, Graph, IdentifiedNode, XSD
 from . import abc_machine
-from .abc_machine import TRANSLATEABLE_TYPES, FACTTYPE, BINDING, VARIABLE_LOCATOR, NoPossibleExternal, importProfile
+from .abc_machine import TRANSLATEABLE_TYPES, FACTTYPE, BINDING, VARIABLE_LOCATOR, NoPossibleExternal, importProfile, RESOLVABLE
 from .bridge_rdflib import rdflib2string, string2rdflib
 
 from ..shared import RDF, pred, func
@@ -160,7 +160,7 @@ class _base_durable_machine(abc_machine.machine):
     def get_replacement_node(self, op: rdflib.term.Node, args: Iterable[rdflib.term.Node]):
         raise NoPossibleExternal()
 
-    def get_binding_action(self, op: rdflib.term.Node, args: Iterable[rdflib.term.Node]):
+    def get_binding_action(self, op: rdflib.term.Node, args: Iterable[rdflib.term.Node]) -> RESOLVABLE:
         try:
             funcgen = self._registered_assignment_generator[op]
         except KeyError:
