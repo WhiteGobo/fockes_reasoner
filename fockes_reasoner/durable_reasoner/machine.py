@@ -163,7 +163,7 @@ class _base_durable_machine(abc_machine.machine):
     def get_binding_action(self, op: rdflib.term.Node, args: Iterable[rdflib.term.Node]) -> RESOLVABLE:
         try:
             funcgen = self._registered_assignment_generator[op]
-        except KeyError:
+        except KeyError as err:
             raise NoPossibleExternal() from err
         return funcgen(*args)
 
