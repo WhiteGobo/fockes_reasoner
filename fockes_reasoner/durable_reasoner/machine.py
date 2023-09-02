@@ -164,7 +164,7 @@ class _base_durable_machine(abc_machine.machine):
         try:
             funcgen = self._registered_assignment_generator[op]
         except KeyError as err:
-            raise NoPossibleExternal() from err
+            raise NoPossibleExternal(op) from err
         return funcgen(*args)
 
     def check_statement(self, statement: machine_facts.fact) -> bool:
