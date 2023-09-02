@@ -4,6 +4,7 @@ from rdflib import Literal, Variable, XSD, IdentifiedNode, Literal, URIRef
 import logging
 logger = logging.getLogger()
 from dataclasses import dataclass
+import math
 
 from .abc_machine import BINDING, RESOLVABLE, _resolve
 from ..shared import pred, func
@@ -32,6 +33,84 @@ class numeric_equal:
         left = _resolve(self.left, bindings)
         right = _resolve(self.right, bindings)
         return Literal(left.value == right.value)
+
+@dataclass
+class numeric_multiply:
+    left: Union[IdentifiedNode, Literal, Variable]
+    right: Union[IdentifiedNode, Literal, Variable]
+
+    def __call__(self, bindings:BINDING) -> bool:
+        left = _resolve(self.left, bindings)
+        right = _resolve(self.right, bindings)
+        return Literal(left.value * right.value)
+
+@dataclass
+class numeric_divide:
+    left: Union[IdentifiedNode, Literal, Variable]
+    right: Union[IdentifiedNode, Literal, Variable]
+
+    def __call__(self, bindings:BINDING) -> bool:
+        left = _resolve(self.left, bindings)
+        right = _resolve(self.right, bindings)
+        try:
+            val = left.value / right.value
+        except ZeroDivisionError:
+            return Literal("inf", datatype=XSD.float)
+        if val.is_integer():
+            return Literal(int(val))
+        else:
+            return Literal(val)
+
+@dataclass
+class numeric_integer_divide:
+    left: Union[IdentifiedNode, Literal, Variable]
+    right: Union[IdentifiedNode, Literal, Variable]
+
+    def __call__(self, bindings:BINDING) -> bool:
+        left = _resolve(self.left, bindings)
+        right = _resolve(self.right, bindings)
+        try:
+            val = left.value / right.value
+        except ZeroDivisionError:
+            return Literal("inf", datatype=XSD.float)
+        return Literal(math.floor(val))
+
+@dataclass
+class numeric_mod:
+    """
+    :TODO: Im not sure what n % 0 should be
+    """
+    left: Union[IdentifiedNode, Literal, Variable]
+    right: Union[IdentifiedNode, Literal, Variable]
+
+    def __call__(self, bindings:BINDING) -> bool:
+        left = _resolve(self.left, bindings)
+        right = _resolve(self.right, bindings)
+        try:
+            val = math.remainder(left.value, right.value)
+        except ZeroDivisionError:
+            return Literal("inf", datatype=XSD.float)
+        if val.is_integer():
+            return Literal(int(val))
+        else:
+            return Literal(val)
+
+@dataclass
+class numeric_integer_mod:
+    """
+    :TODO: Im not sure what n % 0 should be
+    """
+    left: Union[IdentifiedNode, Literal, Variable]
+    right: Union[IdentifiedNode, Literal, Variable]
+
+    def __call__(self, bindings:BINDING) -> bool:
+        left = _resolve(self.left, bindings)
+        right = _resolve(self.right, bindings)
+        try:
+            val = math.remainder(left.value, right.value)
+        except ZeroDivisionError:
+            return Literal("inf", datatype=XSD.float)
+        return Literal(math.floor(val))
 
 @dataclass
 class numeric_add:

@@ -594,6 +594,16 @@ class _machine_default_externals(_base_durable_machine):
                       asassign=def_ext.numeric_add)
         self.register(func["numeric-subtract"],
                       asassign=def_ext.func_numeric_subtract)
+        self.register(func["numeric-multiply"],
+                      asassign=def_ext.numeric_multiply)
+        self.register(func["numeric-divide"],
+                      asassign=def_ext.numeric_divide)
+        self.register(func["numeric-integer-divide"],
+                      asassign=def_ext.numeric_integer_divide)
+        self.register(func["numeric-mod"],
+                      asassign=def_ext.numeric_mod)
+        self.register(func["numeric-integer-mod"],
+                      asassign=def_ext.numeric_integer_mod)
         self.register(pred["literal-not-identical"],
                       ascondition=def_ext.ascondition_pred_literal_not_identical)
         self.register(pred["is-literal-hexBinary"],

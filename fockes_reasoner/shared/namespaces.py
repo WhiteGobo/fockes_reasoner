@@ -67,6 +67,11 @@ class func(DefinedNamespace):
             "insert-before",
             "numeric-subtract",
             "numeric-add",
+            "numeric-multiply",
+            "numeric-divide",
+            "numeric-integer-divide",
+            "numeric-mod",
+            "numeric-integer-mod",
             ]
 
     _NS = Namespace("http://www.w3.org/2007/rif-builtin-function#")

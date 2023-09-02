@@ -882,10 +882,6 @@ class rif_equal:
                            ) -> Callable[[BINDING], bool]:
         left_assign = _get_resolveable(self.left, machine)
         right_assign = _get_resolveable(self.right, machine)
-        raise Exception(right_assign)
-        raise Exception(type(self.right), self.right)
-        left_assign = self.left.asassign
-        right_assign = self.right.asassign
         return self._condition(self, left_assign, right_assign)
 
     @classmethod
