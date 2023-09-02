@@ -33,6 +33,16 @@ class numeric_equal:
         right = _resolve(self.right, bindings)
         return Literal(left.value == right.value)
 
+@dataclass
+class numeric_add:
+    left: Union[IdentifiedNode, Literal, Variable]
+    right: Union[IdentifiedNode, Literal, Variable]
+
+    def __call__(self, bindings:BINDING) -> bool:
+        left = _resolve(self.left, bindings)
+        right = _resolve(self.right, bindings)
+        return Literal(left.value + right.value)
+
 class pred_less_than:
     def __init__(self, smaller, bigger):
         self.smaller = smaller

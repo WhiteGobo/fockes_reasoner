@@ -66,6 +66,7 @@ class func(DefinedNamespace):
             "list-contains",
             "insert-before",
             "numeric-subtract",
+            "numeric-add",
             ]
 
     _NS = Namespace("http://www.w3.org/2007/rif-builtin-function#")
