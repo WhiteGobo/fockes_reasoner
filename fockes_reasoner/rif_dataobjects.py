@@ -24,6 +24,14 @@ class NotPossibleAction(SyntaxError):
 class RIFSyntaxError(Exception):
     """The given RIF Document has syntaxerrors"""
 
+class _resolvable_gen(abc.ABC):
+    """Subclass can be used to retrieve a :term:`translateable object` as
+    described in bridge-rdflib. Is equal to a :term:`formula` in :term:`RIF`
+    """
+    @abc.abstractmethod
+    def as_resolvable(self, machine: durable_reasoner.machine) -> RESOLVABLE:
+        ...
+
 class _action_gen(abc.ABC):
     @abc.abstractmethod
     def generate_action(self,
@@ -508,12 +516,15 @@ class rif_atom:
     def __repr__(self) -> str:
         return "%s (%s)" % (self.op, ", ".join(self.args))
 
-class rif_external:
+class rif_external(_resolvable_gen):
     op: ATOM
     args: Iterable[ATOM]
     def __init__(self, op: ATOM, args: Iterable[ATOM]):
         self.op = op
         self.args = list(args)
+
+    def as_resolvable(self, machine: durable_reasoner.machine) -> RESOLVABLE:
+        raise NotImplementedError()
 
     def get_replacement_node(self,
                       machine: durable_reasoner.machine,
@@ -902,7 +913,7 @@ _formulas = {RIF.External: rif_external.from_rdf,
 rif_and._formulas_generators = dict(_formulas)
 #rif_equal._side_generators = {}
 
-def get_resolveable(x: Union[IdentifiedNode, Literal, Variable], machine: durable_reasoner.machine) -> RESOLVABLE:
+def get_resolveable(x: Union[IdentifiedNode, Literal, Variable, _resolvable_gen], machine: durable_reasoner.machine) -> RESOLVABLE:
     if isinstance(x, (IdentifiedNode, Literal, Variable)):
         return x
-    raise TypeError(x)
+    return x.as_resolvable(machine)
