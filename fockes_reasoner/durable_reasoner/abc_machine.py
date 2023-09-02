@@ -21,10 +21,10 @@ CLOSURE_BINDINGS = MutableMapping[rdflib.Variable, VARIABLE_LOCATOR]
 def _resolve(x: RESOLVABLE, bindings: BINDING) -> TRANSLATEABLE_TYPES:
     """Resolve variables and externals
     """
-    if isinstance(x, Variable):
-        return bindings[x]
-    elif isinstance(x, (IdentifiedNode, Literal)):
+    if isinstance(x, (IdentifiedNode, Literal, list, tuple)):
         return x
+    elif isinstance(x, Variable):
+        return bindings[x]
     elif isinstance(x, Callable):
         return x(bindings)
     raise TypeError("cant resolve %s" % x)

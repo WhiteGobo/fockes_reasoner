@@ -7,17 +7,11 @@ from typing import Iterable, Union
 
 import rdflib
 
-#this is a workaround because no recursive annotations
 TRANSLATEABLE_TYPES = Union[rdflib.URIRef,
                             rdflib.BNode,
                             rdflib.Literal,
+                            list["TRANSLATEABLE_TYPES"]
                             ]
-for i in range(3):
-    TRANSLATEABLE_TYPES = Union[rdflib.URIRef,
-                                rdflib.BNode,
-                                rdflib.Literal,
-                                list[TRANSLATEABLE_TYPES],
-                                ]
 
 
 import pyparsing as pp
