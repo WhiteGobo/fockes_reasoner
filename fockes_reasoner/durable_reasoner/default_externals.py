@@ -96,10 +96,13 @@ class numeric_mod:
     def __call__(self, bindings:BINDING) -> bool:
         left = _resolve(self.left, bindings)
         right = _resolve(self.right, bindings)
+        raise Exception()
         try:
             val = math.remainder(left.value, right.value)
-        except ZeroDivisionError:
-            return Literal("inf", datatype=XSD.float)
+        except ValueError:
+            return Literal(math.inf)
+        if val < 0:
+            val += right.value
         if val.is_integer():
             return Literal(int(val))
         else:
@@ -118,8 +121,10 @@ class numeric_integer_mod:
         right = _resolve(self.right, bindings)
         try:
             val = math.remainder(left.value, right.value)
-        except ZeroDivisionError:
-            return Literal("inf", datatype=XSD.float)
+        except ValueError:
+            return Literal(math.inf)
+        if val < 0:
+            val += right.value
         return Literal(math.floor(val))
 
 @dataclass
