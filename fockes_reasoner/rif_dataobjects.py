@@ -307,10 +307,11 @@ class rif_implies:
         parent: "rif_implies"
         conditions: list[Callable]
         action: Callable
+        machine: durable_reasoner.machine
         def __call__(self, bindings: BINDING):
             for c in self.conditions:
                 if not c(bindings):
-                    logger.debug("stopped %s because %s" % (self, c))
+                    self.machine.logger.debug("stopped %s because %s" % (self, c))
                     return
             self.action(bindings)
 
@@ -339,7 +340,7 @@ class rif_implies:
             newrule.action = self.then_.generate_assert_action(machine)
         else:
             action = self.then_.generate_assert_action(machine)
-            newrule.action = self.conditional(self, conditions, action)
+            newrule.action = self.conditional(self, conditions, action, machine)
         logger.info("create implication %r" % newrule)
         newrule.finalize()
 
