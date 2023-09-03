@@ -186,11 +186,63 @@ class frame(fact):
 class member(fact):
     ID: str = "member"
     """facttype :term:`member` are labeled with this."""
+    def check_for_pattern(self, c: abc_machine.machine,
+                          bindings: BINDING = {},
+                          ) -> bool:
+        raise NotImplementedError()
+
+    def assert_fact(self, c: abc_machine.machine,
+               bindings: BINDING = {},
+               ) -> None:
+        raise NotImplementedError()
+
+    def add_pattern(self, rule: abc_machine.rule) -> None:
+        raise NotImplementedError()
+
+    def retract_fact(self, c: abc_machine.machine,
+                bindings: BINDING = {},
+                ) -> None:
+        raise NotImplementedError()
+
+    def modify_fact(self, c: abc_machine.machine,
+               bindings: BINDING = {},
+               ) -> None:
+        raise NotImplementedError()
+
+    @classmethod
+    def from_fact(cls, fact: Mapping[str, str]) -> "member":
+        raise NotImplementedError()
 
 
 class subclass(fact):
     ID: str = "subclass"
     """facttype :term:`subclass` are labeled with this."""
+    def check_for_pattern(self, c: abc_machine.machine,
+                          bindings: BINDING = {},
+                          ) -> bool:
+        raise NotImplementedError()
+
+    def assert_fact(self, c: abc_machine.machine,
+               bindings: BINDING = {},
+               ) -> None:
+        raise NotImplementedError()
+
+    def add_pattern(self, rule: abc_machine.rule) -> None:
+        raise NotImplementedError()
+
+    def retract_fact(self, c: abc_machine.machine,
+                bindings: BINDING = {},
+                ) -> None:
+        raise NotImplementedError()
+
+    def modify_fact(self, c: abc_machine.machine,
+               bindings: BINDING = {},
+               ) -> None:
+        raise NotImplementedError()
+
+    @classmethod
+    def from_fact(cls, fact: Mapping[str, str]) -> "subclass":
+        raise NotImplementedError()
 
 class atom(fact):
     ID: str = "atom"

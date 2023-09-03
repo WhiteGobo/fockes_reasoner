@@ -4,12 +4,12 @@ import uuid
 import abc
 import logging
 import traceback
-from typing import Union, Mapping, Iterable, Callable, Any, MutableMapping, Optional, Container
+from typing import Union, Mapping, Iterable, Callable, Any, MutableMapping, Optional, Container, Dict, Set
 from hashlib import sha1
 import rdflib
 from rdflib import URIRef, Variable, Literal, BNode, Graph, IdentifiedNode, XSD
 from . import abc_machine
-from .abc_machine import TRANSLATEABLE_TYPES, FACTTYPE, BINDING, VARIABLE_LOCATOR, NoPossibleExternal, importProfile, RESOLVABLE, ATOM_ARGS
+from .abc_machine import TRANSLATEABLE_TYPES, FACTTYPE, BINDING, VARIABLE_LOCATOR, NoPossibleExternal, importProfile, RESOLVABLE, ATOM_ARGS, abc_external, RESOLVER
 from .bridge_rdflib import rdflib2string, string2rdflib
 
 from ..shared import RDF, pred, func
@@ -38,7 +38,7 @@ class FailedInternalAction(Exception):
 
 class _context_helper(abc.ABC):
     """helper class to decide how to assert and retract facts"""
-    machine: "durable_machine"
+    machine: "_base_durable_machine"
 
     @abc.abstractmethod
     def assert_fact(self, fact: Mapping[str, str]) -> None:
@@ -58,7 +58,7 @@ class _context_helper(abc.ABC):
 
 
 class _no_closure(_context_helper):
-    def __init__(self, machine: "durable_machine"):
+    def __init__(self, machine: "_base_durable_machine"):
         self.machine = machine
 
     def assert_fact(self, fact: Mapping[str, str]) -> None:
@@ -82,7 +82,7 @@ class _no_closure(_context_helper):
 class _closure_helper(_context_helper):
     previous_context: _context_helper 
     c: durable.engine.Closure
-    def __init__(self, machine: "durable_machine", c: durable.engine.Closure):
+    def __init__(self, machine: "_base_durable_machine", c: durable.engine.Closure):
         self.machine = machine
         self.c = c
 
@@ -109,15 +109,18 @@ class _closure_helper(_context_helper):
     def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         self.machine._current_context = self.previous_context
 
-def _transform_all_externals_to_calls(args, tmp_machine):
-    useable_args = []
+def _transform_all_externals_to_calls(args: ATOM_ARGS, tmp_machine: "_base_durable_machine") -> Iterable[RESOLVABLE]:
+    useable_args: list[RESOLVABLE] = []
+    tmp_assign: RESOLVER
     for arg in args:
         if isinstance(arg, (IdentifiedNode, Literal, Variable)):
             useable_args.append(arg)
-        else:
+        elif isinstance(arg, abc_external):
             tmp_assign = tmp_machine._create_assignment_from_external(arg.op,
                                                                       arg.args)
             useable_args.append(tmp_assign)
+        else:
+            raise NotImplementedError(arg)
     return useable_args
 
 class _base_durable_machine(abc_machine.machine):
@@ -127,7 +130,13 @@ class _base_durable_machine(abc_machine.machine):
     _current_context: _context_helper
     _initialized: bool
     _imported_location: Container[IdentifiedNode]
-    available_import_profiles: Mapping[IdentifiedNode, importProfile]
+    available_import_profiles: Mapping[Optional[IdentifiedNode], importProfile]
+
+    _registered_pattern_generator: Dict[IdentifiedNode, Callable[..., RESOLVABLE]]
+    _registered_condition_generator: Dict[IdentifiedNode, Callable[..., RESOLVABLE]]
+    _registered_action_generator: Dict[IdentifiedNode, Callable[..., RESOLVABLE]]
+    _registered_assignment_generator: Dict[IdentifiedNode, Callable[..., RESOLVABLE]]
+    _imported_locations: Set[Optional[IdentifiedNode]]
 
     def __init__(self, loggername: str = __name__) -> None:
         rulesetname = str(uuid.uuid4())
@@ -158,10 +167,10 @@ class _base_durable_machine(abc_machine.machine):
         usedImportProfile.create_rules(self, infograph)
         self._imported_locations.add(location)
 
-    def get_replacement_node(self, op: rdflib.term.Node, args: Iterable[rdflib.term.Node]):
+    def get_replacement_node(self, op: IdentifiedNode, args: ATOM_ARGS) -> TRANSLATEABLE_TYPES:
         raise NoPossibleExternal()
 
-    def get_binding_action(self, op: rdflib.term.Node, args: Iterable[rdflib.term.Node]) -> RESOLVABLE:
+    def get_binding_action(self, op: IdentifiedNode, args: ATOM_ARGS) -> RESOLVABLE:
         try:
             funcgen = self._registered_assignment_generator[op]
         except KeyError as err:
@@ -265,17 +274,17 @@ class _base_durable_machine(abc_machine.machine):
     def create_rule_builder(self) -> "durable_rule":
         return durable_rule(self)
 
-    def create_implication_builder(self):
+    def create_implication_builder(self) -> "durable_rule":
         return durable_rule(self)
 
-    def _create_pattern_for_external(self, op, args):
+    def _create_pattern_for_external(self, op: IdentifiedNode, args: ATOM_ARGS) -> None:
         """Try to create a complete pattern for given external statement.
         :raises NoPossibleExternal: If given external is not defined or cant be used to
             directly produce a pattern raise this error.
         """
         raise NoPossibleExternal()
 
-    def _create_assignment_from_external(self, op, args) -> Callable[[BINDING], Union[IdentifiedNode, Literal]]:
+    def _create_assignment_from_external(self, op: IdentifiedNode, args: ATOM_ARGS) -> RESOLVABLE:
         try:
             mygen = self._registered_assignment_generator[op]
         except KeyError as err:
