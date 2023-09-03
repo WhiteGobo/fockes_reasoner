@@ -867,8 +867,8 @@ class rif_equal:
         left: Callable[[BINDING], Literal]
         right: Callable[[BINDING], Literal]
         def __call__(self, bindings: BINDING) -> bool:
-            left = _resolve(self.parent.left, bindings)
-            right = _resolve(self.parent.right, bindings)
+            left = _resolve(self.left, bindings)
+            right = _resolve(self.right, bindings)
             return Literal(left == right)
 
     def __repr__(self):
