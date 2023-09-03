@@ -308,8 +308,11 @@ class rif_implies:
         conditions: list[Callable]
         action: Callable
         def __call__(self, bindings: BINDING):
-            if all(c(bindings) for c in self.conditions):
-                self.action(bindings)
+            for c in self.conditions:
+                if not c(bindings):
+                    logger.debug("stopped %s because %s" % (self, c))
+                    return
+            self.action(bindings)
 
         def __repr__(self):
             return f"condition {self.parent}"
