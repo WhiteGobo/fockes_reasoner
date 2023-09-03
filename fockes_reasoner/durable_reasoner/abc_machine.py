@@ -12,11 +12,16 @@ from .bridge_rdflib import TRANSLATEABLE_TYPES
 
 BINDABLE_TYPES = Union[TRANSLATEABLE_TYPES]
 BINDING = MutableMapping[rdflib.Variable, TRANSLATEABLE_TYPES]
-_RESOLVABLE_SIMPLE = Union[Variable, TRANSLATEABLE_TYPES]
-RESOLVABLE = Union[_RESOLVABLE_SIMPLE, Callable[[BINDING], _RESOLVABLE_SIMPLE]]
+RESOLVER = Callable[[BINDING], TRANSLATEABLE_TYPES]
+RESOLVABLE = Union[Variable, TRANSLATEABLE_TYPES, RESOLVER]
 #VARIABLE_LOCATOR = Callable[[typ.Union[durable.engine.Closure, None]], TRANSLATEABLE_TYPES]
 VARIABLE_LOCATOR = Callable[[typ.Any], TRANSLATEABLE_TYPES]
 CLOSURE_BINDINGS = MutableMapping[rdflib.Variable, VARIABLE_LOCATOR]
+ATOM_ARGS = Iterable[Union[TRANSLATEABLE_TYPES, "abc_external"]]
+
+class abc_external(abc.ABC):
+    op: IdentifiedNode
+    args: ATOM_ARGS
 
 def _resolve(x: RESOLVABLE, bindings: BINDING) -> TRANSLATEABLE_TYPES:
     """Resolve variables and externals
@@ -119,8 +124,8 @@ class machine(abc.ABC):
     @abc.abstractmethod
     def import_data(self,
                     infograph: Graph,
-                    location: IdentifiedNode = None,
-                    profile: IdentifiedNode = None,
+                    location: Optional[IdentifiedNode] = None,
+                    profile: Optional[IdentifiedNode] = None,
                     extraDocuments: Mapping[IdentifiedNode, Graph] = {},
                     ) -> None:
         """
@@ -163,11 +168,11 @@ class rule(abc.ABC):
         ...
 
     @abc.abstractmethod
-    def generate_pattern_external(self, op, args) -> None:
+    def generate_pattern_external(self, op: IdentifiedNode, args: ATOM_ARGS) -> None:
         ...
 
     @abc.abstractmethod
-    def generate_node_external(self, op, args,
+    def generate_node_external(self, op: IdentifiedNode, args: ATOM_ARGS,
                                ) -> Union[str, IdentifiedNode, Literal]:
         """
         :raises NoPossibleExternal:
@@ -191,11 +196,11 @@ class implication(abc.ABC):
         ...
 
     @abc.abstractmethod
-    def generate_pattern_external(self, op, args) -> None:
+    def generate_pattern_external(self, op: IdentifiedNode, args: ATOM_ARGS) -> None:
         ...
 
     @abc.abstractmethod
-    def generate_node_external(self, op, args,
+    def generate_node_external(self, op: IdentifiedNode, args: ATOM_ARGS,
                                ) -> Union[str, IdentifiedNode, Literal]:
         """
         :raises NoPossibleExternal:

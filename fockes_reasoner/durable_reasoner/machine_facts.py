@@ -13,12 +13,12 @@ import typing as typ
 from typing import MutableMapping, Mapping, Union, Callable, Iterable, Tuple
 
 
-from .abc_machine import BINDING, CLOSURE_BINDINGS, VARIABLE_LOCATOR, TRANSLATEABLE_TYPES
+from .abc_machine import BINDING, CLOSURE_BINDINGS, VARIABLE_LOCATOR, TRANSLATEABLE_TYPES, ATOM_ARGS, abc_external
 
 from .bridge_rdflib import *
 from .abc_machine import fact
 
-class external:
+class external(abc_external):
     def __init__(self, op, args) -> None:
         self.op = op
         self.args = list(args)

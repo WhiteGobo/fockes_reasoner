@@ -6,66 +6,58 @@ logger = logging.getLogger()
 from dataclasses import dataclass
 import math
 
-from .abc_machine import BINDING, RESOLVABLE, _resolve
+from .abc_machine import BINDING, RESOLVABLE, _resolve, RESOLVER
 from ..shared import pred, func
 
+@dataclass
 class invert:
-    def __init__(self, to_invert) -> None:
-        self.to_invert = to_invert
-
-    def __call__(self, bindings: BINDING):
+    to_invert: RESOLVER
+    def __call__(self, bindings: BINDING) -> Literal:
         b = self.to_invert(bindings)
         return Literal(not b)
 
     @classmethod
-    def gen(cls, to_invert) -> "invert":
+    def gen(cls, to_invert: Callable[..., RESOLVER]) -> Callable[..., "invert"]:
         return lambda *args: cls(to_invert(*args))
-
-    def __repr__(self):
-        return "invert(%s)" % self.to_invert
 
 @dataclass
 class numeric_equal:
-    left: Union[IdentifiedNode, Literal, Variable]
-    right: Union[IdentifiedNode, Literal, Variable]
-
-    def __call__(self, bindings:BINDING) -> bool:
+    left: RESOLVABLE
+    right: RESOLVABLE
+    def __call__(self, bindings:BINDING) -> Literal:
         left = _resolve(self.left, bindings)
         right = _resolve(self.right, bindings)
-        return Literal(left.value == right.value)
+        return Literal(left.value == right.value) #type: ignore[union-attr]
 
 @dataclass
 class literal_equal:
-    left: Union[IdentifiedNode, Literal, Variable]
-    right: Union[IdentifiedNode, Literal, Variable]
-
-    def __call__(self, bindings:BINDING) -> bool:
+    left: RESOLVABLE
+    right: RESOLVABLE
+    def __call__(self, bindings:BINDING) -> Literal:
         left = _resolve(self.left, bindings)
         right = _resolve(self.right, bindings)
         return Literal(left == right)
 
 @dataclass
 class numeric_multiply:
-    left: Union[IdentifiedNode, Literal, Variable]
-    right: Union[IdentifiedNode, Literal, Variable]
-
-    def __call__(self, bindings:BINDING) -> bool:
+    left: RESOLVABLE
+    right: RESOLVABLE
+    def __call__(self, bindings:BINDING) -> Literal:
         left = _resolve(self.left, bindings)
         right = _resolve(self.right, bindings)
-        return Literal(left.value * right.value)
+        return Literal(left.value * right.value) #type: ignore[union-attr]
 
 @dataclass
 class numeric_divide:
-    left: Union[IdentifiedNode, Literal, Variable]
-    right: Union[IdentifiedNode, Literal, Variable]
-
-    def __call__(self, bindings:BINDING) -> bool:
+    left: RESOLVABLE
+    right: RESOLVABLE
+    def __call__(self, bindings:BINDING) -> Literal:
         left = _resolve(self.left, bindings)
         right = _resolve(self.right, bindings)
         try:
-            val = left.value / right.value
+            val = left.value / right.value #type: ignore[union-attr]
         except ZeroDivisionError:
-            return Literal("inf", datatype=XSD.float)
+            return Literal(math.inf)
         if val.is_integer():
             return Literal(int(val))
         else:
@@ -73,16 +65,15 @@ class numeric_divide:
 
 @dataclass
 class numeric_integer_divide:
-    left: Union[IdentifiedNode, Literal, Variable]
-    right: Union[IdentifiedNode, Literal, Variable]
-
-    def __call__(self, bindings:BINDING) -> bool:
+    left: RESOLVABLE
+    right: RESOLVABLE
+    def __call__(self, bindings:BINDING) -> Literal:
         left = _resolve(self.left, bindings)
         right = _resolve(self.right, bindings)
         try:
-            val = left.value / right.value
+            val = left.value / right.value #type: ignore[union-attr]
         except ZeroDivisionError:
-            return Literal("inf", datatype=XSD.float)
+            return Literal(math.inf)
         return Literal(math.floor(val))
 
 @dataclass
@@ -90,9 +81,8 @@ class numeric_mod:
     """
     :TODO: Im not sure what n % 0 should be
     """
-    left: Union[IdentifiedNode, Literal, Variable]
-    right: Union[IdentifiedNode, Literal, Variable]
-
+    left: RESOLVABLE
+    right: RESOLVABLE
     def __call__(self, bindings:BINDING) -> bool:
         left = _resolve(self.left, bindings)
         right = _resolve(self.right, bindings)
@@ -113,292 +103,267 @@ class numeric_integer_mod:
     """
     :TODO: Im not sure what n % 0 should be
     """
-    left: Union[IdentifiedNode, Literal, Variable]
-    right: Union[IdentifiedNode, Literal, Variable]
-
-    def __call__(self, bindings:BINDING) -> bool:
+    left: RESOLVABLE
+    right: RESOLVABLE
+    def __call__(self, bindings:BINDING) -> Literal:
         left = _resolve(self.left, bindings)
         right = _resolve(self.right, bindings)
         try:
-            val = math.remainder(left.value, right.value)
+            val = math.remainder(left.value, right.value) #type: ignore[union-attr]
         except ValueError:
             return Literal(math.inf)
         if val < 0:
-            val += right.value
+            val += right.value#type: ignore[union-attr]
         return Literal(math.floor(val))
 
 @dataclass
 class numeric_add:
-    left: Union[IdentifiedNode, Literal, Variable]
-    right: Union[IdentifiedNode, Literal, Variable]
-
-    def __call__(self, bindings:BINDING) -> bool:
+    left: RESOLVABLE
+    right: RESOLVABLE
+    def __call__(self, bindings:BINDING) -> Literal:
         left = _resolve(self.left, bindings)
         right = _resolve(self.right, bindings)
-        return Literal(left.value + right.value)
+        return Literal(left.value + right.value)#type: ignore[union-attr]
 
+@dataclass
 class pred_less_than:
-    def __init__(self, smaller, bigger):
-        self.smaller = smaller
-        self.bigger = bigger
-
+    smaller: RESOLVABLE
+    bigger: RESOLVABLE
     def __call__(self, bindings:BINDING) -> Literal:
         s = _resolve(self.smaller, bindings)
         b = _resolve(self.bigger, bindings)
         return Literal(s < b)
 
-def ascondition_pred_greater_than(bigger: Union[Literal, Variable], smaller: Union[Literal, Variable]) -> Callable[[BINDING], bool]:
-    valid1 = bigger.isnumeric() or isinstance(bigger, Variable)
-    valid2 = smaller.isnumeric() or isinstance(smaller, Variable)
-    if (not valid1) and (not valid2):
-        raise ValueError("Can only compare two literals (or variables): %s"
-                    % ([(bigger, valid1), (smaller, valid2)]))
-    def greater_than(bindings: BINDING) -> bool:
-        b = bindings.get(bigger, bigger)
-        s = bindings.get(smaller, smaller)
+@dataclass
+class ascondition_pred_greater_than:
+    bigger: RESOLVABLE
+    smaller: RESOLVABLE
+    def __call__(self, bindings: BINDING) -> Literal:
+        b = _resolve(self.bigger, bindings)
+        s = _resolve(self.smaller, bindings)
         return Literal(b > s)
-    return greater_than
 
 @dataclass
 class func_numeric_subtract:
-    first: Union[IdentifiedNode, Literal, Variable]
-    second: Union[IdentifiedNode, Literal, Variable]
-    
+    first: RESOLVABLE
+    second: RESOLVABLE
     def __call__(self, bindings: BINDING) -> Literal:
         f = _resolve(self.first, bindings)
         s = _resolve(self.second, bindings)
-        return Literal(f - s)
+        return Literal(f - s) #type: ignore[operator]
 
-def ascondition_pred_literal_not_identical(first, second) -> Callable[[BINDING], bool]:
-    def literal_not_identical(bindings: BINDING) -> Literal:
-        f = bindings.get(first, first)
-        s = bindings.get(second, second)
-        return f != s
-    return literal_not_identical
+@dataclass
+class ascondition_pred_literal_not_identical:
+    first: RESOLVABLE
+    second: RESOLVABLE
+    def __call__(self, bindings: BINDING) -> Literal:
+        f = _resolve(self.first, bindings)
+        s = _resolve(self.second, bindings)
+        return Literal(f != s)
 
 @dataclass
 class is_literal_hexBinary:
-    target: Union[IdentifiedNode, Literal]
+    target: RESOLVABLE
     def __call__(self, bindings: BINDING) -> Literal:
         t = _resolve(self.target, bindings)
-        return Literal(t.datatype == XSD.hexBinary)
+        return Literal(t.datatype == XSD.hexBinary)#type: ignore[union-attr]
 
 
+@dataclass
 class condition_pred_is_literal_double:
-    def __init__(self, target) -> None:
-        self.target = target
-
-    def __call__(self, bindings: BINDING) -> bool:
+    target: RESOLVABLE
+    def __call__(self, bindings: BINDING) -> Literal:
         t = _resolve(self.target, bindings)
-        return t.datatype == XSD.double
+        return Literal(t.datatype == XSD.double)#type: ignore[union-attr]
 
-    def __repr__(self):
-        return "pred:is-literal-double(%s)[ascondition]" % self.target
-
+@dataclass
 class condition_pred_is_literal_not_double:
-    def __init__(self, target) -> None:
-        self.target = target
-
-    def __call__(self, bindings: BINDING) -> bool:
+    target: RESOLVABLE
+    def __call__(self, bindings: BINDING) -> Literal:
         t = _resolve(self.target, bindings)
-        return t.datatype != XSD.double
-
-    def __repr__(self):
-        return "pred:is-literal-double(%s)[ascondition]" % self.target
+        return Literal(t.datatype != XSD.double)# type: ignore[union-attr]
 
 @dataclass
 class condition_pred_is_literal_float:
-    target: Union[IdentifiedNode, Literal, Variable]
-    def __call__(self, bindings: BINDING) -> bool:
+    target: RESOLVABLE
+    def __call__(self, bindings: BINDING) -> Literal:
         t = _resolve(self.target, bindings)
-        return t.datatype == XSD.float
+        return Literal(t.datatype == XSD.float)# type:ignore[union-attr]
 
 @dataclass
 class condition_pred_is_literal_not_float:
-    target: IdentifiedNode
-    def __call__(self, bindings: BINDING) -> bool:
+    target: RESOLVABLE
+    def __call__(self, bindings: BINDING) -> Literal:
         t = _resolve(self.target, bindings)
-        return t.datatype != XSD.float
+        return Literal(t.datatype != XSD.float)#type: ignore[union-attr]
 
+@dataclass
 class condition_pred_is_literal_integer:
-    def __init__(self, target) -> None:
-        self.target = target
-
-    def __call__(self, bindings: BINDING) -> bool:
+    target: RESOLVABLE
+    def __call__(self, bindings: BINDING) -> Literal:
         t = _resolve(self.target, bindings)
-        return t.datatype == XSD.integer
-
-    def __repr__(self):
-        return "pred:is-literal-integer(%s)[ascondition]" % self.target
+        return Literal(t.datatype == XSD.integer)#type: ignore[union-attr]
 
 @dataclass
 class condition_pred_is_literal_long:
     """
     :TODO: The limitsize should be system dependent
     """
-    target: Union[IdentifiedNode, Literal, Variable]
-    def __call__(self, bindings: BINDING) -> bool:
+    target: RESOLVABLE
+    def __call__(self, bindings: BINDING) -> Literal:
         t = _resolve(self.target, bindings)
-        if t.datatype == XSD.long:
-            return True
-        elif t.datatype == XSD.integer:
-            if t.value.bit_length() <= 32:
-                return True
-        return False
+        if t.datatype == XSD.long:#type: ignore[union-attr]
+            return Literal(True)
+        elif t.datatype == XSD.integer:#type: ignore[union-attr]
+            if t.value.bit_length() <= 32:#type: ignore[union-attr]
+                return Literal(True)
+        return Literal(False)
 
 @dataclass
 class condition_pred_is_literal_unsignedLong:
     """
     :TODO: The limitsize should be system dependent
     """
-    target: Union[IdentifiedNode, Literal, Variable]
+    target: RESOLVABLE
 
-    def __call__(self, bindings: BINDING) -> bool:
+    def __call__(self, bindings: BINDING) -> Literal:
         t = _resolve(self.target, bindings)
-        if t.datatype not in (XSD.integer, XSD.long, XSD.unsignedLong):
-            return False
-        if int(t).bit_length() > 32:
-            return False
-        return t >= Literal(0)
+        if t.datatype not in {XSD.integer, XSD.long, XSD.unsignedLong}:#type: ignore[union-attr, operator]
+            return Literal(False)
+        if t.value.bit_length() > 32:#type: ignore[union-attr]
+            return Literal(False)
+        return Literal(t.value >= 0)#type: ignore[union-attr]
 
 @dataclass
 class condition_pred_is_literal_unsignedInt:
-    target: Union[IdentifiedNode, Literal, Variable]
-
-    def __call__(self, bindings: BINDING) -> bool:
+    target: RESOLVABLE
+    def __call__(self, bindings: BINDING) -> Literal:
         t = _resolve(self.target, bindings)
-        if t.datatype not in (XSD.integer, XSD.int, XSD.unsignedInt):
-            return False
-        if int(t).bit_length() > 16:
-            return False
-        return t >= Literal(0)
+        if t.datatype not in (XSD.integer, XSD.int, XSD.unsignedInt):#type: ignore[union-attr, operator]
+            return Literal(False)
+        if t.value.bit_length() > 16:#type: ignore[union-attr]
+            return Literal(False)
+        return Literal(t.value >= 0)#type: ignore[union-attr]
 
 
 @dataclass
 class condition_pred_is_literal_unsignedShort:
-    target: Union[IdentifiedNode, Literal, Variable]
-
+    target: RESOLVABLE
     def __call__(self, bindings: BINDING) -> bool:
         t = _resolve(self.target, bindings)
-        if t.datatype == XSD.unsignedShort:
+        if t.datatype == XSD.unsignedShort:#type: ignore[union-attr]
             return True
-        elif t.datatype == XSD.integer and t.value.bit_length() <= 8 and t.value >= 0:
+        elif t.datatype == XSD.integer and t.value.bit_length() <= 8 and t.value >= 0:#type:ignore[union-attr]
             return True
         return False
 
 @dataclass
 class condition_pred_is_literal_unsignedByte:
-    target: Union[IdentifiedNode, Literal, Variable]
-
-    def __call__(self, bindings: BINDING) -> bool:
+    target: RESOLVABLE
+    def __call__(self, bindings: BINDING) -> Literal:
         t = _resolve(self.target, bindings)
-        if t.datatype == XSD.unsignedByte:
-            return True
-        elif t.datatype == XSD.integer and t.value.bit_length() <= 8 and t.value >= 0:
-            return True
-        return False
+        if t.datatype == XSD.unsignedByte:#type: ignore[union-attr]
+            return Literal(True)
+        elif t.datatype == XSD.integer and t.value.bit_length() <= 8 and t.value >= 0:#type: ignore[union-attr]
+            return Literal(True)
+        return Literal(False)
 
 @dataclass
 class condition_pred_is_literal_int:
-    target: Union[IdentifiedNode, Literal, Variable]
-    def __call__(self, bindings: BINDING) -> bool:
+    target: RESOLVABLE
+    def __call__(self, bindings: BINDING) -> Literal:
         t = _resolve(self.target, bindings)
-        if t.datatype == XSD.int:
-            return True
-        elif t.datatype == XSD.integer:
-            if t.value.bit_length() <= 16:
-                return True
-        return False
+        if t.datatype == XSD.int:#type: ignore[union-attr]
+            return Literal(True)
+        elif t.datatype == XSD.integer:#type: ignore[union-attr]
+            if t.value.bit_length() <= 16:#type: ignore[union-attr]
+                return Literal(True)
+        return Literal(False)
 
 @dataclass
 class condition_pred_is_literal_short:
-    target: Union[IdentifiedNode, Literal, Variable]
-    def __call__(self, bindings: BINDING) -> bool:
+    target: RESOLVABLE
+    def __call__(self, bindings: BINDING) -> Literal:
         t = _resolve(self.target, bindings)
-        if t.datatype == XSD.short:
-            return True
-        elif t.datatype == XSD.integer:
-            return t.value.bit_length() <= 8
-        return False
+        if t.datatype == XSD.short:#type: ignore[union-attr]
+            return Literal(True)
+        elif t.datatype == XSD.integer:#type: ignore[union-attr]
+            return Literal(t.value.bit_length() <= 8)#type: ignore[union-attr]
+        return Literal(False)
 
 @dataclass
 class condition_pred_is_literal_byte:
-    target: Union[IdentifiedNode, Literal, Variable]
-    def __call__(self, bindings: BINDING) -> bool:
+    target: RESOLVABLE
+    def __call__(self, bindings: BINDING) -> Literal:
         t = _resolve(self.target, bindings)
-        if t.datatype == XSD.byte:
-            return True
-        elif t.datatype == XSD.integer:
-            return t.value.bit_length() <= 8
-        return False
+        if t.datatype == XSD.byte:#type: ignore[union-attr]
+            return Literal(True)
+        elif t.datatype == XSD.integer:#type: ignore[union-attr]
+            return Literal(t.value.bit_length() <= 8)#type: ignore[union-attr]
+        return Literal(False)
 
 
 @dataclass
 class condition_pred_is_literal_negativeInteger:
-    target: Union[IdentifiedNode, Literal, Variable]
-
-    def __call__(self, bindings: BINDING) -> bool:
+    target: RESOLVABLE
+    def __call__(self, bindings: BINDING) -> Literal:
         t = _resolve(self.target, bindings)
-        if t.datatype not in (XSD.integer, XSD.nonPositiveInteger, XSD.negativeInteger, XSD.long, XSD.short, XSD.byte, XSD.int):
-            return False
-        return t.value < 0
+        if t.datatype not in (XSD.integer, XSD.nonPositiveInteger, XSD.negativeInteger, XSD.long, XSD.short, XSD.byte, XSD.int):#type: ignore[union-attr, operator]
+            return Literal(False)
+        return Literal(t.value < 0)#type: ignore[union-attr]
 
-class condition_pred_is_literal_not_negativeInteger:
-    def __init__(self, target) -> None:
-        self.target = target
-
-    def __call__(self, bindings: BINDING) -> bool:
-        return not condition_pred_is_literal_negativeInteger.__call__(self, bindings)
 
 @dataclass
 class condition_pred_is_literal_positiveInteger:
-    target: Union[IdentifiedNode, Variable, Literal]
-    def __call__(self, bindings: BINDING) -> bool:
+    target: RESOLVABLE
+    def __call__(self, bindings: BINDING) -> Literal:
         t = _resolve(self.target, bindings)
-        if t.datatype not in (XSD.integer, XSD.int, XSD.short, XSD.byte, XSD.long, XSD.nonNegativeInteger, XSD.positiveInteger):
-            return False
-        return t.value >= 0
+        if t.datatype not in (XSD.integer, XSD.int, XSD.short, XSD.byte, XSD.long, XSD.nonNegativeInteger, XSD.positiveInteger):#type: ignore[union-attr, operator]
+            return Literal(False)
+        return Literal(t.value >= 0)#type:ignore[union-attr]
 
 @dataclass
 class condition_pred_is_literal_decimal:
-    target: Union[IdentifiedNode]
-    def __call__(self, bindings: BINDING) -> bool:
+    target: RESOLVABLE
+    def __call__(self, bindings: BINDING) -> Literal:
         t = _resolve(self.target, bindings)
-        return t.isdecimal()
+        return Literal(t.isdecimal())#type: ignore[union-attr]
 
 @dataclass
 class condition_pred_is_literal_base64Binary:
-    target: Union[IdentifiedNode]
-    def __call__(self, bindings: BINDING) -> bool:
-        t = _resolve(self.target, bindings)
-        return t.datatype == XSD.base64Binary
-
-def ascondition_is_literal_not_base64Binary(target) -> Callable[[BINDING], bool]:
-    def literal_not_identical(bindings: BINDING) -> Literal:
-        t = bindings.get(target, target)
-        return target.datatype != XSD.base64Binary
-    return literal_not_identical
-
-
-def asassign_xs_base64Binary(target: Union[Literal, Variable],
-                             ) -> Callable[[BINDING], Literal]:
-    def numeric_subtract(bindings: BINDING) -> Literal:
-        t = _resolve(target, bindings)
-        return Literal(t, datatype=XSD.base64Binary)
-    return numeric_subtract
-
-class assign_rdflib:
-    def __init__(self, target, type_uri):
-        self.target = target
-        self.type_uri = type_uri
-
+    target: RESOLVABLE
     def __call__(self, bindings: BINDING) -> Literal:
         t = _resolve(self.target, bindings)
-        return Literal(t, datatype=self.type_uri)
+        return Literal(t.datatype == XSD.base64Binary)#type: ignore[union-attr]
+
+@dataclass
+class ascondition_is_literal_not_base64Binary:
+    target: RESOLVABLE
+    def __call__(self, bindings: BINDING) -> Literal:
+        t = _resolve(self.target, bindings)
+        return Literal(t.datatype != XSD.base64Binary)#type: ignore[union-attr]
+
+
+@dataclass
+class asassign_xs_base64Binary:
+    target: RESOLVABLE
+    def __call__(self, bindings: BINDING) -> Literal:
+        t = _resolve(self.target, bindings)
+        return Literal(t, datatype=XSD.base64Binary)
+
+@dataclass
+class assign_rdflib:
+    target: RESOLVABLE
+    type_uri: RESOLVABLE
+    def __call__(self, bindings: BINDING) -> Literal:
+        t = _resolve(self.target, bindings)
+        type_uri = _resolve(self.type_uri, bindings)
+        assert isinstance(type_uri, URIRef)
+        return Literal(t, datatype=type_uri)
 
     def __repr__(self) -> str:
         return "%s: %s" % (self.type_uri, self.target)
 
     @classmethod
-    def gen(cls, type_uri: URIRef):
+    def gen(cls, type_uri: URIRef) -> Callable[..., "assign_rdflib"]:
         return lambda target: cls(target, type_uri)

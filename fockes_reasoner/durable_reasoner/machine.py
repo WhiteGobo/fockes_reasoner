@@ -9,7 +9,7 @@ from hashlib import sha1
 import rdflib
 from rdflib import URIRef, Variable, Literal, BNode, Graph, IdentifiedNode, XSD
 from . import abc_machine
-from .abc_machine import TRANSLATEABLE_TYPES, FACTTYPE, BINDING, VARIABLE_LOCATOR, NoPossibleExternal, importProfile, RESOLVABLE
+from .abc_machine import TRANSLATEABLE_TYPES, FACTTYPE, BINDING, VARIABLE_LOCATOR, NoPossibleExternal, importProfile, RESOLVABLE, ATOM_ARGS
 from .bridge_rdflib import rdflib2string, string2rdflib
 
 from ..shared import RDF, pred, func
@@ -18,6 +18,7 @@ from .machine_facts import frame, member, subclass, fact, external, atom, rdflib
 #from .machine_facts import frame, member, subclass, fact
 
 from . import default_externals as def_ext
+
 
 MACHINESTATE = "machinestate"
 RUNNING_STATE = "running"
@@ -282,7 +283,7 @@ class _base_durable_machine(abc_machine.machine):
         useable_args = _transform_all_externals_to_calls(args, self)
         return mygen(*useable_args)
 
-    def _create_condition_from_external(self, op, args) -> Callable[[BINDING], bool]:
+    def _create_condition_from_external(self, op: IdentifiedNode, args: Union[TRANSLATEABLE_TYPES, external]) -> Callable[[BINDING], bool]:
         """Create a condition from given external.
         :raises NoPossibleExternal: If given external is not defined or cant be used to
             directly produce a condition raise this error.
@@ -475,7 +476,7 @@ class durable_rule(abc_machine.rule):
             self.machine._make_rule(self.patterns, self._action_with_condition, self.bindings)
         self.finalized = True
 
-    def generate_pattern_external(self, op, args) -> None:
+    def generate_pattern_external(self, op: IdentifiedNode, args) -> None:
         err_messages = []
         try:
             self.machine._create_pattern_for_external(op, args)
@@ -662,7 +663,7 @@ class _machine_default_externals(_base_durable_machine):
         self.register(pred["is-literal-negativeInteger"],
                       ascondition=def_ext.condition_pred_is_literal_negativeInteger)
         self.register(pred["is-literal-not-negativeInteger"],
-                      ascondition=def_ext.condition_pred_is_literal_not_negativeInteger)
+                      ascondition=invert.gen(def_ext.condition_pred_is_literal_negativeInteger))
         self.register(pred["is-literal-unsignedLong"],
                       ascondition=def_ext.condition_pred_is_literal_unsignedLong)
         self.register(pred["is-literal-not-unsignedLong"],
