@@ -114,7 +114,7 @@ class machine(abc.ABC):
         """
 
     @abc.abstractmethod
-    def get_facts(self) -> Iterable[fact]:
+    def get_facts(self, fact_filter: Optional[Mapping[str, str]]) -> Iterable[fact]:
         ...
 
     @abc.abstractmethod

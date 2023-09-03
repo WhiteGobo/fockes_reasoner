@@ -19,7 +19,7 @@ from .bridge_rdflib import *
 from .abc_machine import fact
 
 class external(abc_external):
-    def __init__(self, op, args) -> None:
+    def __init__(self, op: URIRef, args: ATOM_ARGS) -> None:
         self.op = op
         self.args = list(args)
 
@@ -44,30 +44,30 @@ class fact_subclass(fact):
                           bindings: BINDING = {},
                           ) -> bool:
         fact = {"type": self.ID}
-        for label, x, in [
+        for label, x in [
                 (self.SUBCLASS_SUB, self.sub_class),
                 (self.SUBCLASS_SUPER, self.super_class),
                 ]:
             fact[label] = _node2string(x, c, bindings)
-        for x in c.get_facts(fact):
+        for _ in c.get_facts(fact):
             #triggers, when any corresponding fact is found
             return True
         return False
 
-    def assert_fact(self, c: "machine",
+    def assert_fact(self, c: abc_machine.machine,
                bindings: BINDING = {},
                ) -> None:
         raise NotImplementedError()
 
-    def add_pattern(self, rule: "rule") -> None:
+    def add_pattern(self, rule: abc_machine.rule) -> None:
         raise NotImplementedError()
 
-    def retract_fact(self, c: "machine",
+    def retract_fact(self, c: abc_machine.machine,
                 bindings: BINDING = {},
                 ) -> None:
         raise NotImplementedError()
 
-    def modify_fact(self, c: "machine",
+    def modify_fact(self, c: abc_machine.machine,
                bindings: BINDING = {},
                ) -> None:
         raise NotImplementedError()
@@ -145,7 +145,7 @@ class frame(fact):
                 (self.FRAME_SLOTVALUE, self.slotvalue),
                 ]:
             fact[label] = _node2string(x, c, bindings)
-        for x in c.get_facts(fact):
+        for _ in c.get_facts(fact):
             #triggers, when any corresponding fact is found
             return True
         return False
@@ -195,7 +195,7 @@ class subclass(fact):
 class atom(fact):
     ID: str = "atom"
     op: typ.Union[TRANSLATEABLE_TYPES, external, Variable]
-    args: Tuple[typ.Union[TRANSLATEABLE_TYPES, external, Variable]]
+    args: Tuple[typ.Union[TRANSLATEABLE_TYPES, external, Variable], ...]
     """facttype :term:`atom` are labeled with this."""
     ATOM_OP = "op"
     ATOM_ARGS = "args%d"
@@ -213,12 +213,12 @@ class atom(fact):
         for i, x in enumerate(self.args):
             label = self.ATOM_ARGS % i
             fact[label] = _node2string(x, c, bindings)
-        for x in c.get_facts(fact):
+        for _ in c.get_facts(fact):
             #triggers, when any corresponding fact is found
             return True
         return False
 
-    def assert_fact(self, c: "machine",
+    def assert_fact(self, c: abc_machine.machine,
                bindings: BINDING = {},
                ) -> None:
         fact = {"type": self.ID}
@@ -228,15 +228,15 @@ class atom(fact):
             fact[label] = _node2string(x, c, bindings)
         c.assert_fact(fact)
 
-    def add_pattern(self, rule: "rule") -> None:
+    def add_pattern(self, rule: abc_machine.rule) -> None:
         raise NotImplementedError()
 
-    def retract_fact(self, c: "machine",
+    def retract_fact(self, c: abc_machine.machine,
                 bindings: BINDING = {},
                 ) -> None:
         raise NotImplementedError()
 
-    def modify_fact(self, c: "machine",
+    def modify_fact(self, c: abc_machine.machine,
                bindings: BINDING = {},
                ) -> None:
         raise NotImplementedError()
@@ -289,6 +289,6 @@ class retract_object_function:
         fact = {"type": frame.ID, frame.FRAME_OBJ: atom}
         self.machine.retract_fact(fact)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "Retract(%s)" % self.atom
 
