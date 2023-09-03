@@ -590,6 +590,8 @@ class _machine_default_externals(_base_durable_machine):
                       ascondition=def_ext.pred_less_than)
         self.register(pred["numeric-greater-than-or-equal"],
                       ascondition=invert.gen(def_ext.pred_less_than))
+        self.register(pred["XMLLiteral-equal"],
+                      ascondition=def_ext.literal_equal)
         self.register(func["numeric-add"],
                       asassign=def_ext.numeric_add)
         self.register(func["numeric-subtract"],

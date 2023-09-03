@@ -49,6 +49,7 @@ class pred(DefinedNamespace):
             "is-literal-not-negativeInteger",
             "is-literal-nonPositiveInteger",
             "is-literal-not-nonPositiveInteger",
+            "XMLLiteral-equal",
             #"",
             ]
     _NS = Namespace("http://www.w3.org/2007/rif-builtin-predicate#")

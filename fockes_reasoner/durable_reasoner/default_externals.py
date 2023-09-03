@@ -35,6 +35,16 @@ class numeric_equal:
         return Literal(left.value == right.value)
 
 @dataclass
+class literal_equal:
+    left: Union[IdentifiedNode, Literal, Variable]
+    right: Union[IdentifiedNode, Literal, Variable]
+
+    def __call__(self, bindings:BINDING) -> bool:
+        left = _resolve(self.left, bindings)
+        right = _resolve(self.right, bindings)
+        return Literal(left == right)
+
+@dataclass
 class numeric_multiply:
     left: Union[IdentifiedNode, Literal, Variable]
     right: Union[IdentifiedNode, Literal, Variable]

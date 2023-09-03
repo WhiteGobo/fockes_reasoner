@@ -8,7 +8,7 @@ import rdflib
 from rdflib import IdentifiedNode, Graph, Variable, Literal, URIRef
 import typing as typ
 from typing import Union, Iterable, Any, Callable, MutableMapping, List, Tuple, Optional, Mapping
-from .shared import RIF
+from .shared import RIF, pred
 from rdflib import RDF
 from . import durable_reasoner
 from .durable_reasoner import machine
@@ -859,11 +859,15 @@ class rif_assert:
     def __repr__(self) -> str:
         return "Assert( %s )" % self.fact
 
-class rif_equal:
-    #_side_generators: Mapping
+class rif_equal(rif_external):
+    op = pred["XMLLiteral-equal"]
     def __init__(self, left, right):
         self.left = left
         self.right = right
+
+    @property
+    def args(self):
+        return (self.left, self.right)
 
     @dataclass
     class _condition:
@@ -878,15 +882,14 @@ class rif_equal:
     def __repr__(self):
         return "(%s = %s)" % (self.left, self.right)
 
-    def add_pattern(self, rule: durable_reasoner.rule) -> None:
-        raise NotPossibleAction("generate pattern currently not implemented for rif_equal")
+    #def add_pattern(self, rule: durable_reasoner.rule) -> None:
 
-    def generate_condition(self,
-                           machine: durable_reasoner.machine,
-                           ) -> Callable[[BINDING], bool]:
-        left_assign = _get_resolveable(self.left, machine)
-        right_assign = _get_resolveable(self.right, machine)
-        return self._condition(self, left_assign, right_assign)
+    #def generate_condition(self,
+    #                       machine: durable_reasoner.machine,
+    #                       ) -> Callable[[BINDING], bool]:
+    #    left_assign = _get_resolveable(self.left, machine)
+    #    right_assign = _get_resolveable(self.right, machine)
+    #    return self._condition(self, left_assign, right_assign)
 
     @classmethod
     def from_rdf(cls, infograph: rdflib.Graph,
