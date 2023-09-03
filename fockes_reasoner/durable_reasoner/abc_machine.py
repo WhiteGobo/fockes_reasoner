@@ -25,9 +25,7 @@ def _resolve(x: RESOLVABLE, bindings: BINDING) -> TRANSLATEABLE_TYPES:
         return x
     elif isinstance(x, Variable):
         return bindings[x]
-    elif isinstance(x, Callable):
-        return x(bindings)
-    raise TypeError("cant resolve %s" % x)
+    return x(bindings)
 
 
 class NoPossibleExternal(ValueError):
