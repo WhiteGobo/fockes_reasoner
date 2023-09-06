@@ -4,7 +4,7 @@ import uuid
 import abc
 import logging
 import traceback
-from typing import Union, Mapping, Iterable, Callable, Any, MutableMapping, Optional, Container, Dict, Set
+from typing import Union, Mapping, Iterable, Callable, Any, MutableMapping, Optional, Container, Dict, Set, get_args
 from hashlib import sha1
 import rdflib
 from rdflib import URIRef, Variable, Literal, BNode, Graph, IdentifiedNode, XSD
@@ -112,13 +112,23 @@ class _closure_helper(_context_helper):
 def _transform_all_externals_to_calls(args: Iterable[ATOM_ARGS], tmp_machine: "_base_durable_machine") -> Iterable[RESOLVABLE]:
     useable_args: list[RESOLVABLE] = []
     tmp_assign: RESOLVABLE
+    t_arg: TRANSLATEABLE_TYPES
+    e_arg: abc_external
     for arg in args:
-        if isinstance(arg, (IdentifiedNode, Literal, Variable)):
+        if isinstance(arg, Variable):
             useable_args.append(arg)
             continue
         try:
-            tmp_assign = tmp_machine._create_assignment_from_external(arg.op,
-                                                                      arg.args)
+            t_arg = arg#type: ignore[assignment]
+            assert rdflib2string(t_arg)
+            useable_args.append(t_arg)
+            continue
+        except (AssertionError, TypeError):
+            pass
+        try:
+            e_arg = arg#type: ignore[assignment]
+            tmp_assign = tmp_machine._create_assignment_from_external(
+                    e_arg.op, e_arg.args)
             useable_args.append(tmp_assign)
             continue
         except AttributeError:
