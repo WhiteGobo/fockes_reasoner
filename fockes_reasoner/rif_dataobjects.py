@@ -2,7 +2,7 @@ import abc
 import logging
 logger = logging.getLogger(__name__)
 import uuid
-from .durable_reasoner import machine_facts, fact, NoPossibleExternal, _resolve
+from .durable_reasoner import machine_facts, fact, NoPossibleExternal, _resolve, ATOM_ARGS
 from .durable_reasoner.machine_facts import external, TRANSLATEABLE_TYPES
 import rdflib
 from rdflib import IdentifiedNode, Graph, Variable, Literal, URIRef

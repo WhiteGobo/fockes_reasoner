@@ -109,18 +109,21 @@ class _closure_helper(_context_helper):
     def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         self.machine._current_context = self.previous_context
 
-def _transform_all_externals_to_calls(args: ATOM_ARGS, tmp_machine: "_base_durable_machine") -> Iterable[RESOLVABLE]:
+def _transform_all_externals_to_calls(args: Iterable[ATOM_ARGS], tmp_machine: "_base_durable_machine") -> Iterable[RESOLVABLE]:
     useable_args: list[RESOLVABLE] = []
-    tmp_assign: RESOLVER
+    tmp_assign: RESOLVABLE
     for arg in args:
         if isinstance(arg, (IdentifiedNode, Literal, Variable)):
             useable_args.append(arg)
-        elif isinstance(arg, abc_external):
+            continue
+        try:
             tmp_assign = tmp_machine._create_assignment_from_external(arg.op,
                                                                       arg.args)
             useable_args.append(tmp_assign)
-        else:
-            raise NotImplementedError(arg)
+            continue
+        except AttributeError:
+            pass
+        raise NotImplementedError(arg, type(arg))
     return useable_args
 
 class _base_durable_machine(abc_machine.machine):
