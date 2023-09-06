@@ -15,7 +15,7 @@ from .durable_reasoner import machine
 from .durable_reasoner import BINDING, RESOLVABLE
 from dataclasses import dataclass
 
-ATOM = typ.Union[TRANSLATEABLE_TYPES, external, Variable]
+ATOM = typ.Union[TRANSLATEABLE_TYPES, external, Variable, "rif_external"]
 SLOT = Tuple[ATOM, ATOM]
 
 class NotPossibleAction(SyntaxError):
@@ -42,6 +42,8 @@ class _action_gen(abc.ABC):
 def _generate_object(infograph: Graph, target: IdentifiedNode,
                      type_to_generator: Mapping[IdentifiedNode, Callable[[Graph, IdentifiedNode], Any]]) -> Any:
     target_type = infograph.value(target, RDF.type)
+    if not isinstance(target_type, IdentifiedNode):
+        raise Exception("Syntaxerror in graph. Missing type for %s" % target)
     gen = type_to_generator[target_type]
     return gen(infograph, target)
 
@@ -86,8 +88,9 @@ class rif_document:
         """
         :param extraDocuments: A Manager of all importable documents
         """
+        directives_lists: Iterable[IdentifiedNode]
         kwargs = {}
-        payload_nodes: list[IdentifiedNode] = list(infograph.objects(rootnode, RIF.payload)) #type: ignore[assignment]
+        payload_nodes: list[IdentifiedNode] = list(infograph.objects(rootnode, RIF.payload)) #type: ignore[assignment, arg-type]
         if len(payload_nodes) == 1:
             payload_node = payload_nodes[0]
             payload_type, = infograph.objects(payload_node, RDF.type)
@@ -101,7 +104,10 @@ class rif_document:
 
         try:
             directives_node, = infograph.objects(rootnode, RIF.directives)
-            directives_lists = rdflib.collection.Collection(infograph, directives_node)
+            tmp = rdflib.collection.Collection(infograph, directives_node)
+            if not all(isinstance(x, IdentifiedNode) for x in directives_lists):
+                raise Exception("graph has not RIF-compatible Syntax")
+            directives_lists = tmp#type: ignore[assignment]
         except ValueError:
             directives_lists = []
         for directive_node in directives_lists:
@@ -114,7 +120,7 @@ class rif_document:
     def _generate_directive(cls, infograph: Graph,
                             directive_node: IdentifiedNode,
                             extraDocuments: Mapping[str, Graph],
-                            ):
+                            ) -> "rif_import":
         t = infograph.value(directive_node, RDF.type)
         if t == RIF.Import:
             return rif_import.from_rdf(infograph, directive_node,
@@ -127,21 +133,21 @@ class rif_document:
 
 
 class rif_import:
-    extraDocuments: Mapping[str, Graph]
+    extraDocuments: Mapping[IdentifiedNode, Graph]
     profile: Optional[URIRef]
     location: URIRef
-    def __init__(self, extraDocuments: Mapping[str, Graph],
-                 location: Union[IdentifiedNode, Literal],
+    def __init__(self, extraDocuments: Mapping[IdentifiedNode, Graph],
+                 location: Union[URIRef, Literal],
                  profile: Optional[URIRef] = None):
-        self.extraDocuments = extraDocuments
-        if isinstance(location, IdentifiedNode):
+        self.extraDocuments = dict(extraDocuments)
+        if isinstance(location, URIRef):
             self.location = location
         else:
             self.location = URIRef(location)
         if isinstance(profile, IdentifiedNode):
             self.profile = profile
         else:
-            self.profile = URIRef(profile)
+            self.profile = None
 
     def apply_to(self, machine: durable_reasoner.machine,
                  ) -> None:
@@ -158,7 +164,7 @@ class rif_import:
     def from_rdf(cls, infograph: rdflib.Graph,
                  rootnode: rdflib.IdentifiedNode,
                  extraDocuments: Mapping[str, Graph] = {},
-                 **kwargs: Any) -> "rif_group":
+                 **kwargs: Any) -> "rif_import":
         location, = infograph.objects(rootnode, RIF.location)
         profile = infograph.value(rootnode, RIF.profile)
         if profile:
@@ -556,7 +562,7 @@ class rif_external(_resolvable_gen):
     def from_rdf(cls, infograph: rdflib.Graph,
                  rootnode: rdflib.IdentifiedNode,
                  model = None,
-                 **kwargs: typ.Any) -> "rif_retract":
+                 **kwargs: typ.Any) -> "rif_external":
         if model is None: #please remove later
             from .class_rdfmodel import rdfmodel
             model = rdfmodel()

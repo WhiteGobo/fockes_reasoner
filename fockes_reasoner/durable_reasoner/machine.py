@@ -9,7 +9,8 @@ from hashlib import sha1
 import rdflib
 from rdflib import URIRef, Variable, Literal, BNode, Graph, IdentifiedNode, XSD
 from . import abc_machine
-from .abc_machine import TRANSLATEABLE_TYPES, FACTTYPE, BINDING, VARIABLE_LOCATOR, NoPossibleExternal, importProfile, RESOLVABLE, ATOM_ARGS, abc_external, RESOLVER
+from .abc_machine import TRANSLATEABLE_TYPES, FACTTYPE, BINDING, VARIABLE_LOCATOR, NoPossibleExternal, importProfile, RESOLVABLE, ATOM_ARGS, abc_external, RESOLVER, RuleNotComplete
+
 from .bridge_rdflib import rdflib2string, string2rdflib
 
 from ..shared import RDF, pred, func
@@ -109,7 +110,7 @@ class _closure_helper(_context_helper):
     def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         self.machine._current_context = self.previous_context
 
-def _transform_all_externals_to_calls(args: Iterable[ATOM_ARGS], tmp_machine: "_base_durable_machine") -> Iterable[RESOLVABLE]:
+def _transform_all_externals_to_calls(args: ATOM_ARGS, tmp_machine: "_base_durable_machine") -> Iterable[RESOLVABLE]:
     useable_args: list[RESOLVABLE] = []
     tmp_assign: RESOLVABLE
     t_arg: TRANSLATEABLE_TYPES
@@ -305,7 +306,7 @@ class _base_durable_machine(abc_machine.machine):
         useable_args = _transform_all_externals_to_calls(args, self)
         return mygen(*useable_args)
 
-    def _create_condition_from_external(self, op: IdentifiedNode, args: Union[TRANSLATEABLE_TYPES, external]) -> Callable[[BINDING], bool]:
+    def _create_condition_from_external(self, op: IdentifiedNode, args: ATOM_ARGS) -> RESOLVABLE:
         """Create a condition from given external.
         :raises NoPossibleExternal: If given external is not defined or cant be used to
             directly produce a condition raise this error.
@@ -323,7 +324,7 @@ class _base_durable_machine(abc_machine.machine):
     def register(self, op: rdflib.URIRef, asaction: Optional[Callable] = None,
             ascondition: Optional[Callable] = None,
             asassign: Optional[Callable] = None,
-            aspattern: Optional[Callable] = None):
+            aspattern: Optional[Callable] = None) -> None:
         if asaction is not None:
             self._registered_action_generator[op] = asaction
         if ascondition is not None:
@@ -435,7 +436,7 @@ class durable_action(abc_machine.action):
         self.machine._make_rule(patterns, self.action, {})
 
     @property
-    def logger(self):
+    def logger(self) -> logging.Logger:
         return self.machine.logger
 
 
@@ -444,6 +445,8 @@ class durable_rule(abc_machine.rule):
     action: Optional[Callable]
     bindings: MutableMapping[Variable, VARIABLE_LOCATOR]
     machine: _base_durable_machine
+    conditions: list[Callable[[BINDING], Union[Literal, bool]]]
+    _orig_pattern: list[Any]
     def __init__(self, machine: _base_durable_machine):
         self.machine = machine
         self.patterns = [getattr(rls.m, MACHINESTATE) == RUNNING_STATE]
@@ -454,12 +457,16 @@ class durable_rule(abc_machine.rule):
 
         self._orig_pattern = []
 
-    def generate_node_external(self, op, args) -> Union[str, rdflib.BNode, rdflib.URIRef, rdflib.Literal]:
+    def generate_node_external(self, op: IdentifiedNode, args: ATOM_ARGS,
+            ) -> Union[str, rdflib.BNode, rdflib.URIRef, rdflib.Literal]:
         raise NotImplementedError()
 
     def _action_without_condition(self, bindings: BINDING) -> None:
         self.machine.logger.debug("execute %s" % self)
-        self.action(bindings)
+        if self.action is not None:
+            self.action(bindings)
+        else:
+            raise RuleNotComplete("action is missing.")
 
     def _action_with_condition(self, bindings: BINDING) -> None:
         self.machine.logger.debug("execute %s" % self)
@@ -475,6 +482,8 @@ class durable_rule(abc_machine.rule):
                              % (cond, bindings,
                                 traceback.format_exc()))
                 raise FailedInternalAction() from err
+        if self.action is None:
+            raise RuleNotComplete("action is missing")
         try:
             self.action(bindings)
         except Exception as err:
@@ -498,7 +507,7 @@ class durable_rule(abc_machine.rule):
             self.machine._make_rule(self.patterns, self._action_with_condition, self.bindings)
         self.finalized = True
 
-    def generate_pattern_external(self, op: IdentifiedNode, args) -> None:
+    def generate_pattern_external(self, op: IdentifiedNode, args: ATOM_ARGS) -> None:
         err_messages = []
         try:
             self.machine._create_pattern_for_external(op, args)
@@ -521,7 +530,7 @@ class durable_rule(abc_machine.rule):
                          "logging" % (op, args))
 
     @property
-    def logger(self):
+    def logger(self) -> logging.Logger:
         return self.machine.logger
 
     def add_pattern(self,

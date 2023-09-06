@@ -19,6 +19,11 @@ VARIABLE_LOCATOR = Callable[[typ.Any], TRANSLATEABLE_TYPES]
 CLOSURE_BINDINGS = MutableMapping[rdflib.Variable, VARIABLE_LOCATOR]
 ATOM_ARGS = Iterable[Union[TRANSLATEABLE_TYPES, "abc_external"]]
 
+class RuleNotComplete(Exception):
+    """Rules are objects, that are worked on. So if you finalize a rule
+    There may not be all needed information. Raise this error in that case
+    """
+
 class abc_external(abc.ABC):
     op: IdentifiedNode
     args: ATOM_ARGS
@@ -158,6 +163,9 @@ class rule(abc.ABC):
 
     @abc.abstractmethod
     def finalize(self) -> None:
+        """
+        :raises: RuleNotComplete
+        """
         ...
 
     @abc.abstractmethod

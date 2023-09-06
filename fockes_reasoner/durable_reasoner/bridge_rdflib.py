@@ -9,6 +9,7 @@ import rdflib
 
 TRANSLATEABLE_TYPES = Union[rdflib.URIRef,
                             rdflib.BNode,
+                            rdflib.IdentifiedNode,
                             rdflib.Literal,
                             list["TRANSLATEABLE_TYPES"]
                             ]
