@@ -115,7 +115,7 @@ def _transform_all_externals_to_calls(args: Iterable[ATOM_ARGS], tmp_machine: "_
     t_arg: TRANSLATEABLE_TYPES
     e_arg: abc_external
     for arg in args:
-        if isinstance(arg, Variable):
+        if isinstance(arg, (Variable, Literal, IdentifiedNode)):
             useable_args.append(arg)
             continue
         try:
