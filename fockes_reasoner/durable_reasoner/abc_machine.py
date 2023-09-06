@@ -187,7 +187,7 @@ class rule(abc.ABC):
         """
         ...
 
-class implication(abc.ABC):
+class implication(rule, abc.ABC):
     patterns: typ.Any
     action: Optional[Callable]
     machine: machine

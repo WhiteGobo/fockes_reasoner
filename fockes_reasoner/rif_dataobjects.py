@@ -83,7 +83,7 @@ class rif_document:
     @classmethod
     def from_rdf(cls, infograph: rdflib.Graph,
                  rootnode: rdflib.IdentifiedNode,
-                 extraDocuments: Mapping[str, Graph] = {},
+                 extraDocuments: Mapping[IdentifiedNode, Graph] = {},
                  **kwargs: Any) -> "rif_document":
         """
         :param extraDocuments: A Manager of all importable documents
@@ -119,7 +119,7 @@ class rif_document:
     @classmethod
     def _generate_directive(cls, infograph: Graph,
                             directive_node: IdentifiedNode,
-                            extraDocuments: Mapping[str, Graph],
+                            extraDocuments: Mapping[IdentifiedNode, Graph],
                             ) -> "rif_import":
         t = infograph.value(directive_node, RDF.type)
         if t == RIF.Import:
@@ -140,7 +140,7 @@ class rif_import:
                  location: Union[URIRef, Literal],
                  profile: Optional[URIRef] = None):
         self.extraDocuments = dict(extraDocuments)
-        if isinstance(location, URIRef):
+        if isinstance(location, IdentifiedNode):
             self.location = location
         else:
             self.location = URIRef(location)
@@ -163,19 +163,21 @@ class rif_import:
     @classmethod
     def from_rdf(cls, infograph: rdflib.Graph,
                  rootnode: rdflib.IdentifiedNode,
-                 extraDocuments: Mapping[str, Graph] = {},
+                 extraDocuments: Mapping[IdentifiedNode, Graph] = {},
                  **kwargs: Any) -> "rif_import":
         location, = infograph.objects(rootnode, RIF.location)
         profile = infograph.value(rootnode, RIF.profile)
+        assert isinstance(location, URIRef)
         if profile:
+            assert isinstance(profile, URIRef)
             return cls(extraDocuments, location, profile)
         return cls(extraDocuments, location)
 
 
 class rif_group:
-    sentences: tuple[Union["rif_forall", "rif_frame", "rif_group"], ...]
+    sentences: tuple[Union["rif_forall", "rif_frame", "rif_group", "rif_implies"], ...]
     def __init__(self,
-                 sentences: Iterable[Union["rif_forall", "rif_frame", "rif_group"]],
+                 sentences: Iterable[Union["rif_forall", "rif_frame", "rif_group", "rif_implies"]],
                  ) -> None:
         self.sentences = tuple(sentences)
 
@@ -188,8 +190,8 @@ class rif_group:
                  rootnode: rdflib.IdentifiedNode,
                  **kwargs: Any) -> "rif_group":
         sentences_list_node, = infograph.objects(rootnode, RIF.sentences)
-        sentences: list[Union[rif_forall, rif_frame, rif_group]] = []
-        next_sentence: Union[rif_forall, rif_frame, rif_group]
+        sentences: list[Union[rif_forall, rif_frame, rif_group, rif_implies]] = []
+        next_sentence: Union[rif_forall, rif_frame, rif_group, rif_implies]
         sentences_list: Iterable[IdentifiedNode]\
                 = rdflib.collection.Collection(infograph, sentences_list_node) #type: ignore[assignment]
         for sentence_node in sentences_list:
@@ -221,7 +223,7 @@ class rif_forall:
 
     def _create_generell_rule_without_pattern(self, machine: durable_reasoner.machine) -> None:
         newrule = machine.create_rule_builder()
-        conditions = []
+        conditions: list[Callable[[BINDING], Union[Literal, bool]]] = []
         if isinstance(self.formula.if_, rif_and):
             for pat in self.formula.if_.formulas:
                 try:
@@ -241,7 +243,7 @@ class rif_forall:
 
     def _create_implication(self, machine: durable_reasoner.machine) -> None:
         newrule = machine.create_rule_builder()
-        conditions = []
+        conditions: list[Callable[[BINDING], Union[Literal, bool]]] = []
         if isinstance(self.formula.if_, rif_and):
             for pat in self.formula.if_.formulas:
                 try:
@@ -251,6 +253,8 @@ class rif_forall:
                     conditions.append(pat.generate_condition(machine))
         else:
             self.formula.if_.add_pattern(newrule)
+        if isinstance(self.formula.then_, rif_do):
+            raise NotImplementedError()
         if len(conditions) == 0:
             implicated_fact = self.formula.then_
             action = implicated_fact.generate_assert_action(machine)
@@ -314,14 +318,14 @@ class rif_implies:
         conditions: list[Callable]
         action: Callable
         machine: durable_reasoner.machine
-        def __call__(self, bindings: BINDING):
+        def __call__(self, bindings: BINDING) -> None:
             for c in self.conditions:
                 if not c(bindings):
                     self.machine.logger.debug("stopped %s because %s" % (self, c))
                     return
             self.action(bindings)
 
-        def __repr__(self):
+        def __repr__(self) -> str:
             return f"condition {self.parent}"
 
 
@@ -330,7 +334,7 @@ class rif_implies:
 
         """
         newrule = machine.create_implication_builder()
-        conditions = []
+        conditions: list[Callable[[BINDING], Union[Literal, bool]]] = []
         if isinstance(self.if_, rif_and):
             for pat in self.if_.formulas:
                 try:
@@ -342,6 +346,8 @@ class rif_implies:
                     logger.debug("added with %s cond %s" % (pat, tmp_cond))
         else:
             self.if_.add_pattern(newrule)
+        if isinstance(self.then_, rif_do):
+            raise NotImplementedError()
         if len(conditions) == 0:
             newrule.action = self.then_.generate_assert_action(machine)
         else:
@@ -363,11 +369,9 @@ class rif_implies:
     @classmethod
     def from_rdf(cls, infograph: rdflib.Graph,
                  rootnode: rdflib.IdentifiedNode,
-                 model = None,
                  ) -> "rif_implies":
-        if model is None: #please remove later
-            from .class_rdfmodel import rdfmodel
-            model = rdfmodel()
+        from .class_rdfmodel import rdfmodel
+        model = rdfmodel()
         if_node: IdentifiedNode
         then_node: IdentifiedNode
         info = dict(infograph.predicate_objects(rootnode))
@@ -398,17 +402,15 @@ class rif_and:
     @classmethod
     def from_rdf(cls, infograph: rdflib.Graph,
                  rootnode: IdentifiedNode,
-                 model = None,
-                 ) -> "rif_do":
-        if model is None: #please remove later
-            from .class_rdfmodel import rdfmodel
-            model = rdfmodel()
+                 ) -> "rif_and":
+        from .class_rdfmodel import rdfmodel
+        model = rdfmodel()
         try:
             formula_list_node, = infograph.objects(rootnode, RIF.formulas)
         except ValueError as err:
             raise Exception("Syntaxerror of RIF document") from err
         formula_list: Iterable[IdentifiedNode] = rdflib.collection.Collection(infograph, formula_list_node) #type: ignore[assignment]
-        formulas: List[Union[rif_assert]] = []
+        formulas: list[Union["rif_frame"]] = []
         for formula_node in formula_list:
             next_formula = _generate_object(infograph, formula_node, cls._formulas_generators)
             formulas.append(next_formula)
@@ -436,17 +438,15 @@ class rif_do(_action_gen):
     @classmethod
     def from_rdf(cls, infograph: rdflib.Graph,
                  rootnode: IdentifiedNode,
-                 model = None,
                  ) -> "rif_do":
-        if model is None: #please remove later
-            from .class_rdfmodel import rdfmodel
-            model = rdfmodel()
+        from .class_rdfmodel import rdfmodel
+        model = rdfmodel()
         try:
             target_list_node, = infograph.objects(rootnode, RIF.actions)
         except ValueError as err:
             raise Exception("Syntaxerror of RIF document") from err
         target_list: Iterable[IdentifiedNode] = rdflib.collection.Collection(infograph, target_list_node) #type: ignore[assignment]
-        actions: List[Union[rif_assert]] = []
+        actions: List[Union[rif_assert, "rif_retract", "rif_modify"]] = []
         for target_node in target_list:
             next_target = model.generate_object(infograph, target_node)
             assert isinstance(next_target, (rif_assert, rif_retract, rif_modify)), "got unexpected rif object. Invalid RIF document?"
