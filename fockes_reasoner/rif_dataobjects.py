@@ -689,11 +689,8 @@ class rif_frame:
     class __assert_action(_child_action):
         parent: "rif_frame"
         facts: Iterable[machine_facts.frame]
-        binding_actions: Iterable[Callable[[BINDING], None]]
         machine: durable_reasoner.machine
         def __call__(self, bindings: BINDING) -> None:
-            for act in self.binding_actions:
-                act(bindings)
             for f in self.facts:
                 f.assert_fact(self.machine, bindings)
 
@@ -704,33 +701,9 @@ class rif_frame:
         :TODO: Creation of variable is not safe
         """
         facts = []
-        binding_actions = []
-        for slotkey, slotvalue in self.slots:
-        #for slotkey, slotvalue in self._machinefact_slots:
-            args = [self.obj, slotkey, slotvalue]
-            for i, arg in enumerate(args):
-                if isinstance(arg, rdflib.term.Node):
-                    pass
-                elif isinstance(arg, rif_external):
-                    try:
-                        args[i] = arg.get_replacement_node(machine)
-                        continue
-                    except NoPossibleExternal:
-                        pass
-                    try:
-                        bindact = arg.get_binding_action(machine)
-                        var = Variable("tmp%s" % uuid.uuid4().hex)
-                        binding_actions.append(lambda bindings: bindings.__setitem__(var, bindact(bindings)))
-                        args[i] = var
-                        continue
-                    except NoPossibleExternal:
-                        raise
-                        pass
-                    raise ValueError("Cant figure out how use '%s' as atom in %s" %(arg, self))
-                else:
-                    raise NotImplementedError(arg, type(arg))
-            facts.append(machine_facts.frame(*args))
-        return self.__assert_action(self, facts, binding_actions, machine)
+        for slotkey, slotvalue in self._machinefact_slots:
+            facts.append(machine_facts.frame(self.obj, slotkey, slotvalue))
+        return self.__assert_action(self, facts, machine)
 
     def create_rules(self, machine: durable_reasoner.machine) -> None:
         """Is called, when frame is direct sub to a Group"""
