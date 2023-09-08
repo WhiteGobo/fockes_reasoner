@@ -417,8 +417,8 @@ class rif_and:
         return cls(formulas)
 
 class rif_do(_action_gen):
-    target: List[Union["rif_assert", "rif_retract"]]
-    def __init__(self, actions: Iterable[Union["rif_assert", "rif_retract"]]):
+    target: List[Union["rif_assert", "rif_retract", "rif_modify"]]
+    def __init__(self, actions: Iterable[Union["rif_assert", "rif_retract", "rif_modify"]]):
         self.actions = list(actions)
 
     def generate_action(self,
@@ -467,7 +467,6 @@ class rif_atom:
             machine: durable_reasoner.machine,
             bindings: BINDING = {},
             ) -> bool:
-
         f = machine_facts.atom(self.op, self.args)
         return f.check_for_pattern(machine, bindings)
 
@@ -477,7 +476,7 @@ class rif_atom:
         """
         :TODO: Creation of variable is not safe
         """
-        logger.info("op: %s\nargs: %s" %(self.op,self.args))
+        logger.info("op: %s\nargs: %s" % (self.op, self.args))
         binding_actions = []
         args = [self.op, *self.args]
         for i, arg in enumerate(args):
@@ -500,7 +499,7 @@ class rif_atom:
                     pass
                 raise ValueError("Cant figure out how use '%s' as atom in %s" %(arg, self))
             else:
-                raise NotImplementedError(x, type(x))
+                raise NotImplementedError(arg, type(arg))
         fact = machine_facts.atom(args[0], args[1:])
         def _assert(bindings: BINDING) -> None:
             for act in binding_actions:
@@ -511,24 +510,27 @@ class rif_atom:
     @classmethod
     def from_rdf(cls, infograph: rdflib.Graph,
                  rootnode: rdflib.IdentifiedNode,
-                 **kwargs: typ.Any) -> "rif_retract":
+                 **kwargs: typ.Any) -> "rif_atom":
         from .class_rdfmodel import rdfmodel
         model = rdfmodel()
-        op_node: rdflib.IdentifiedNode = infograph.value(rootnode, RIF.op)
+        op_node = infograph.value(rootnode, RIF.op)
+        assert isinstance(op_node, IdentifiedNode)
         op = model.generate_object(infograph, op_node)
-        arg_list_node = infograph.value(rootnode, RIF.args)
-        arg_list = rdflib.collection.Collection(infograph, arg_list_node)
         args = []
-        for x in arg_list:
-            args.append(model.generate_object(infograph, x))
+        arg_list_node = infograph.value(rootnode, RIF.args)
+        if arg_list_node is not None:
+            arg_list = rdflib.collection.Collection(infograph, arg_list_node)
+            for x in arg_list:
+                assert isinstance(x, IdentifiedNode)
+                args.append(model.generate_object(infograph, x))
         return cls(op, args)
 
     def __repr__(self) -> str:
-        return "%s (%s)" % (self.op, ", ".join(self.args))
+        return "%s (%s)" % (self.op, ", ".join(str(x) for x in self.args))
 
 class rif_external(_resolvable_gen):
     op: URIRef
-    args: Iterable[ATOM]
+    args: ATOM_ARGS
     def __init__(self, op: ATOM, args: Iterable[ATOM]):
         self.op = op
         self.args = list(args)
@@ -539,13 +541,15 @@ class rif_external(_resolvable_gen):
 
     def get_replacement_node(self,
                       machine: durable_reasoner.machine,
-            ):
-        return machine.get_replacement_node(self.op, self.args)
+            ) -> TRANSLATEABLE_TYPES:
+        args = [_get_resolveable(x, machine) for x in self.args]
+        return machine.get_replacement_node(self.op, args)
 
     def get_binding_action(self,
                       machine: durable_reasoner.machine,
-            ):
-        return machine.get_binding_action(self.op, self.args)
+            ) -> RESOLVABLE:
+        return self.as_resolvable(machine)
+        #return machine.get_binding_action(self.op, self.args)
 
     def generate_condition(self,
                            machine: durable_reasoner.machine,
@@ -561,18 +565,19 @@ class rif_external(_resolvable_gen):
     @classmethod
     def from_rdf(cls, infograph: rdflib.Graph,
                  rootnode: rdflib.IdentifiedNode,
-                 model = None,
                  **kwargs: typ.Any) -> "rif_external":
-        if model is None: #please remove later
-            from .class_rdfmodel import rdfmodel
-            model = rdfmodel()
+        from .class_rdfmodel import rdfmodel
+        model = rdfmodel()
         content_node: rdflib.IdentifiedNode = infograph.value(rootnode, RIF.content) #type: ignore[assignment]
-        op_node: rdflib.IdentifiedNode = infograph.value(content_node, RIF.op)
+        op_node, = infograph.objects(content_node, RIF.op)
+        assert isinstance(op_node, IdentifiedNode)
         op = model.generate_object(infograph, op_node)
-        arg_list_node = infograph.value(content_node, RIF.args)
+        arg_list_node, = infograph.objects(content_node, RIF.args)
+        assert isinstance(arg_list_node, IdentifiedNode)
         arg_list = rdflib.collection.Collection(infograph, arg_list_node)
         args = []
         for x in arg_list:
+            assert isinstance(x, IdentifiedNode)
             args.append(model.generate_object(infograph, x))
         return cls(op, args)
 
@@ -598,9 +603,13 @@ class rif_subclass:
     def from_rdf(cls, infograph: rdflib.Graph,
                  rootnode: rdflib.IdentifiedNode,
                  **kwargs: typ.Any) -> "rif_subclass":
-        info = dict(infograph.predicate_objects(rootnode))
-        sub_node = info[RIF["sub"]]
-        super_node = info[RIF["super"]]
+        #info = dict(infograph.predicate_objects(rootnode))
+        #sub_node = info[RIF["sub"]]
+        #super_node = info[RIF["super"]]
+        sub_node, = infograph.objects(rootnode, RIF["sub"])
+        super_node, = infograph.objects(rootnode, RIF["super"])
+        assert isinstance(sub_node, IdentifiedNode)
+        assert isinstance(super_node, IdentifiedNode)
         sub_obj = slot2node(infograph, sub_node)
         super_obj = slot2node(infograph, super_node)
         return cls(sub_obj, super_obj)
@@ -609,7 +618,6 @@ class rif_subclass:
             machine: durable_reasoner.machine,
             bindings: BINDING = {},
             ) -> bool:
-
         f = machine_facts.fact_subclass(self.sub_class, self.super_class)
         return f.check_for_pattern(machine, bindings)
 

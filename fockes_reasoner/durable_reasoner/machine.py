@@ -607,7 +607,7 @@ class _value_locator:
 class _machine_default_externals(_base_durable_machine):
     """Implements all default externals
     """
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         invert = def_ext.invert
         self.register(pred["numeric-equal"],

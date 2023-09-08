@@ -249,13 +249,13 @@ class condition_pred_is_literal_unsignedInt:
 @dataclass
 class condition_pred_is_literal_unsignedShort:
     target: RESOLVABLE
-    def __call__(self, bindings: BINDING) -> bool:
+    def __call__(self, bindings: BINDING) -> Literal:
         t = _resolve(self.target, bindings)
         if t.datatype == XSD.unsignedShort:#type: ignore[union-attr]
-            return True
+            return Literal(True)
         elif t.datatype == XSD.integer and t.value.bit_length() <= 8 and t.value >= 0:#type:ignore[union-attr]
-            return True
-        return False
+            return Literal(True)
+        return Literal(False)
 
 @dataclass
 class condition_pred_is_literal_unsignedByte:
