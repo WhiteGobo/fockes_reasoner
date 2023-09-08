@@ -28,9 +28,9 @@ class external(abc_external):
     def add_pattern(self, rule: abc_machine.rule) -> None:
         rule.generate_pattern_external(self.op, self.args)
 
-    def get_binding_action(self, machine: abc_machine.machine) -> TRANSLATEABLE_TYPES:
-        args = [arg.resolve(machine) if isinstance(arg, external) else arg for arg in self.args]
-        return machine.get_binding_action(self.op, args)
+    def resolve(self, machine: abc_machine.machine, bindings: BINDING) -> TRANSLATEABLE_TYPES:
+        args = [arg.resolve(machine, bindings) if isinstance(arg, external) else arg for arg in self.args]
+        return machine.get_binding_action(self.op, args)(bindings)
 
     def __repr__(self) -> str:
         return "external %s(%s)" % (self.op, ", ".join(str(x) for x in self.args))
@@ -332,8 +332,8 @@ def _node2string(x: Union[TRANSLATEABLE_TYPES, Variable, str, external],
     elif isinstance(x, (URIRef, BNode, Literal)):
         return rdflib2string(x)
     elif isinstance(x, external):
-        bind = x.get_binding_action(machine)
-        return rdflib2string(bind(bindings))
+        newnode = x.resolve(machine, bindings)
+        return rdflib2string(newnode)
     elif isinstance(x, str):
         raise NotImplementedError()
     else:
