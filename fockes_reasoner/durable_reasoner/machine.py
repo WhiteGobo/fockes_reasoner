@@ -181,10 +181,10 @@ class _base_durable_machine(abc_machine.machine):
         usedImportProfile.create_rules(self, infograph)
         self._imported_locations.add(location)
 
-    def get_replacement_node(self, op: IdentifiedNode, args: ATOM_ARGS) -> TRANSLATEABLE_TYPES:
+    def get_replacement_node(self, op: IdentifiedNode, args: Iterable[RESOLVABLE]) -> TRANSLATEABLE_TYPES:
         raise NoPossibleExternal()
 
-    def get_binding_action(self, op: IdentifiedNode, args: ATOM_ARGS) -> RESOLVABLE:
+    def get_binding_action(self, op: IdentifiedNode, args: Iterable[RESOLVABLE]) -> RESOLVABLE:
         try:
             funcgen = self._registered_assignment_generator[op]
         except KeyError as err:
@@ -440,7 +440,7 @@ class durable_action(abc_machine.action):
         return self.machine.logger
 
 
-class durable_rule(abc_machine.rule):
+class durable_rule(abc_machine.implication, abc_machine.rule):
     patterns: list[rls.value]
     action: Optional[Callable]
     bindings: MutableMapping[Variable, VARIABLE_LOCATOR]
@@ -517,8 +517,8 @@ class durable_rule(abc_machine.rule):
             pass
         try:
             new_condition = self.machine._create_condition_from_external(op, args)
-            assert isinstance(new_condition, Callable), "something went wrong, when external function was created: %s %s\n%s" % (op, args, new_condition)
-            self.conditions.append(new_condition)
+            assert isinstance(new_condition, Callable), "something went wrong, when external function was created: %s %s\n%s" % (op, args, new_condition)#type: ignore[arg-type]
+            self.conditions.append(new_condition)#type: ignore[arg-type]
             return
         except NoPossibleExternal:
             err_messages.append(traceback.format_exc())

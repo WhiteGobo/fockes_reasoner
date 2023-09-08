@@ -149,11 +149,11 @@ class machine(abc.ABC):
         ...
 
     @abc.abstractmethod
-    def get_binding_action(self, op: IdentifiedNode, args: ATOM_ARGS) -> RESOLVABLE:
+    def get_binding_action(self, op: IdentifiedNode, args: Iterable[RESOLVABLE]) -> RESOLVABLE:
         """Resolve external atoms"""
 
     @abc.abstractmethod
-    def get_replacement_node(self, op: IdentifiedNode, args: ATOM_ARGS) -> TRANSLATEABLE_TYPES:
+    def get_replacement_node(self, op: IdentifiedNode, args: Iterable[RESOLVABLE]) -> TRANSLATEABLE_TYPES:
         """
         :TODO: Seems indifferent to get_binding_action but doesnt work if used as replacement. Have to rework the resolution of externals
         """

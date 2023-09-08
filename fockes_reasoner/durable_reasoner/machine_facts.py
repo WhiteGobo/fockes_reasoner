@@ -13,12 +13,14 @@ import typing as typ
 from typing import MutableMapping, Mapping, Union, Callable, Iterable, Tuple
 
 
-from .abc_machine import BINDING, CLOSURE_BINDINGS, VARIABLE_LOCATOR, TRANSLATEABLE_TYPES, ATOM_ARGS, abc_external
+from .abc_machine import BINDING, CLOSURE_BINDINGS, VARIABLE_LOCATOR, TRANSLATEABLE_TYPES, ATOM_ARGS, abc_external, RESOLVABLE, _resolve
 
 from .bridge_rdflib import *
 from .abc_machine import fact
 
 class external(abc_external):
+    op: URIRef
+    args: ATOM_ARGS
     def __init__(self, op: URIRef, args: ATOM_ARGS) -> None:
         self.op = op
         self.args = list(args)
@@ -247,12 +249,12 @@ class subclass(fact):
 class atom(fact):
     ID: str = "atom"
     op: typ.Union[TRANSLATEABLE_TYPES, external, Variable]
-    args: Tuple[typ.Union[TRANSLATEABLE_TYPES, external, Variable], ...]
+    args: Iterable[RESOLVABLE]
     """facttype :term:`atom` are labeled with this."""
     ATOM_OP = "op"
     ATOM_ARGS = "args%d"
     def __init__(self, op: typ.Union[TRANSLATEABLE_TYPES, external, Variable],
-                 args: Iterable[typ.Union[TRANSLATEABLE_TYPES, external, Variable]],
+                 args: Iterable[RESOLVABLE],
                  ) -> None:
         self.op = op
         self.args = tuple(args)
@@ -264,7 +266,8 @@ class atom(fact):
         fact[self.ATOM_OP] = _node2string(self.op, c, bindings)
         for i, x in enumerate(self.args):
             label = self.ATOM_ARGS % i
-            fact[label] = _node2string(x, c, bindings)
+            #fact[label] = _node2string(x, c, bindings)
+            fact[label] = rdflib2string(_resolve(x, bindings))
         for _ in c.get_facts(fact):
             #triggers, when any corresponding fact is found
             return True
@@ -277,7 +280,7 @@ class atom(fact):
         fact[self.ATOM_OP] = _node2string(self.op, c, bindings)
         for i, x in enumerate(self.args):
             label = self.ATOM_ARGS % i
-            fact[label] = _node2string(x, c, bindings)
+            fact[label] = rdflib2string(_resolve(x, bindings))
         c.assert_fact(fact)
 
     def add_pattern(self, rule: abc_machine.rule) -> None:

@@ -16,7 +16,9 @@ from .durable_reasoner import BINDING, RESOLVABLE
 from dataclasses import dataclass
 
 ATOM = typ.Union[TRANSLATEABLE_TYPES, external, Variable, "rif_external"]
+SATOM = typ.Union[TRANSLATEABLE_TYPES, external, Variable]
 SLOT = Tuple[ATOM, ATOM]
+RIF_ATOM = Union[TRANSLATEABLE_TYPES, "rif_external"]
 
 class _child_action:
     """Shared parent for all action classes for callables for the machine"""
@@ -461,9 +463,9 @@ class rif_do(_action_gen):
         return "Do( %s )" % ", ".join(repr(x) for x in self.actions)
 
 class rif_atom:
-    op: ATOM
-    args: Iterable[ATOM]
-    def __init__(self, op: ATOM, args: Iterable[ATOM]):
+    op: IdentifiedNode
+    args: Iterable[RIF_ATOM]
+    def __init__(self, op: IdentifiedNode, args: Iterable[RIF_ATOM]):
         self.op = op
         self.args = list(args)
 
@@ -471,7 +473,8 @@ class rif_atom:
             machine: durable_reasoner.machine,
             bindings: BINDING = {},
             ) -> bool:
-        f = machine_facts.atom(self.op, self.args)
+        args: list[RESOLVABLE] = [_get_resolveable(x, machine) for x in self.args]
+        f = machine_facts.atom(self.op, args)
         return f.check_for_pattern(machine, bindings)
 
     @dataclass
@@ -492,31 +495,9 @@ class rif_atom:
         :TODO: Creation of variable is not safe
         """
         logger.info("op: %s\nargs: %s" % (self.op, self.args))
-        binding_actions = []
-        args = [self.op, *self.args]
-        for i, arg in enumerate(args):
-            if isinstance(arg, rdflib.term.Node):
-                pass
-            elif isinstance(arg, rif_external):
-                raise NotImplementedError()
-                #try:
-                #    args[i] = arg.get_replacement_node(machine)
-                #    continue
-                #except NoPossibleExternal:
-                #    pass
-                #try:
-                #    bindact = arg.get_binding_action(machine)
-                #    var = Variable("tmp%s" % uuid.uuid4().hex)
-                #    binding_actions.append(lambda bindings: bindings.__setitem__(var, bindact(bindings)))
-                #    args[i] = var
-                #    continue
-                #except NoPossibleExternal:
-                #    raise
-                #    pass
-                #raise ValueError("Cant figure out how use '%s' as atom in %s" %(arg, self))
-            else:
-                raise NotImplementedError(arg, type(arg))
-        fact = machine_facts.atom(args[0], args[1:])
+        binding_actions: list[Callable[[BINDING], None]] = []
+        args = [_get_resolveable(x, machine) for x in self.args]
+        fact = machine_facts.atom(self.op, args)
         return self.assert_action(self, fact, binding_actions, machine)
 
     @classmethod
@@ -542,10 +523,14 @@ class rif_atom:
 
 class rif_external(_resolvable_gen):
     op: URIRef
-    args: ATOM_ARGS
-    def __init__(self, op: ATOM, args: Iterable[ATOM]):
+    args: Iterable[RIF_ATOM]
+    def __init__(self, op: URIRef, args: Iterable[RIF_ATOM]):
         self.op = op
         self.args = list(args)
+
+    def as_machinefact(self) -> external:
+        args = [x.as_machinefact() if isinstance(x, rif_external) else x for x in self.args]
+        return external(self.op, args)
 
     def as_resolvable(self, machine: durable_reasoner.machine) -> RESOLVABLE:
         args = [_get_resolveable(x, machine) for x in self.args]
@@ -569,9 +554,7 @@ class rif_external(_resolvable_gen):
         raise NotImplementedError()
 
     def add_pattern(self, rule: durable_reasoner.rule) -> None:
-        if not isinstance(self.op, rdflib.term.Node) and all(isinstance(x, rdflib.term.Node) for x in self.args):
-            raise NotImplementedError("Currently only basic atoms are supported", self.op)
-        m = external(self.op, self.args)
+        m = self.as_machinefact()
         m.add_pattern(rule)
 
     @classmethod
@@ -630,7 +613,9 @@ class rif_subclass:
             machine: durable_reasoner.machine,
             bindings: BINDING = {},
             ) -> bool:
-        f = machine_facts.fact_subclass(self.sub_class, self.super_class)
+        sub_class = self.sub_class.as_machinefact() if isinstance(self.sub_class, rif_external) else self.sub_class
+        super_class = self.super_class.as_machinefact() if isinstance(self.super_class, rif_external) else self.super_class
+        f = machine_facts.fact_subclass(sub_class, super_class)
         return f.check_for_pattern(machine, bindings)
 
     def __repr__(self) -> str:
@@ -638,20 +623,18 @@ class rif_subclass:
 
 
 class rif_frame:
-    facts: Tuple[machine_facts.frame, ...]
-    obj: ATOM
-    slots: Iterable[Tuple[ATOM, ATOM]]
-    def __init__(self, obj: ATOM,
+    #facts: Iterable[machine_facts.frame]
+    obj: SATOM
+    slots: Iterable[SLOT]
+    def __init__(self, obj: SATOM,
                  slots: Iterable[SLOT],
                  ) -> None:
         self.obj = obj
-        self.slots = [tuple((x,y)) for x,y in slots]
+        self.slots = [(x,y) for x,y in slots]
 
     @property
     def facts(self) -> Iterable[machine_facts.frame]:
-        for slotkey, slotvalue in self.slots:
-            if any(isinstance(x, rif_external) for x in (self.obj, slotkey, slotvalue)):
-                raise Exception(self.obj, slotkey, slotvalue)
+        for slotkey, slotvalue in self._machinefact_slots:
             yield machine_facts.frame(self.obj, slotkey, slotvalue)
         
 
@@ -664,8 +647,14 @@ class rif_frame:
                 return False
         return True
 
+    @property
+    def _machinefact_slots(self) -> Iterable[Tuple[Union[TRANSLATEABLE_TYPES, external, Variable], Union[TRANSLATEABLE_TYPES, external, Variable]]]:
+        for slot in self.slots:
+            slotkey, slotvalue = (x.as_machinefact() if isinstance(x, rif_external) else x for x in slot)
+            yield slotkey, slotvalue
+
     def add_pattern(self, rule: durable_reasoner.rule) -> None:
-        for slotkey, slotvalue in self.slots:
+        for slotkey, slotvalue in self._machinefact_slots:
             args = [self.obj, slotkey, slotvalue]
             for i, arg in enumerate(args):
                 if isinstance(arg, rdflib.term.Node):
@@ -673,7 +662,7 @@ class rif_frame:
                 elif isinstance(arg, rif_external):
                     raise NotImplementedError()
                 else:
-                    raise NotImplementedError(x, type(x))
+                    raise NotImplementedError(arg, type(arg))
             f = machine_facts.frame(self.obj, slotkey, slotvalue)
             f.add_pattern(rule)
 
@@ -696,6 +685,18 @@ class rif_frame:
                 f.retract_fact(machine, bindings)
         return _assert
 
+    @dataclass
+    class __assert_action(_child_action):
+        parent: "rif_frame"
+        facts: Iterable[machine_facts.frame]
+        binding_actions: Iterable[Callable[[BINDING], None]]
+        machine: durable_reasoner.machine
+        def __call__(self, bindings: BINDING) -> None:
+            for act in self.binding_actions:
+                act(bindings)
+            for f in self.facts:
+                f.assert_fact(self.machine, bindings)
+
     def generate_assert_action(self,
                                machine: durable_reasoner.machine,
                                ) -> Callable[[machine_facts.BINDING], None]:
@@ -705,6 +706,7 @@ class rif_frame:
         facts = []
         binding_actions = []
         for slotkey, slotvalue in self.slots:
+        #for slotkey, slotvalue in self._machinefact_slots:
             args = [self.obj, slotkey, slotvalue]
             for i, arg in enumerate(args):
                 if isinstance(arg, rdflib.term.Node):
@@ -726,14 +728,9 @@ class rif_frame:
                         pass
                     raise ValueError("Cant figure out how use '%s' as atom in %s" %(arg, self))
                 else:
-                    raise NotImplementedError(x, type(x))
+                    raise NotImplementedError(arg, type(arg))
             facts.append(machine_facts.frame(*args))
-        def _assert(bindings: BINDING) -> None:
-            for act in binding_actions:
-                act(bindings)
-            for f in facts:
-                f.assert_fact(machine, bindings)
-        return _assert
+        return self.__assert_action(self, facts, binding_actions, machine)
 
     def create_rules(self, machine: durable_reasoner.machine) -> None:
         """Is called, when frame is direct sub to a Group"""
@@ -896,7 +893,7 @@ class rif_equal(rif_external):
         return (self.left, self.right)
 
     @dataclass
-    class _condition:
+    class _condition(_child_action):
         parent: "rif_equal"
         left: Callable[[BINDING], Literal]
         right: Callable[[BINDING], Literal]
@@ -943,7 +940,9 @@ _formulas = {RIF.External: rif_external.from_rdf,
 rif_and._formulas_generators = dict(_formulas)
 #rif_equal._side_generators = {}
 
-def _get_resolveable(x: Union[IdentifiedNode, Literal, Variable, _resolvable_gen], machine: durable_reasoner.machine) -> RESOLVABLE:
+def _get_resolveable(x: Union[TRANSLATEABLE_TYPES, _resolvable_gen], machine: durable_reasoner.machine) -> RESOLVABLE:
     if isinstance(x, (IdentifiedNode, Literal, Variable)):
+        return x
+    elif isinstance(x, (list, tuple)):
         return x
     return x.as_resolvable(machine)
