@@ -475,11 +475,11 @@ class rif_atom:
         return f.check_for_pattern(machine, bindings)
 
     @dataclass
-    class assert_action:
+    class assert_action(_child_action):
         parent: "rif_atom"
         fact: machine_facts.atom
         binding_actions: Iterable[Callable[[BINDING], None]]
-        machine: Any
+        machine: durable_reasoner.machine
         def __call__(self, bindings: BINDING) -> None:
             for act in self.binding_actions:
                 act(bindings)
@@ -498,21 +498,22 @@ class rif_atom:
             if isinstance(arg, rdflib.term.Node):
                 pass
             elif isinstance(arg, rif_external):
-                try:
-                    args[i] = arg.get_replacement_node(machine)
-                    continue
-                except NoPossibleExternal:
-                    pass
-                try:
-                    bindact = arg.get_binding_action(machine)
-                    var = Variable("tmp%s" % uuid.uuid4().hex)
-                    binding_actions.append(lambda bindings: bindings.__setitem__(var, bindact(bindings)))
-                    args[i] = var
-                    continue
-                except NoPossibleExternal:
-                    raise
-                    pass
-                raise ValueError("Cant figure out how use '%s' as atom in %s" %(arg, self))
+                raise NotImplementedError()
+                #try:
+                #    args[i] = arg.get_replacement_node(machine)
+                #    continue
+                #except NoPossibleExternal:
+                #    pass
+                #try:
+                #    bindact = arg.get_binding_action(machine)
+                #    var = Variable("tmp%s" % uuid.uuid4().hex)
+                #    binding_actions.append(lambda bindings: bindings.__setitem__(var, bindact(bindings)))
+                #    args[i] = var
+                #    continue
+                #except NoPossibleExternal:
+                #    raise
+                #    pass
+                #raise ValueError("Cant figure out how use '%s' as atom in %s" %(arg, self))
             else:
                 raise NotImplementedError(arg, type(arg))
         fact = machine_facts.atom(args[0], args[1:])
