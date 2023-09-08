@@ -3,6 +3,7 @@ import abc
 from . import abc_machine
 import durable.engine
 import durable.lang as rls
+from dataclasses import dataclass
 
 import logging
 logger = logging.getLogger(__name__)
@@ -21,16 +22,26 @@ from .abc_machine import fact
 class external(abc_external):
     op: URIRef
     args: ATOM_ARGS
-    def __init__(self, op: URIRef, args: ATOM_ARGS) -> None:
+    def __init__(self, op: URIRef, args: Iterable[Union[TRANSLATEABLE_TYPES, "external"]]) -> None:
         self.op = op
         self.args = list(args)
 
     def add_pattern(self, rule: abc_machine.rule) -> None:
         rule.generate_pattern_external(self.op, self.args)
 
-    def resolve(self, machine: abc_machine.machine, bindings: BINDING) -> TRANSLATEABLE_TYPES:
-        args = [arg.resolve(machine, bindings) if isinstance(arg, external) else arg for arg in self.args]
-        return machine.get_binding_action(self.op, args)(bindings)
+    @dataclass
+    class __resolver:
+        parent: "external"
+        op: URIRef
+        args: RESOLVABLE
+        machine: abc_machine.machine
+        def __call__(self, bindings: BINDING) -> TRANSLATEABLE_TYPES:
+            args = [_resolve(arg, bindings) for arg in self.args]
+            return self.machine.get_binding_action(self.op, args)(bindings)
+
+    def as_resolvable(self, machine: abc_machine.machine) -> RESOLVABLE:
+        args = [arg.as_resolvable(machine) if isinstance(arg, external) else arg for arg in self.args]
+        return self.__resolver(self, self.op, args, machine)
 
     def __repr__(self) -> str:
         return "external %s(%s)" % (self.op, ", ".join(str(x) for x in self.args))
@@ -332,7 +343,7 @@ def _node2string(x: Union[TRANSLATEABLE_TYPES, Variable, str, external],
     elif isinstance(x, (URIRef, BNode, Literal)):
         return rdflib2string(x)
     elif isinstance(x, external):
-        newnode = x.resolve(machine, bindings)
+        newnode = x.as_resolvable(machine)(bindings)
         return rdflib2string(newnode)
     elif isinstance(x, str):
         raise NotImplementedError()
