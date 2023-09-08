@@ -18,6 +18,10 @@ from dataclasses import dataclass
 ATOM = typ.Union[TRANSLATEABLE_TYPES, external, Variable, "rif_external"]
 SLOT = Tuple[ATOM, ATOM]
 
+class _child_action:
+    """Shared parent for all action classes for callables for the machine"""
+    parent: Any
+
 class NotPossibleAction(SyntaxError):
     """Raise if wanted action is not available for this rif object"""
 
@@ -313,7 +317,7 @@ class rif_implies:
         self.then_ = then_
 
     @dataclass
-    class conditional:
+    class conditional(_child_action):
         parent: "rif_implies"
         conditions: list[Callable]
         action: Callable
@@ -470,6 +474,17 @@ class rif_atom:
         f = machine_facts.atom(self.op, self.args)
         return f.check_for_pattern(machine, bindings)
 
+    @dataclass
+    class assert_action:
+        parent: "rif_atom"
+        fact: machine_facts.atom
+        binding_actions: Iterable[Callable[[BINDING], None]]
+        machine: Any
+        def __call__(self, bindings: BINDING) -> None:
+            for act in self.binding_actions:
+                act(bindings)
+            self.fact.assert_fact(self.machine, bindings)
+
     def generate_assert_action(self,
                                machine: durable_reasoner.machine,
                                ) -> Callable[[machine_facts.BINDING], None]:
@@ -501,11 +516,7 @@ class rif_atom:
             else:
                 raise NotImplementedError(arg, type(arg))
         fact = machine_facts.atom(args[0], args[1:])
-        def _assert(bindings: BINDING) -> None:
-            for act in binding_actions:
-                act(bindings)
-            fact.assert_fact(machine, bindings)
-        return _assert
+        return self.assert_action(self, fact, binding_actions, machine)
 
     @classmethod
     def from_rdf(cls, infograph: rdflib.Graph,
