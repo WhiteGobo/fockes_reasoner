@@ -149,6 +149,10 @@ class machine(abc.ABC):
         ...
 
     @abc.abstractmethod
+    def add_init_action(self, action: Callable[[BINDING], None]) -> None:
+        ...
+
+    @abc.abstractmethod
     def get_binding_action(self, op: IdentifiedNode, args: Iterable[RESOLVABLE]) -> RESOLVABLE:
         """Resolve external atoms"""
 

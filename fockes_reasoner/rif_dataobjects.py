@@ -733,10 +733,19 @@ class rif_frame:
                  rootnode: rdflib.IdentifiedNode,
                  **kwargs: typ.Any) -> "rif_frame":
         info = dict(infograph.predicate_objects(rootnode))
-        q = rdflib.collection.Collection(infograph, info[RIF.slots])
-        slotinfo = [(slot2node(infograph, d[RIF.slotkey]), slot2node(infograph, d[RIF.slotvalue]))
-                    for d in (dict(infograph.predicate_objects(x)) for x in q)]
-        obj = slot2node(infograph, info[RIF.object])
+        slotinfo = []
+        #q = rdflib.collection.Collection(infograph, info[RIF.slots])
+        q_root, = infograph.objects(rootnode, RIF.slots)
+        q = rdflib.collection.Collection(infograph, q_root)
+        for x in q:
+            _slotkey, = infograph.objects(x, RIF.slotkey)
+            _slotvalue, = infograph.objects(x, RIF.slotvalue)
+            assert isinstance(_slotkey, IdentifiedNode)
+            assert isinstance(_slotvalue, IdentifiedNode)
+            slotinfo.append((slot2node(infograph, _slotkey), slot2node(infograph, _slotvalue)))
+        _obj, = infograph.objects(rootnode, RIF.object)
+        assert isinstance(_obj, IdentifiedNode)
+        obj = slot2node(infograph, _obj)
         return cls(obj, slotinfo, **kwargs)
 
 class rif_retract:
