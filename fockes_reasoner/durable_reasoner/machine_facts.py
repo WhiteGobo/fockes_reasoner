@@ -21,7 +21,7 @@ from .abc_machine import fact
 
 class external(abc_external):
     op: URIRef
-    args: ATOM_ARGS
+    args: Iterable[Union[TRANSLATEABLE_TYPES, "external"]]
     def __init__(self, op: URIRef, args: Iterable[Union[TRANSLATEABLE_TYPES, "external"]]) -> None:
         self.op = op
         self.args = list(args)
@@ -33,11 +33,11 @@ class external(abc_external):
     class __resolver:
         parent: "external"
         op: URIRef
-        args: RESOLVABLE
+        args: Iterable[RESOLVABLE]
         machine: abc_machine.machine
         def __call__(self, bindings: BINDING) -> TRANSLATEABLE_TYPES:
             args = [_resolve(arg, bindings) for arg in self.args]
-            return self.machine.get_binding_action(self.op, args)(bindings)
+            return _resolve(self.machine.get_binding_action(self.op, args), bindings)
 
     def as_resolvable(self, machine: abc_machine.machine) -> RESOLVABLE:
         args = [arg.as_resolvable(machine) if isinstance(arg, external) else arg for arg in self.args]
@@ -343,7 +343,7 @@ def _node2string(x: Union[TRANSLATEABLE_TYPES, Variable, str, external],
     elif isinstance(x, (URIRef, BNode, Literal)):
         return rdflib2string(x)
     elif isinstance(x, external):
-        newnode = x.as_resolvable(machine)(bindings)
+        newnode = _resolve(x.as_resolvable(machine), bindings)
         return rdflib2string(newnode)
     elif isinstance(x, str):
         raise NotImplementedError()
