@@ -927,6 +927,7 @@ class rif_equal(rif_external):
 
 class rif_list(_resolvable_gen):
     items: Iterable[Union[TRANSLATEABLE_TYPES, "rif_list"]]
+    _item_generator: Mapping[IdentifiedNode, Callable[[Graph, IdentifiedNode], ATOM]]
     def __init__(self,
                  items: Iterable[Union[TRANSLATEABLE_TYPES, "rif_list"]],
                  ) -> None:
@@ -937,7 +938,16 @@ class rif_list(_resolvable_gen):
                  rootnode: rdflib.IdentifiedNode,
                  extraDocuments: Mapping[IdentifiedNode, Graph] = {},
                  ) -> "rif_list":
-        raise NotImplementedError()
+        info = dict(infograph.predicate_objects(rootnode))
+        item_list_node, = infograph.objects(rootnode, RIF.items)
+        item_list = rdflib.collection.Collection(infograph, item_list_node)
+        items = []
+        for item in item_list:
+            item_type = infograph.value(item, RDF.type)
+            q = cls._item_generator[item_type](infograph, item)
+            assert not isinstance(q, (Variable, rif_external))
+            items.append(q)
+        return cls(items)
 
     def as_resolvable(self, machine: durable_reasoner.machine) -> RESOLVABLE:
         raise NotImplementedError()
@@ -959,12 +969,14 @@ _formulas = {RIF.External: rif_external.from_rdf,
 rif_and._formulas_generators = dict(_formulas)
 #rif_equal._side_generators = {}
 
-rif_external._atom_args_generator = {
+_term_generators: Mapping[IdentifiedNode, Callable[[Graph, IdentifiedNode], ATOM]] = {
         RIF.Const: slot2node,
         RIF.Var: slot2node,
         RIF.List: slot2node,
         RIF.External: rif_external.from_rdf,
         }
+rif_external._atom_args_generator = _term_generators
+rif_list._item_generator = _term_generators
 
 def _get_resolveable(x: Union[TRANSLATEABLE_TYPES, _resolvable_gen, Variable], machine: durable_reasoner.machine) -> RESOLVABLE:
     if isinstance(x, (IdentifiedNode, Literal, Variable, term_list)):
