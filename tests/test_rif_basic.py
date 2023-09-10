@@ -1,8 +1,3 @@
-NET_Local_Constant = None
-NET_Local_Predicate = None
-NET_NestedListsAreNotFlatLists = None
-NET_Non_Annotation_Entailment = None
-NET_RDF_Combination_SubClass = None
 import pytest
 import rdflib
 import logging

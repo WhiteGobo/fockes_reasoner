@@ -1,5 +1,6 @@
 from collections import namedtuple
 import importlib.resources
+from importlib.resources import files
 
 from . import PRD
 _PRD = importlib.resources.files(PRD)
@@ -7,7 +8,7 @@ from . import Core
 _Core = importlib.resources.files(Core)
 
 PositiveEntailmentTest = namedtuple("PositiveEntailmentTest", ("premise", "conclusion"))
-NegativeEntailmentTest = namedtuple("PositiveEntailmentTest", ("premise", "conclusion"))
+#NegativeEntailmentTest = namedtuple("NegativeEntailmentTest", ("premise", "conclusion"))
 class NegativeEntailmentTest:
     def __init__(self, premise, nonconclusion, importedDocuments={}):
         self.premise = str(premise)
@@ -185,8 +186,32 @@ NET_RDF_Combination_SubClass_5 = NegativeEntailmentTest(
         _PRD.joinpath("NegativeEntailmentTest/RDF_Combination_SubClass_5/RDF_Combination_SubClass_5-import001.ttl")},
         )
 
-NET_Local_Constant = None
-NET_Local_Predicate = None
-NET_NestedListsAreNotFlatLists = None
-NET_Non_Annotation_Entailment = None
-NET_RDF_Combination_SubClass = None
+from .Core.NegativeEntailmentTest import Local_Constant, Local_Predicate, NestedListsAreNotFlatLists, NonAnnotation_Entailment, RDF_Combination_SubClass
+tmp = files(Local_Constant)
+NET_Local_Constant = NegativeEntailmentTest(
+        tmp.joinpath("Local_Constant-premise.rif"),
+        tmp.joinpath("Local_Constant-nonconclusion.rif"))
+tmp = files(Local_Predicate)
+NET_Local_Predicate = NegativeEntailmentTest(
+        tmp.joinpath("Local_Predicate-premise.rif"),
+        tmp.joinpath("Local_Predicate-nonconclusion.rif"),
+        )
+tmp = files(NestedListsAreNotFlatLists)
+NET_NestedListsAreNotFlatLists = NegativeEntailmentTest(
+        tmp.joinpath("NestedListsAreNotFlatLists-premise"),
+        tmp.joinpath("NestedListsAreNotFlatLists-nonconclusion.rif"),
+        )
+tmp = files(NonAnnotation_Entailment)
+NET_Non_Annotation_Entailment = NegativeEntailmentTest(
+        tmp.joinpath("Non-Annotation_Entailment-premise.rif"),
+        tmp.joinpath("Non-Annotation_Entailment-nonconclusion.rif"),
+        {"http://www.w3.org/2005/rules/test/repository/tc/Non-Annotation_Entailment/Non-Annotation_Entailment-import001":
+         tmp.joinpath("Non-Annotation_Entailment-import001.ttl")},
+        )
+tmp = files(RDF_Combination_SubClass)
+NET_RDF_Combination_SubClass = NegativeEntailmentTest(
+        tmp.joinpath("RDF_Combination_SubClass-premise.rif"),
+        tmp.joinpath("RDF_Combination_SubClass-nonconclusion.rif"),
+        {"http://www.w3.org/2005/rules/test/repository/tc/RDF_Combination_SubClass/RDF_Combination_SubClass-import001> <http://www.w3.org/ns/entailment/Simple":
+        tmp.joinpath("RDF_Combination_SubClass-import001.ttl")},
+        )
