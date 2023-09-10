@@ -67,7 +67,7 @@ class machine_list(external):
         return self.__resolver(self, items, machine)
 
     def __repr__(self) -> str:
-        return "[%s]" % ", ".join(str(x) for x in self.items)
+        return "m[%s]" % ", ".join(str(x) for x in self.items)
 
 
 
