@@ -575,6 +575,7 @@ class rif_external(_resolvable_gen):
         op_node, = infograph.objects(content_node, RIF.op)
         assert isinstance(op_node, IdentifiedNode)
         op = slot2node(infograph, op_node)
+        assert isinstance(op, URIRef), "rif_external expects an uri as op"
         arg_list_node, = infograph.objects(content_node, RIF.args)
         assert isinstance(arg_list_node, IdentifiedNode)
         arg_list = rdflib.collection.Collection(infograph, arg_list_node)
