@@ -116,7 +116,10 @@ def _transform_all_externals_to_calls(args: ATOM_ARGS, tmp_machine: "_base_durab
     t_arg: TRANSLATEABLE_TYPES
     e_arg: abc_external
     for arg in args:
-        if isinstance(arg, (Variable, Literal, IdentifiedNode)):
+        if isinstance(arg, abc_external):
+            useable_args.append(arg.as_resolvable(tmp_machine))
+            continue
+        elif isinstance(arg, (Variable, Literal, IdentifiedNode)):
             useable_args.append(arg)
             continue
         try:
@@ -126,6 +129,7 @@ def _transform_all_externals_to_calls(args: ATOM_ARGS, tmp_machine: "_base_durab
             continue
         except (AssertionError, TypeError):
             pass
+
         try:
             e_arg = arg#type: ignore[assignment]
             tmp_assign = tmp_machine._create_assignment_from_external(
@@ -319,7 +323,7 @@ class _base_durable_machine(abc_machine.machine):
         try:
             return mygen(*useable_args)
         except TypeError as err:
-            raise Exception(mygen, useable_args) from err
+            raise Exception(mygen, useable_args, op, args) from err
 
     def register(self, op: rdflib.URIRef, asaction: Optional[Callable] = None,
             ascondition: Optional[Callable] = None,

@@ -63,7 +63,7 @@ class machine_list(external):
             raise NotImplementedError("asdf")
 
     def as_resolvable(self, machine: abc_machine.machine) -> RESOLVABLE:
-        items = [arg.as_resolvable(machine) if isinstance(arg, external) else arg for arg in self.args]
+        items = [item.as_resolvable(machine) if isinstance(item, external) else item for item in self.items]
         return self.__resolver(self, items, machine)
 
     def __repr__(self) -> str:
