@@ -533,6 +533,7 @@ class rif_atom(rif_fact):
 class rif_external(_resolvable_gen):
     op: URIRef
     args: Sequence[ATOM]
+    _atom_args_generator: Mapping[IdentifiedNode, Callable[[Graph, IdentifiedNode], ATOM]]
     def __init__(self, op: URIRef, args: Iterable[ATOM]):
         self.op = op
         self.args = list(args)
@@ -570,19 +571,18 @@ class rif_external(_resolvable_gen):
     def from_rdf(cls, infograph: rdflib.Graph,
                  rootnode: rdflib.IdentifiedNode,
                  **kwargs: typ.Any) -> "rif_external":
-        from .class_rdfmodel import rdfmodel
-        model = rdfmodel()
         content_node: rdflib.IdentifiedNode = infograph.value(rootnode, RIF.content) #type: ignore[assignment]
         op_node, = infograph.objects(content_node, RIF.op)
         assert isinstance(op_node, IdentifiedNode)
-        op = model.generate_object(infograph, op_node)
+        op = slot2node(infograph, op_node)
         arg_list_node, = infograph.objects(content_node, RIF.args)
         assert isinstance(arg_list_node, IdentifiedNode)
         arg_list = rdflib.collection.Collection(infograph, arg_list_node)
         args = []
         for x in arg_list:
             assert isinstance(x, IdentifiedNode)
-            args.append(model.generate_object(infograph, x))
+            x_type = infograph.value(x, RDF.type)
+            args.append(cls._atom_args_generator[x_type](infograph, x))
         return cls(op, args)
 
     def __repr__(self) -> str:
@@ -920,6 +920,13 @@ _formulas = {RIF.External: rif_external.from_rdf,
              }
 rif_and._formulas_generators = dict(_formulas)
 #rif_equal._side_generators = {}
+
+rif_external._atom_args_generator = {
+        RIF.Const: slot2node,
+        RIF.Var: slot2node,
+        RIF.List: slot2node,
+        RIF.External: rif_external.from_rdf,
+        }
 
 def _get_resolveable(x: Union[TRANSLATEABLE_TYPES, _resolvable_gen, Variable], machine: durable_reasoner.machine) -> RESOLVABLE:
     if isinstance(x, (IdentifiedNode, Literal, Variable)):
