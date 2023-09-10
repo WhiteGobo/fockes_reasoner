@@ -57,6 +57,15 @@ class count:
         return Literal(len(target))
 
 @dataclass
+class list_get:
+    target: RESOLVABLE
+    index: RESOLVABLE
+    def __call__(self, bindings: BINDING) -> Literal:
+        target = _resolve(self.target, bindings)
+        index = _resolve(self.index, bindings)
+        return target[int(index)]
+
+@dataclass
 class numeric_equal:
     left: RESOLVABLE
     right: RESOLVABLE

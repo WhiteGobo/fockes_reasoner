@@ -653,6 +653,8 @@ class _machine_default_externals(_base_durable_machine):
                       asassign=def_ext.make_list)
         self.register(func["count"],
                       asassign=def_ext.count)
+        self.register(func["get"],
+                      asassign=def_ext.list_get)
         self.register(pred["is-literal-hexBinary"],
                       ascondition=def_ext.is_literal_hexBinary)
         self.register(pred["is-literal-not-hexBinary"],

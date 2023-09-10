@@ -31,6 +31,13 @@ class term_list(abc.ABC):
                 return False
         return True
 
+    def __getitem__(self, index: int) -> TRANSLATEABLE_TYPES:
+        items = iter(self)
+        item = next(items)
+        for i in range(index):
+            item = next(items)
+        return item
+
 
 @dataclass
 class _term_list(term_list):
