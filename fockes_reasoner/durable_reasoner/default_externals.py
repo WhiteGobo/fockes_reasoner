@@ -9,6 +9,7 @@ import math
 from .abc_machine import BINDING, RESOLVABLE, _resolve, RESOLVER
 from ..shared import pred, func
 
+
 @dataclass
 class invert:
     to_invert: RESOLVER
@@ -19,6 +20,13 @@ class invert:
     @classmethod
     def gen(cls, to_invert: Callable[..., RESOLVER]) -> Callable[..., "invert"]:
         return lambda *args: cls(to_invert(*args))
+
+@dataclass
+class is_list:
+    target: RESOLVABLE
+    def __call__(self, bindings: BINDING) -> Literal:
+        target = _resolve(self.target, bindings)
+        return Literal(isinstance(target, term_list))
 
 @dataclass
 class numeric_equal:
