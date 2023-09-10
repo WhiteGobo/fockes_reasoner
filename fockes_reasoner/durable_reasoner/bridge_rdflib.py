@@ -2,8 +2,9 @@
 to str. Because the logicmachine only uses strings this should give a
 unified translator from rdflib nodes to these string and back
 """
+import abc
 import rdflib
-from typing import Iterable, Union
+from typing import Iterable, Union, Iterator
 
 import rdflib
 
@@ -11,8 +12,13 @@ TRANSLATEABLE_TYPES = Union[rdflib.URIRef,
                             rdflib.BNode,
                             rdflib.IdentifiedNode,
                             rdflib.Literal,
-                            list["TRANSLATEABLE_TYPES"]
+                            "term_list",
                             ]
+
+class term_list(abc.ABC):
+    @abc.abstractmethod
+    def __iter__(self) -> Iterator["TRANSLATEABLE_TYPES"]:
+        ...
 
 
 import pyparsing as pp

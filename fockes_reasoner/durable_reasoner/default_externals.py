@@ -132,7 +132,7 @@ class pred_less_than:
     def __call__(self, bindings:BINDING) -> Literal:
         s = _resolve(self.smaller, bindings)
         b = _resolve(self.bigger, bindings)
-        return Literal(s < b)
+        return Literal(s < b)#type: ignore[operator]
 
 @dataclass
 class ascondition_pred_greater_than:
@@ -141,7 +141,7 @@ class ascondition_pred_greater_than:
     def __call__(self, bindings: BINDING) -> Literal:
         b = _resolve(self.bigger, bindings)
         s = _resolve(self.smaller, bindings)
-        return Literal(b > s)
+        return Literal(b > s)# type: ignore[operator]
 
 @dataclass
 class func_numeric_subtract:

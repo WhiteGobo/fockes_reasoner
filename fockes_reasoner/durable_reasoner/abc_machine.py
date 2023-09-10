@@ -8,7 +8,7 @@ from rdflib import IdentifiedNode, Graph, Literal, Variable
 FACTTYPE = "type"
 """Labels in where the type of fact is saved"""
 
-from .bridge_rdflib import TRANSLATEABLE_TYPES
+from .bridge_rdflib import TRANSLATEABLE_TYPES, term_list
 
 BINDABLE_TYPES = Union[TRANSLATEABLE_TYPES]
 BINDING = MutableMapping[rdflib.Variable, TRANSLATEABLE_TYPES]
@@ -17,22 +17,29 @@ RESOLVABLE = Union[Variable, TRANSLATEABLE_TYPES, RESOLVER]
 #VARIABLE_LOCATOR = Callable[[typ.Union[durable.engine.Closure, None]], TRANSLATEABLE_TYPES]
 VARIABLE_LOCATOR = Callable[[typ.Any], TRANSLATEABLE_TYPES]
 CLOSURE_BINDINGS = MutableMapping[rdflib.Variable, VARIABLE_LOCATOR]
-ATOM_ARGS = Iterable[Union[TRANSLATEABLE_TYPES, "abc_external", Variable]]
+ATOM_ARGS = Iterable[Union[TRANSLATEABLE_TYPES, Variable, "abc_external"]]
 
 class RuleNotComplete(Exception):
     """Rules are objects, that are worked on. So if you finalize a rule
     There may not be all needed information. Raise this error in that case
     """
 
+
 class abc_external(abc.ABC):
     op: IdentifiedNode
     args: ATOM_ARGS
+
+    @abc.abstractmethod
+    def as_resolvable(self, machine: "machine") -> RESOLVABLE:
+        ...
 
 def _resolve(x: RESOLVABLE, bindings: BINDING) -> TRANSLATEABLE_TYPES:
     """Resolve variables and externals
     """
     if isinstance(x, (IdentifiedNode, Literal, list, tuple)):
         return x
+    elif isinstance(x, term_list):
+        raise NotImplementedError()
     elif isinstance(x, Variable):
         return bindings[x]
     return x(bindings)

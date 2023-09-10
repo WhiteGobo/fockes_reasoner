@@ -2,7 +2,7 @@ import abc
 import logging
 logger = logging.getLogger(__name__)
 import uuid
-from .durable_reasoner import machine_facts, fact, NoPossibleExternal, _resolve, ATOM_ARGS
+from .durable_reasoner import machine_facts, fact, NoPossibleExternal, _resolve, ATOM_ARGS, term_list
 from .durable_reasoner.machine_facts import external, TRANSLATEABLE_TYPES
 import rdflib
 from rdflib import IdentifiedNode, Graph, Variable, Literal, URIRef
@@ -16,8 +16,8 @@ from .durable_reasoner import BINDING, RESOLVABLE
 from dataclasses import dataclass
 from collections.abc import Sequence
 
-ATOM = Union[TRANSLATEABLE_TYPES, Variable, "rif_external"]
-SATOM = Union[TRANSLATEABLE_TYPES, external, Variable]
+ATOM = Union[TRANSLATEABLE_TYPES, Variable, "rif_external", "rif_list"]
+SATOM = Union[TRANSLATEABLE_TYPES, external, Variable, "rif_list"]
 SLOT = Tuple[ATOM, ATOM]
 RIF_ATOM = Union[TRANSLATEABLE_TYPES, "rif_external"]
 
@@ -39,6 +39,7 @@ class rif_fact(abc.ABC):
             ) -> bool:
         ...
 
+
 class _resolvable_gen(abc.ABC):
     """Subclass can be used to retrieve a :term:`translateable object` as
     described in bridge-rdflib. Is equal to a :term:`formula` in :term:`RIF`
@@ -46,6 +47,20 @@ class _resolvable_gen(abc.ABC):
     @abc.abstractmethod
     def as_resolvable(self, machine: durable_reasoner.machine) -> RESOLVABLE:
         ...
+
+    @abc.abstractmethod
+    def as_machinefact(self) -> Union[external, TRANSLATEABLE_TYPES]:
+        """
+        :TODO: This should be as_machineterm
+        """
+        ...
+
+def _try_as_machinefact(x: Union[TRANSLATEABLE_TYPES, external, Variable, _resolvable_gen],
+                        ) -> Union[TRANSLATEABLE_TYPES, external, Variable]:
+    if isinstance(x, _resolvable_gen):
+        return x.as_machinefact()
+    else:
+        return x
 
 class _action_gen(abc.ABC):
     @abc.abstractmethod
@@ -541,7 +556,7 @@ class rif_external(_resolvable_gen):
         self.args = list(args)
 
     def as_machinefact(self) -> external:
-        args = [x.as_machinefact() if isinstance(x, rif_external) else x for x in self.args]
+        args = [x.as_machinefact() if isinstance(x, _resolvable_gen) else x for x in self.args]
         return external(self.op, args)
 
     def as_resolvable(self, machine: durable_reasoner.machine) -> RESOLVABLE:
@@ -625,8 +640,8 @@ class rif_subclass(rif_fact):
             machine: durable_reasoner.machine,
             bindings: BINDING = {},
             ) -> bool:
-        sub_class = self.sub_class.as_machinefact() if isinstance(self.sub_class, rif_external) else self.sub_class
-        super_class = self.super_class.as_machinefact() if isinstance(self.super_class, rif_external) else self.super_class
+        sub_class = self.sub_class.as_machinefact() if isinstance(self.sub_class, _resolvable_gen) else self.sub_class
+        super_class = self.super_class.as_machinefact() if isinstance(self.super_class, _resolvable_gen) else self.super_class
         f = machine_facts.fact_subclass(sub_class, super_class)
         return f.check_for_pattern(machine, bindings)
 
@@ -646,8 +661,11 @@ class rif_frame(rif_fact):
 
     @property
     def facts(self) -> Iterable[machine_facts.frame]:
+        obj = _try_as_machinefact(self.obj)
         for slotkey, slotvalue in self._machinefact_slots:
-            yield machine_facts.frame(self.obj, slotkey, slotvalue)
+            sk = _try_as_machinefact(slotkey)
+            sv = _try_as_machinefact(slotvalue)
+            yield machine_facts.frame(obj, sk, sv)
         
 
     def check(self,
@@ -662,20 +680,15 @@ class rif_frame(rif_fact):
     @property
     def _machinefact_slots(self) -> Iterable[Tuple[Union[TRANSLATEABLE_TYPES, external, Variable], Union[TRANSLATEABLE_TYPES, external, Variable]]]:
         for slot in self.slots:
-            slotkey, slotvalue = (x.as_machinefact() if isinstance(x, rif_external) else x for x in slot)
+            slotkey, slotvalue = (x.as_machinefact() if isinstance(x, _resolvable_gen) else x for x in slot)
             yield slotkey, slotvalue
 
     def add_pattern(self, rule: durable_reasoner.rule) -> None:
+        obj = _try_as_machinefact(self.obj)
         for slotkey, slotvalue in self._machinefact_slots:
-            args = [self.obj, slotkey, slotvalue]
-            for i, arg in enumerate(args):
-                if isinstance(arg, rdflib.term.Node):
-                    pass
-                elif isinstance(arg, rif_external):
-                    raise NotImplementedError()
-                else:
-                    raise NotImplementedError(arg, type(arg))
-            f = machine_facts.frame(self.obj, slotkey, slotvalue)
+            sk = _try_as_machinefact(slotkey)
+            sv = _try_as_machinefact(slotvalue)
+            f = machine_facts.frame(obj, sk, sv)
             f.add_pattern(rule)
 
     def generate_condition(self,
@@ -713,8 +726,9 @@ class rif_frame(rif_fact):
         :TODO: Creation of variable is not safe
         """
         facts = []
+        obj = _try_as_machinefact(self.obj)
         for slotkey, slotvalue in self._machinefact_slots:
-            facts.append(machine_facts.frame(self.obj, slotkey, slotvalue))
+            facts.append(machine_facts.frame(obj, slotkey, slotvalue))
         return self.__assert_action(self, facts, machine)
 
     def create_rules(self, machine: durable_reasoner.machine) -> None:
@@ -911,7 +925,7 @@ class rif_equal(rif_external):
         return cls(left, right)
 
 
-class rif_list:
+class rif_list(_resolvable_gen):
     items: Iterable[Union[TRANSLATEABLE_TYPES, "rif_list"]]
     def __init__(self,
                  items: Iterable[Union[TRANSLATEABLE_TYPES, "rif_list"]],
@@ -922,7 +936,13 @@ class rif_list:
     def from_rdf(cls, infograph: rdflib.Graph,
                  rootnode: rdflib.IdentifiedNode,
                  extraDocuments: Mapping[IdentifiedNode, Graph] = {},
-                 **kwargs: Any) -> "rif_document":
+                 ) -> "rif_list":
+        raise NotImplementedError()
+
+    def as_resolvable(self, machine: durable_reasoner.machine) -> RESOLVABLE:
+        raise NotImplementedError()
+
+    def as_machinefact(self) -> TRANSLATEABLE_TYPES:
         raise NotImplementedError()
 
 
@@ -947,9 +967,7 @@ rif_external._atom_args_generator = {
         }
 
 def _get_resolveable(x: Union[TRANSLATEABLE_TYPES, _resolvable_gen, Variable], machine: durable_reasoner.machine) -> RESOLVABLE:
-    if isinstance(x, (IdentifiedNode, Literal, Variable)):
-        return x
-    elif isinstance(x, (list, tuple)):
+    if isinstance(x, (IdentifiedNode, Literal, Variable, term_list)):
         return x
     elif isinstance(x, Variable):
         raise NotImplementedError()

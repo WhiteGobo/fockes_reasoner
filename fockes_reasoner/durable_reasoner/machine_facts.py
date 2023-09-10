@@ -49,14 +49,14 @@ class external(abc_external):
 
 
 class fact_subclass(fact):
-    sub_class: typ.Union[TRANSLATEABLE_TYPES, external, Variable]
-    super_class: typ.Union[TRANSLATEABLE_TYPES, external, Variable]
+    sub_class: typ.Union[TRANSLATEABLE_TYPES, abc_external, Variable, ]
+    super_class: typ.Union[TRANSLATEABLE_TYPES, abc_external, Variable]
     ID: str = "subclass"
     SUBCLASS_SUB: str = "sub"
     SUBCLASS_SUPER: str = "super"
     def __init__(self, 
-                 sub_class: typ.Union[TRANSLATEABLE_TYPES, external, Variable],
-                 super_class: typ.Union[TRANSLATEABLE_TYPES, external, Variable],
+                 sub_class: typ.Union[TRANSLATEABLE_TYPES, abc_external, Variable],
+                 super_class: typ.Union[TRANSLATEABLE_TYPES, abc_external, Variable],
                  ) -> None:
         self.sub_class = sub_class
         self.super_class = super_class
@@ -330,7 +330,7 @@ class atom(fact):
     def __repr__(self) -> str:
         return "%s%s" % (self.op, self.args)
 
-def _node2string(x: Union[TRANSLATEABLE_TYPES, Variable, str, external],
+def _node2string(x: Union[TRANSLATEABLE_TYPES, Variable, str, abc_external],
                  machine: abc_machine.machine,
                  bindings: BINDING,
                  ) -> str:
