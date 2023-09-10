@@ -2,7 +2,7 @@ import abc
 import logging
 logger = logging.getLogger(__name__)
 import uuid
-from .durable_reasoner import machine_facts, fact, NoPossibleExternal, _resolve, ATOM_ARGS, term_list
+from .durable_reasoner import machine_facts, fact, NoPossibleExternal, _resolve, ATOM_ARGS, term_list, machine_list
 from .durable_reasoner.machine_facts import external, TRANSLATEABLE_TYPES
 import rdflib
 from rdflib import IdentifiedNode, Graph, Variable, Literal, URIRef
@@ -952,8 +952,9 @@ class rif_list(_resolvable_gen):
     def as_resolvable(self, machine: durable_reasoner.machine) -> RESOLVABLE:
         raise NotImplementedError()
 
-    def as_machinefact(self) -> TRANSLATEABLE_TYPES:
-        raise NotImplementedError()
+    def as_machinefact(self) -> machine_list:
+        items = [_try_as_machinefact(x) for x in self.items]
+        return machine_list(items)
 
 
 rif_implies._then_generators = {

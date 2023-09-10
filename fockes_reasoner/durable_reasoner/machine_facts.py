@@ -17,6 +17,7 @@ from typing import MutableMapping, Mapping, Union, Callable, Iterable, Tuple
 from .abc_machine import BINDING, CLOSURE_BINDINGS, VARIABLE_LOCATOR, TRANSLATEABLE_TYPES, ATOM_ARGS, abc_external, RESOLVABLE, _resolve
 
 from .bridge_rdflib import *
+from .bridge_rdflib import term_list
 from .abc_machine import fact
 
 class external(abc_external):
@@ -46,6 +47,18 @@ class external(abc_external):
     def __repr__(self) -> str:
         return "external %s(%s)" % (self.op, ", ".join(str(x) for x in self.args))
 
+
+class machine_list(term_list):
+    items: Iterable[Union[TRANSLATEABLE_TYPES, external, Variable]]
+    def __init__(self, items: Iterable[Union[TRANSLATEABLE_TYPES, external, Variable]]) -> None:
+        self.items = list(items)
+
+    def __iter__(self) -> Iterator[TRANSLATEABLE_TYPES]:
+        q = []
+        for x in self.items:
+            assert not isinstance(x, (external, Variable))
+            q.append(x)
+        return iter(q)
 
 
 class fact_subclass(fact):
