@@ -645,6 +645,8 @@ class _machine_default_externals(_base_durable_machine):
                       asassign=def_ext.numeric_integer_mod)
         self.register(pred["is-list"],
                       ascondition=def_ext.is_list)
+        self.register(pred["list-contains"],
+                      ascondition=def_ext.list_contains)
         self.register(pred["literal-not-identical"],
                       ascondition=def_ext.ascondition_pred_literal_not_identical)
         self.register(pred["is-literal-hexBinary"],

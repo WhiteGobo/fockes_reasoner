@@ -51,7 +51,7 @@ class pred(DefinedNamespace):
             "is-literal-not-nonPositiveInteger",
             "XMLLiteral-equal",
             "is-list",
-            #"",
+            "list-contains",
             #"",
             #"",
             #"",

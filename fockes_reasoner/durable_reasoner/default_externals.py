@@ -30,6 +30,13 @@ class is_list:
         return Literal(isinstance(target, term_list))
 
 @dataclass
+class list_contains:
+    container: RESOLVABLE
+    target: RESOLVABLE
+    def __call__(self, bindings: BINDING) -> Literal:
+        raise NotImplementedError()
+
+@dataclass
 class numeric_equal:
     left: RESOLVABLE
     right: RESOLVABLE
