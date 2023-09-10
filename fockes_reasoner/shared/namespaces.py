@@ -54,7 +54,6 @@ class pred(DefinedNamespace):
             "list-contains",
             #"",
             #"",
-            #"",
             ]
     _NS = Namespace("http://www.w3.org/2007/rif-builtin-predicate#")
 

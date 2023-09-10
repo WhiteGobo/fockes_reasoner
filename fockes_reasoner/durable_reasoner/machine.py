@@ -649,6 +649,10 @@ class _machine_default_externals(_base_durable_machine):
                       ascondition=def_ext.list_contains)
         self.register(pred["literal-not-identical"],
                       ascondition=def_ext.ascondition_pred_literal_not_identical)
+        self.register(func["make-list"],
+                      asassign=def_ext.make_list)
+        self.register(func["count"],
+                      asassign=def_ext.count)
         self.register(pred["is-literal-hexBinary"],
                       ascondition=def_ext.is_literal_hexBinary)
         self.register(pred["is-literal-not-hexBinary"],

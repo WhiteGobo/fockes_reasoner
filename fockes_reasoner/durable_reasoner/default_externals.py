@@ -1,11 +1,11 @@
-from typing import Callable, Union, TypeVar
+from typing import Callable, Union, TypeVar, Iterable
 import rdflib
 from rdflib import Literal, Variable, XSD, IdentifiedNode, Literal, URIRef
 import logging
 logger = logging.getLogger()
 from dataclasses import dataclass
 import math
-from .bridge_rdflib import term_list
+from .bridge_rdflib import term_list, _term_list
 
 from .abc_machine import BINDING, RESOLVABLE, _resolve, RESOLVER
 from ..shared import pred, func
@@ -39,6 +39,22 @@ class list_contains:
             raise TypeError("Expected a list: %s" % container)
         target = _resolve(self.target, bindings)
         return Literal(target in container)
+
+class make_list:
+    items: Iterable[RESOLVABLE]
+    def __init__(self, *items):
+        self.items = items
+
+    def __call__(self, bindings: BINDING) -> _term_list:
+        items = [_resolve(item, bindings) for item in self.items]
+        return _term_list(items)
+
+@dataclass
+class count:
+    target: RESOLVABLE
+    def __call__(self, bindings: BINDING) -> Literal:
+        target = _resolve(self.target, bindings)
+        return Literal(len(target))
 
 @dataclass
 class numeric_equal:

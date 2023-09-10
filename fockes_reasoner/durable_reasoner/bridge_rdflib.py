@@ -21,12 +21,26 @@ class term_list(abc.ABC):
     def __iter__(self) -> Iterator["TRANSLATEABLE_TYPES"]:
         ...
 
+    @abc.abstractmethod
+    def __len__(self) -> int:
+        ...
+
+    def __eq__(self, other: "term_list") -> bool:
+        for x, y in zip(self, other):
+            if x != y:
+                return False
+        return True
+
+
 @dataclass
 class _term_list(term_list):
     """Simple implementation for term_list"""
     items: List[TRANSLATEABLE_TYPES]
     def __iter__(self) -> Iterator[TRANSLATEABLE_TYPES]:
         return iter(self.items)
+
+    def __len__(self) -> int:
+        return len(self.items)
 
 
 import pyparsing as pp
