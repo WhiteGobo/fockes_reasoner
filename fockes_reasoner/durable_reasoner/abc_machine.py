@@ -36,10 +36,8 @@ class abc_external(abc.ABC):
 def _resolve(x: RESOLVABLE, bindings: BINDING) -> TRANSLATEABLE_TYPES:
     """Resolve variables and externals
     """
-    if isinstance(x, (IdentifiedNode, Literal, list, tuple)):
+    if isinstance(x, (IdentifiedNode, Literal, list, tuple, term_list)):
         return x
-    elif isinstance(x, term_list):
-        raise NotImplementedError()
     elif isinstance(x, Variable):
         return bindings[x]
     return x(bindings)

@@ -48,17 +48,27 @@ class external(abc_external):
         return "external %s(%s)" % (self.op, ", ".join(str(x) for x in self.args))
 
 
-class machine_list(term_list):
+class machine_list(external):
     items: Iterable[Union[TRANSLATEABLE_TYPES, external, Variable]]
     def __init__(self, items: Iterable[Union[TRANSLATEABLE_TYPES, external, Variable]]) -> None:
         self.items = list(items)
 
-    def __iter__(self) -> Iterator[TRANSLATEABLE_TYPES]:
-        q = []
-        for x in self.items:
-            assert not isinstance(x, (external, Variable))
-            q.append(x)
-        return iter(q)
+    @dataclass
+    class __resolver:
+        parent: "machine_list"
+        items: Iterable[RESOLVABLE]
+        machine: abc_machine.machine
+        def __call__(self, bindings: BINDING) -> term_list:
+            args = [_resolve(item, bindings) for item in self.items]
+            raise NotImplementedError("asdf")
+
+    def as_resolvable(self, machine: abc_machine.machine) -> RESOLVABLE:
+        items = [arg.as_resolvable(machine) if isinstance(arg, external) else arg for arg in self.args]
+        return self.__resolver(self, items, machine)
+
+    def __repr__(self) -> str:
+        return "[%s]" % ", ".join(str(x) for x in self.items)
+
 
 
 class fact_subclass(fact):

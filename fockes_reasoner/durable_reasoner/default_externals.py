@@ -5,6 +5,7 @@ import logging
 logger = logging.getLogger()
 from dataclasses import dataclass
 import math
+from .bridge_rdflib import term_list
 
 from .abc_machine import BINDING, RESOLVABLE, _resolve, RESOLVER
 from ..shared import pred, func
