@@ -34,7 +34,11 @@ class list_contains:
     container: RESOLVABLE
     target: RESOLVABLE
     def __call__(self, bindings: BINDING) -> Literal:
-        raise NotImplementedError()
+        container = _resolve(self.container, bindings)
+        if not isinstance(container, term_list):
+            raise TypeError("Expected a list: %s" % container)
+        target = _resolve(self.target, bindings)
+        return Literal(target in container)
 
 @dataclass
 class numeric_equal:

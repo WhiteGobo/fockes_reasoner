@@ -4,7 +4,8 @@ unified translator from rdflib nodes to these string and back
 """
 import abc
 import rdflib
-from typing import Iterable, Union, Iterator
+from typing import Iterable, Union, Iterator, List
+from dataclasses import dataclass
 
 import rdflib
 
@@ -19,6 +20,13 @@ class term_list(abc.ABC):
     @abc.abstractmethod
     def __iter__(self) -> Iterator["TRANSLATEABLE_TYPES"]:
         ...
+
+@dataclass
+class _term_list(term_list):
+    """Simple implementation for term_list"""
+    items: List[TRANSLATEABLE_TYPES]
+    def __iter__(self) -> Iterator[TRANSLATEABLE_TYPES]:
+        return iter(self.items)
 
 
 import pyparsing as pp

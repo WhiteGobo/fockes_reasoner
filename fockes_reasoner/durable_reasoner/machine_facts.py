@@ -17,7 +17,7 @@ from typing import MutableMapping, Mapping, Union, Callable, Iterable, Tuple
 from .abc_machine import BINDING, CLOSURE_BINDINGS, VARIABLE_LOCATOR, TRANSLATEABLE_TYPES, ATOM_ARGS, abc_external, RESOLVABLE, _resolve
 
 from .bridge_rdflib import *
-from .bridge_rdflib import term_list
+from .bridge_rdflib import term_list, _term_list
 from .abc_machine import fact
 
 class external(abc_external):
@@ -59,8 +59,8 @@ class machine_list(external):
         items: Iterable[RESOLVABLE]
         machine: abc_machine.machine
         def __call__(self, bindings: BINDING) -> term_list:
-            args = [_resolve(item, bindings) for item in self.items]
-            raise NotImplementedError("asdf")
+            items = [_resolve(item, bindings) for item in self.items]
+            return _term_list(items)
 
     def as_resolvable(self, machine: abc_machine.machine) -> RESOLVABLE:
         items = [item.as_resolvable(machine) if isinstance(item, external) else item for item in self.items]
