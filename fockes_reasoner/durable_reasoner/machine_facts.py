@@ -21,8 +21,8 @@ from .abc_machine import fact
 
 class external(abc_external):
     op: URIRef
-    args: Iterable[Union[TRANSLATEABLE_TYPES, "external"]]
-    def __init__(self, op: URIRef, args: Iterable[Union[TRANSLATEABLE_TYPES, "external"]]) -> None:
+    args: Iterable[Union[TRANSLATEABLE_TYPES, "external", Variable]]
+    def __init__(self, op: URIRef, args: Iterable[Union[TRANSLATEABLE_TYPES, "external", Variable]]) -> None:
         self.op = op
         self.args = list(args)
 

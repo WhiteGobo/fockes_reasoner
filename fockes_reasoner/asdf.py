@@ -1,4 +1,4 @@
-from typing import Union
+from typing import Union, Iterable, Optional, Iterator
 import rdflib
 from rdflib import RDF, IdentifiedNode, Graph, URIRef
 from .shared import RIF
@@ -6,10 +6,10 @@ from collections.abc import Mapping
 import logging
 logger = logging.getLogger(__name__)
 
-from .rif_dataobjects import rif_document
+from .rif_dataobjects import rif_document, rif_fact
 from .class_machineWithImport import machineWithImport as machine
 
-class importManager(Mapping):
+class importManager(Mapping[IdentifiedNode, Graph]):
     documents: Mapping[IdentifiedNode, Graph]
     def __init__(self,
                  documents: Mapping[Union[str, IdentifiedNode], rdflib.Graph],
@@ -21,7 +21,7 @@ class importManager(Mapping):
             else:
                 self.documents[URIRef(location)] = infograph
 
-    def __getitem__(self, document: IdentifiedNode):
+    def __getitem__(self, document: IdentifiedNode) -> Graph:
         try:
             return self.documents[document]
         except KeyError:
@@ -29,10 +29,10 @@ class importManager(Mapping):
                          % (document, tuple(self.documents.keys())))
             raise
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.documents)
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[IdentifiedNode]:
         return iter(self.documents)
 
 
@@ -44,13 +44,15 @@ class simpleLogicMachine:
         self.machine = machine()
         self.document.create_rules(self.machine)
 
-    def check(self, rif_facts) -> bool:
+    def check(self, rif_facts: Iterable[rif_fact]) -> bool:
         checks = {f: f.check(self.machine) for f in rif_facts}
         logger.debug("Checks: %s" % checks)
         return all(checks.values())
 
     @classmethod
-    def from_rdf(cls, infograph: rdflib.Graph, extraDocuments: Mapping[str, rdflib.Graph] = None) -> "simpleLogicMachine":
+    def from_rdf(cls, infograph: rdflib.Graph,
+                 extraDocuments: Optional[Mapping[str, rdflib.Graph]] = None,
+                 ) -> "simpleLogicMachine":
         extraOptions = {}
         if extraDocuments is not None:
             extraOptions["extraDocuments"] = importManager(extraDocuments)
@@ -68,4 +70,3 @@ class simpleLogicMachine:
         else:
             self.machine.run(steps)
         myfacts = self.machine.get_facts()
-        return myfacts

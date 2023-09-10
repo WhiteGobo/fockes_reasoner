@@ -144,7 +144,7 @@ class _base_durable_machine(abc_machine.machine):
     _current_context: _context_helper
     _initialized: bool
     _imported_location: Container[IdentifiedNode]
-    available_import_profiles: Mapping[Optional[IdentifiedNode], importProfile]
+    available_import_profiles: MutableMapping[Optional[IdentifiedNode], importProfile]
 
     _registered_pattern_generator: Dict[IdentifiedNode, Callable[..., RESOLVABLE]]
     _registered_condition_generator: Dict[IdentifiedNode, Callable[..., RESOLVABLE]]

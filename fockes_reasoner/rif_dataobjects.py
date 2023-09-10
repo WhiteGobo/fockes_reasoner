@@ -14,9 +14,10 @@ from . import durable_reasoner
 from .durable_reasoner import machine
 from .durable_reasoner import BINDING, RESOLVABLE
 from dataclasses import dataclass
+from collections.abc import Sequence
 
-ATOM = typ.Union[TRANSLATEABLE_TYPES, external, Variable, "rif_external"]
-SATOM = typ.Union[TRANSLATEABLE_TYPES, external, Variable]
+ATOM = Union[TRANSLATEABLE_TYPES, Variable, "rif_external"]
+SATOM = Union[TRANSLATEABLE_TYPES, external, Variable]
 SLOT = Tuple[ATOM, ATOM]
 RIF_ATOM = Union[TRANSLATEABLE_TYPES, "rif_external"]
 
@@ -29,6 +30,14 @@ class NotPossibleAction(SyntaxError):
 
 class RIFSyntaxError(Exception):
     """The given RIF Document has syntaxerrors"""
+
+class rif_fact(abc.ABC):
+    @abc.abstractmethod
+    def check(self,
+            machine: durable_reasoner.machine,
+            bindings: BINDING = {},
+            ) -> bool:
+        ...
 
 class _resolvable_gen(abc.ABC):
     """Subclass can be used to retrieve a :term:`translateable object` as
@@ -462,7 +471,7 @@ class rif_do(_action_gen):
     def __repr__(self) -> str:
         return "Do( %s )" % ", ".join(repr(x) for x in self.actions)
 
-class rif_atom:
+class rif_atom(rif_fact):
     op: IdentifiedNode
     args: Iterable[RIF_ATOM]
     def __init__(self, op: IdentifiedNode, args: Iterable[RIF_ATOM]):
@@ -523,8 +532,8 @@ class rif_atom:
 
 class rif_external(_resolvable_gen):
     op: URIRef
-    args: Iterable[RIF_ATOM]
-    def __init__(self, op: URIRef, args: Iterable[RIF_ATOM]):
+    args: Sequence[ATOM]
+    def __init__(self, op: URIRef, args: Iterable[ATOM]):
         self.op = op
         self.args = list(args)
 
@@ -587,7 +596,7 @@ class rif_member:
                  **kwargs: typ.Any) -> "rif_member":
         raise NotImplementedError()
 
-class rif_subclass:
+class rif_subclass(rif_fact):
     sub_class: ATOM
     super_class: ATOM
     def __init__(self, sub_class: ATOM, super_class: ATOM) -> None:
@@ -622,7 +631,7 @@ class rif_subclass:
         return "%s # %s" % (self.sub_class, self.super_class)
 
 
-class rif_frame:
+class rif_frame(rif_fact):
     #facts: Iterable[machine_facts.frame]
     obj: SATOM
     slots: Iterable[SLOT]
@@ -726,7 +735,7 @@ class rif_frame:
                 return str(x)
         slots = ", ".join("%s->%s"%(conv(slotkey), conv(slotvalue))
                           for slotkey, slotvalue in self.slots)
-        return "%s[%s]" % (conv(self.obj), slots)
+        return "%s[%s]" % (conv(self.obj), slots) #type: ignore[arg-type]
 
     @classmethod
     def from_rdf(cls, infograph: rdflib.Graph,
@@ -746,6 +755,8 @@ class rif_frame:
         _obj, = infograph.objects(rootnode, RIF.object)
         assert isinstance(_obj, IdentifiedNode)
         obj = slot2node(infograph, _obj)
+        assert not isinstance(obj, rif_external),\
+                "rif_external not valid as input for frame.obj"
         return cls(obj, slotinfo, **kwargs)
 
 class rif_retract:
@@ -760,7 +771,7 @@ class rif_retract:
             raise TypeError(fact_or_atom, type(fact_or_atom))
 
     @property
-    def fact_or_atom(self):
+    def fact_or_atom(self) -> Union["rif_frame", IdentifiedNode]:
         try:
             return self.fact
         except KeyError:
@@ -777,11 +788,9 @@ class rif_retract:
     @classmethod
     def from_rdf(cls, infograph: rdflib.Graph,
                  rootnode: rdflib.IdentifiedNode,
-                 model = None,
                  **kwargs: typ.Any) -> "rif_retract":
-        if model is None: #please remove later
-            from .class_rdfmodel import rdfmodel
-            model = rdfmodel()
+        from .class_rdfmodel import rdfmodel
+        model = rdfmodel()
         target_node: rdflib.IdentifiedNode = infograph.value(rootnode, RIF.target) #type: ignore[assignment]
         target = model.generate_object(infograph, target_node)
         return cls(target)
@@ -795,17 +804,15 @@ class rif_ineg:
     @classmethod
     def from_rdf(cls, infograph: rdflib.Graph,
                  rootnode: rdflib.IdentifiedNode,
-                 model = None,
-                 **kwargs: typ.Any) -> "rif_assert":
-        if model is None: #please remove later
-            from .class_rdfmodel import rdfmodel
-            model = rdfmodel()
+                 **kwargs: typ.Any) -> "rif_ineg":
+        from .class_rdfmodel import rdfmodel
+        model = rdfmodel()
         target_node: rdflib.IdentifiedNode = infograph.value(rootnode, RIF.formula) #type: ignore[assignment]
         target = model.generate_object(infograph, target_node)
         return cls(target)
 
     def __repr__(self) -> str:
-        return "INeg( %s )" % self.fact
+        return "INeg( %s )" % self.formula
 
 class rif_modify:
     fact: Union[rif_frame]
@@ -820,11 +827,9 @@ class rif_modify:
     @classmethod
     def from_rdf(cls, infograph: rdflib.Graph,
                  rootnode: rdflib.IdentifiedNode,
-                 model = None,
-                 **kwargs: typ.Any) -> "rif_assert":
-        if model is None: #please remove later
-            from .class_rdfmodel import rdfmodel
-            model = rdfmodel()
+                 **kwargs: typ.Any) -> "rif_modify":
+        from .class_rdfmodel import rdfmodel
+        model = rdfmodel()
         target: rdflib.IdentifiedNode = infograph.value(rootnode, RIF.target) #type: ignore[assignment]
         target_type = infograph.value(target, RDF.type)
         fact = model.generate_object(infograph, target)
@@ -865,14 +870,17 @@ class rif_assert:
         return "Assert( %s )" % self.fact
 
 class rif_equal(rif_external):
-    op = pred["XMLLiteral-equal"]
-    def __init__(self, left, right):
-        self.left = left
-        self.right = right
+    op: URIRef = pred["XMLLiteral-equal"]
+    def __init__(self, left: ATOM, right: ATOM):
+        self.args = (left, right)
 
     @property
-    def args(self):
-        return (self.left, self.right)
+    def left(self) -> ATOM:
+        return self.args[0]
+
+    @property
+    def right(self) -> ATOM:
+        return self.args[1]
 
     @dataclass
     class _condition(_child_action):
@@ -882,19 +890,10 @@ class rif_equal(rif_external):
         def __call__(self, bindings: BINDING) -> bool:
             left = _resolve(self.left, bindings)
             right = _resolve(self.right, bindings)
-            return Literal(left == right)
+            return Literal(left == right)#type: ignore[return-value]
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "(%s = %s)" % (self.left, self.right)
-
-    #def add_pattern(self, rule: durable_reasoner.rule) -> None:
-
-    #def generate_condition(self,
-    #                       machine: durable_reasoner.machine,
-    #                       ) -> Callable[[BINDING], bool]:
-    #    left_assign = _get_resolveable(self.left, machine)
-    #    right_assign = _get_resolveable(self.right, machine)
-    #    return self._condition(self, left_assign, right_assign)
 
     @classmethod
     def from_rdf(cls, infograph: rdflib.Graph,
@@ -922,9 +921,11 @@ _formulas = {RIF.External: rif_external.from_rdf,
 rif_and._formulas_generators = dict(_formulas)
 #rif_equal._side_generators = {}
 
-def _get_resolveable(x: Union[TRANSLATEABLE_TYPES, _resolvable_gen], machine: durable_reasoner.machine) -> RESOLVABLE:
+def _get_resolveable(x: Union[TRANSLATEABLE_TYPES, _resolvable_gen, Variable], machine: durable_reasoner.machine) -> RESOLVABLE:
     if isinstance(x, (IdentifiedNode, Literal, Variable)):
         return x
     elif isinstance(x, (list, tuple)):
         return x
+    elif isinstance(x, Variable):
+        raise NotImplementedError()
     return x.as_resolvable(machine)

@@ -17,7 +17,7 @@ RESOLVABLE = Union[Variable, TRANSLATEABLE_TYPES, RESOLVER]
 #VARIABLE_LOCATOR = Callable[[typ.Union[durable.engine.Closure, None]], TRANSLATEABLE_TYPES]
 VARIABLE_LOCATOR = Callable[[typ.Any], TRANSLATEABLE_TYPES]
 CLOSURE_BINDINGS = MutableMapping[rdflib.Variable, VARIABLE_LOCATOR]
-ATOM_ARGS = Iterable[Union[TRANSLATEABLE_TYPES, "abc_external"]]
+ATOM_ARGS = Iterable[Union[TRANSLATEABLE_TYPES, "abc_external", Variable]]
 
 class RuleNotComplete(Exception):
     """Rules are objects, that are worked on. So if you finalize a rule

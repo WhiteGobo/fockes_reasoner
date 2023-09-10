@@ -20,7 +20,7 @@ DEFAULT_REGISTER: Mapping[URIRef, Callable[[Graph, IdentifiedNode], Any]]\
 
 class rdfmodel:
     registered_types: MutableMapping[rdflib.URIRef, Callable[[Graph, IdentifiedNode], Any]]
-    def __init__(self, registered_types = DEFAULT_REGISTER) -> None:
+    def __init__(self, registered_types: Any = DEFAULT_REGISTER) -> None:
         self.registered_types = dict(registered_types)
 
     def export_graph(self, facts: Iterable[fact]) -> rdflib.Graph:
@@ -33,6 +33,7 @@ class rdfmodel:
         """
         for typeref, generator in self.registered_types.items():
             for node in infograph.subjects(RDF.type, typeref):
+                assert isinstance(node, IdentifiedNode)
                 yield generator(infograph, node)
 
     def generate_object(self, infograph: Graph, target: IdentifiedNode) -> Any:
