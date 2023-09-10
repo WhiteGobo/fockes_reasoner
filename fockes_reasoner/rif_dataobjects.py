@@ -77,6 +77,8 @@ def slot2node(infograph: Graph, x: IdentifiedNode) -> ATOM:
         return val
     elif t == RIF.External:
         return rif_external.from_rdf(infograph, x)
+    elif t == RIF.List:
+        return rif_list.from_rdf(infograph, x)
     else:
         raise NotImplementedError(t)
 
@@ -907,6 +909,21 @@ class rif_equal(rif_external):
         #left = _generate_object(infograph, leftnode, cls._side_generators)
         #right = _generate_object(infograph, rightnode, cls._side_generators)
         return cls(left, right)
+
+
+class rif_list:
+    items: Iterable[Union[TRANSLATEABLE_TYPES, "rif_list"]]
+    def __init__(self,
+                 items: Iterable[Union[TRANSLATEABLE_TYPES, "rif_list"]],
+                 ) -> None:
+        self.items = list(items)
+
+    @classmethod
+    def from_rdf(cls, infograph: rdflib.Graph,
+                 rootnode: rdflib.IdentifiedNode,
+                 extraDocuments: Mapping[IdentifiedNode, Graph] = {},
+                 **kwargs: Any) -> "rif_document":
+        raise NotImplementedError()
 
 
 rif_implies._then_generators = {
