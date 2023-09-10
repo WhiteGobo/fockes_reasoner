@@ -198,7 +198,7 @@ NET_Local_Predicate = NegativeEntailmentTest(
         )
 tmp = files(NestedListsAreNotFlatLists)
 NET_NestedListsAreNotFlatLists = NegativeEntailmentTest(
-        tmp.joinpath("NestedListsAreNotFlatLists-premise"),
+        tmp.joinpath("NestedListsAreNotFlatLists-premise.rif"),
         tmp.joinpath("NestedListsAreNotFlatLists-nonconclusion.rif"),
         )
 tmp = files(NonAnnotation_Entailment)
@@ -212,6 +212,6 @@ tmp = files(RDF_Combination_SubClass)
 NET_RDF_Combination_SubClass = NegativeEntailmentTest(
         tmp.joinpath("RDF_Combination_SubClass-premise.rif"),
         tmp.joinpath("RDF_Combination_SubClass-nonconclusion.rif"),
-        {"http://www.w3.org/2005/rules/test/repository/tc/RDF_Combination_SubClass/RDF_Combination_SubClass-import001> <http://www.w3.org/ns/entailment/Simple":
+        {"http://www.w3.org/2005/rules/test/repository/tc/RDF_Combination_SubClass/RDF_Combination_SubClass-import001":
         tmp.joinpath("RDF_Combination_SubClass-import001.ttl")},
         )
