@@ -5,6 +5,7 @@ unified translator from rdflib nodes to these string and back
 import abc
 import rdflib
 from typing import Iterable, Union, Iterator, List
+from collections.abc import Sequence
 from dataclasses import dataclass
 
 import rdflib
@@ -16,7 +17,7 @@ TRANSLATEABLE_TYPES = Union[rdflib.URIRef,
                             "term_list",
                             ]
 
-class term_list(abc.ABC):
+class term_list(Sequence):
     @abc.abstractmethod
     def __iter__(self) -> Iterator["TRANSLATEABLE_TYPES"]:
         ...
@@ -25,18 +26,17 @@ class term_list(abc.ABC):
     def __len__(self) -> int:
         ...
 
-    def __eq__(self, other: "term_list") -> bool:
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, term_list):
+            return False
         for x, y in zip(self, other):
             if x != y:
                 return False
         return True
 
-    def __getitem__(self, index: int) -> TRANSLATEABLE_TYPES:
-        items = iter(self)
-        item = next(items)
-        for i in range(index):
-            item = next(items)
-        return item
+    @abc.abstractmethod
+    def __getitem__(self, index: Union[int, slice]) -> TRANSLATEABLE_TYPES:
+        ...
 
 
 @dataclass
@@ -48,6 +48,12 @@ class _term_list(term_list):
 
     def __len__(self) -> int:
         return len(self.items)
+
+    def __getitem__(self, index: Union[int, slice]) -> TRANSLATEABLE_TYPES:
+        if isinstance(index, slice):
+            return _term_list(self.items[index])
+        else:
+            return self.items[index]
 
 
 import pyparsing as pp

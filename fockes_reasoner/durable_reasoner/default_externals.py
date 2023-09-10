@@ -5,7 +5,7 @@ import logging
 logger = logging.getLogger()
 from dataclasses import dataclass
 import math
-from .bridge_rdflib import term_list, _term_list
+from .bridge_rdflib import term_list, _term_list, TRANSLATEABLE_TYPES
 
 from .abc_machine import BINDING, RESOLVABLE, _resolve, RESOLVER
 from ..shared import pred, func
@@ -60,10 +60,24 @@ class count:
 class list_get:
     target: RESOLVABLE
     index: RESOLVABLE
-    def __call__(self, bindings: BINDING) -> Literal:
+    def __call__(self, bindings: BINDING) -> TRANSLATEABLE_TYPES:
         target = _resolve(self.target, bindings)
-        index = _resolve(self.index, bindings)
-        return target[int(index)]
+        assert isinstance(target, term_list)
+        index = int(_resolve(self.index, bindings))#type: ignore[arg-type]
+        return target[index]
+
+@dataclass
+class sublist:
+    target: RESOLVABLE
+    left: RESOLVABLE
+    right: RESOLVABLE
+    def __call__(self, bindings: BINDING) -> TRANSLATEABLE_TYPES:
+        target = _resolve(self.target, bindings)
+        assert isinstance(target, term_list)
+        left = int(_resolve(self.left, bindings))#type: ignore[arg-type]
+        right = int(_resolve(self.right, bindings))#type: ignore[arg-type]
+        return target[left: right]
+
 
 @dataclass
 class numeric_equal:
