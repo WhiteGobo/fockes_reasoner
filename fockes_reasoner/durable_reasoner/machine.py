@@ -556,10 +556,15 @@ class durable_rule(abc_machine.implication, abc_machine.rule):
             ) -> Tuple[Iterable[rls.value],
                        Iterable[Callable[[BINDING], Union[Literal, bool]]],
                        Mapping[Variable, VARIABLE_LOCATOR]]:
+        """
+        :TODO: If a rule has nopattern but a condition a trigger, a special
+            pattern for the rule should be generated. I have non yet. Maybe
+            it should just result in an error.
+        """
         conditions: List[Callable[[BINDING], Union[Literal, bool]]] = []
         bindings: MutableMapping[Variable, VARIABLE_LOCATOR] = {}
+        patterns: list[rls.value] = []
         if self.orig_pattern:
-            patterns = [getattr(rls.m, MACHINESTATE) == RUNNING_STATE]
             for q in self.orig_pattern:
                 if isinstance(q, fact):
                     patterns.append(self._generate_pattern(q.as_dict(),
@@ -572,7 +577,14 @@ class durable_rule(abc_machine.implication, abc_machine.rule):
                     raise Exception(type(q))
         else:
             raise NotImplementedError()
-            patterns = [getattr(rls.m, MACHINESTATE) == INIT_STATE]
+        if len(patterns) == 0 and len(conditions) == 0:
+            #create rule as initialisation rule
+            patterns.insert(0, getattr(rls.m, MACHINESTATE) == INIT_STATE)
+        elif len(patterns) > 0:
+            patterns.insert(0, getattr(rls.m, MACHINESTATE) == RUNNING_STATE)
+        else:
+            #TODO : This rule lacks any trigger. 
+            patterns.insert(0, getattr(rls.m, MACHINESTATE) == RUNNING_STATE)
 
         return patterns, conditions, bindings
 
