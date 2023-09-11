@@ -70,7 +70,7 @@ class _no_closure(_context_helper):
     def get_facts(self, fact_filter: Union[Mapping[str, str], None] = None,
                   ) -> Iterable[Mapping[str, str]]:
         if fact_filter is None:
-            return rls.get_facts(self.machine._rulename) #type: ignore[no-any-return]
+            return rls.get_facts(self.machine._rulename)#type: ignore[no-any-return]
         else:
             return (f #type: ignore[no-any-return]
                     for f in rls.get_facts(self.machine._rulename)
@@ -85,7 +85,8 @@ class _no_closure(_context_helper):
 class _closure_helper(_context_helper):
     previous_context: _context_helper 
     c: durable.engine.Closure
-    def __init__(self, machine: "_base_durable_machine", c: durable.engine.Closure):
+    def __init__(self, machine: "_base_durable_machine",
+                 c: durable.engine.Closure) -> None:
         self.machine = machine
         self.c = c
 
@@ -112,7 +113,9 @@ class _closure_helper(_context_helper):
     def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         self.machine._current_context = self.previous_context
 
-def _transform_all_externals_to_calls(args: ATOM_ARGS, tmp_machine: "_base_durable_machine") -> Iterable[RESOLVABLE]:
+def _transform_all_externals_to_calls(args: ATOM_ARGS,
+                                      tmp_machine: "_base_durable_machine",
+                                      ) -> Iterable[RESOLVABLE]:
     useable_args: list[RESOLVABLE] = []
     tmp_assign: RESOLVABLE
     t_arg: TRANSLATEABLE_TYPES
@@ -150,11 +153,14 @@ class _base_durable_machine(abc_machine.machine):
     _current_context: _context_helper
     _initialized: bool
     _imported_location: Container[IdentifiedNode]
-    available_import_profiles: MutableMapping[Optional[IdentifiedNode], importProfile]
-
-    _registered_pattern_generator: Dict[IdentifiedNode, Callable[..., RESOLVABLE]]
-    _registered_action_generator: Dict[IdentifiedNode, Callable[..., RESOLVABLE]]
-    _registered_assignment_generator: Dict[IdentifiedNode, Callable[..., RESOLVABLE]]
+    available_import_profiles: MutableMapping[Optional[IdentifiedNode],
+                                              importProfile]
+    _registered_pattern_generator: Dict[IdentifiedNode,
+                                        Callable[..., RESOLVABLE]]
+    _registered_action_generator: Dict[IdentifiedNode,
+                                       Callable[..., RESOLVABLE]]
+    _registered_assignment_generator: Dict[IdentifiedNode,
+                                           Callable[..., RESOLVABLE]]
     _imported_locations: Set[Optional[IdentifiedNode]]
 
     def __init__(self, loggername: str = __name__) -> None:
@@ -185,10 +191,16 @@ class _base_durable_machine(abc_machine.machine):
         usedImportProfile.create_rules(self, infograph)
         self._imported_locations.add(location)
 
-    def get_replacement_node(self, op: IdentifiedNode, args: Iterable[RESOLVABLE]) -> TRANSLATEABLE_TYPES:
+    def get_replacement_node(self,
+                             op: IdentifiedNode,
+                             args: Iterable[RESOLVABLE],
+                             ) -> TRANSLATEABLE_TYPES:
         raise NoPossibleExternal()
 
-    def get_binding_action(self, op: IdentifiedNode, args: Iterable[RESOLVABLE]) -> RESOLVABLE:
+    def get_binding_action(self,
+                           op: IdentifiedNode,
+                           args: Iterable[RESOLVABLE],
+                           ) -> RESOLVABLE:
         try:
             funcgen = self._registered_assignment_generator[op]
         except KeyError as err:
@@ -296,14 +308,20 @@ class _base_durable_machine(abc_machine.machine):
     def create_implication_builder(self) -> "durable_rule":
         return durable_rule(self)
 
-    def _create_pattern_for_external(self, op: IdentifiedNode, args: ATOM_ARGS) -> None:
+    def _create_pattern_for_external(self,
+                                     op: IdentifiedNode,
+                                     args: ATOM_ARGS,
+                                     ) -> None:
         """Try to create a complete pattern for given external statement.
-        :raises NoPossibleExternal: If given external is not defined or cant be used to
-            directly produce a pattern raise this error.
+        :raises NoPossibleExternal: If given external is not defined
+            or cant be used to directly produce a pattern raise this error.
         """
         raise NoPossibleExternal()
 
-    def _create_assignment_from_external(self, op: IdentifiedNode, args: ATOM_ARGS) -> RESOLVABLE:
+    def _create_assignment_from_external(self,
+                                         op: IdentifiedNode,
+                                         args: ATOM_ARGS,
+                                         ) -> RESOLVABLE:
         try:
             mygen = self._registered_assignment_generator[op]
         except KeyError as err:
@@ -311,9 +329,11 @@ class _base_durable_machine(abc_machine.machine):
         useable_args = _transform_all_externals_to_calls(args, self)
         return mygen(*useable_args)
 
-    def register(self, op: rdflib.URIRef, asaction: Optional[Callable] = None,
-            asassign: Optional[Callable] = None,
-            aspattern: Optional[Callable] = None) -> None:
+    def register(self, op: rdflib.URIRef,
+                 asaction: Optional[Callable] = None,
+                 asassign: Optional[Callable] = None,
+                 aspattern: Optional[Callable] = None,
+                 ) -> None:
         if asaction is not None:
             self._registered_action_generator[op] = asaction
         if asassign is not None:
@@ -403,7 +423,7 @@ class durable_rule(abc_machine.implication, abc_machine.rule):
     patterns: list[rls.value]
     bindings: MutableMapping[Variable, VARIABLE_LOCATOR]
     machine: _base_durable_machine
-    conditions: list[Callable[[BINDING], Union[Literal, bool]]]
+    conditions: list[Callable[[BINDING], Literal]]
     action: Optional[Callable[[BINDING], None]] = None
     finalized: bool = False
     _orig_pattern: list[Any]
@@ -470,7 +490,7 @@ class durable_rule(abc_machine.implication, abc_machine.rule):
     class _conditional_action:
         action: Callable[[BINDING], None]
         logger: logging.Logger
-        conditions: Iterable[Callable[[BINDING], Union[Literal, bool]]]
+        conditions: Iterable[Callable[[BINDING], Literal]]
         def __call__(self, bindings: BINDING) -> None:
             self.logger.debug("execute %s" % self)
             for cond in self.conditions:
@@ -507,14 +527,14 @@ class durable_rule(abc_machine.implication, abc_machine.rule):
     def _generate_action_prerequisites(
             self,
             ) -> Tuple[Iterable[rls.value],
-                       Iterable[Callable[[BINDING], Union[Literal, bool]]],
+                       Iterable[Callable[[BINDING], Literal]],
                        Mapping[Variable, VARIABLE_LOCATOR]]:
         """
         :TODO: If a rule has nopattern but a condition a trigger, a special
             pattern for the rule should be generated. I have non yet. Maybe
             it should just result in an error.
         """
-        conditions: List[Callable[[BINDING], Union[Literal, bool]]] = []
+        conditions: List[Callable[[BINDING], Literal]] = []
         bindings: MutableMapping[Variable, VARIABLE_LOCATOR] = {}
         patterns: list[rls.value] = []
         for q in self.orig_pattern:
@@ -540,13 +560,16 @@ class durable_rule(abc_machine.implication, abc_machine.rule):
 
     def _generate_action(
             self,
-            conditions: Iterable[Callable[[BINDING], Union[Literal, bool]]],
+            conditions: Iterable[Callable[[BINDING], Literal]],
             ) -> Callable[[BINDING], None]:
         assert self.action is not None
         if conditions:
-            return self._conditional_action(self.action, self.machine.logger, conditions)
+            return self._conditional_action(self.action, self.machine.logger,
+                                            conditions)
         else:
-            self.machine.logger.debug("Create Rule. Condition: %s\nAction %s\nBindings%s" % (self._orig_pattern, self.action, self.bindings))
+            self.machine.logger.debug(
+                    "Create Rule. Condition: %s\nAction %s\nBindings%s"
+                    % (self._orig_pattern, self.action, self.bindings))
             return self._simple_action(self.action, self.machine.logger)
 
     def finalize(self) -> None:
@@ -564,7 +587,7 @@ class durable_rule(abc_machine.implication, abc_machine.rule):
             op: IdentifiedNode,
             args: ATOM_ARGS,
             ) -> Tuple[Iterable[rls.value],
-                       Iterable[Callable[[BINDING], Union[bool, Literal]]]]:
+                       Iterable[Callable[[BINDING], Literal]]]:
         try:
             raise NoPossibleExternal()
             patterns, conditions\
@@ -572,8 +595,9 @@ class durable_rule(abc_machine.implication, abc_machine.rule):
             return patterns, conditions
         except NoPossibleExternal:
             cond = self.machine._create_assignment_from_external(op, args)
-        assert not isinstance(cond, (Variable, IdentifiedNode, Literal, term_list)), "Im not yet sure what i should do here"
-        return [], [cond]
+        assert not isinstance(cond, (Variable, IdentifiedNode, Literal,\
+                term_list)), "Im not yet sure what i should do here"
+        return [], [cond]#type: ignore[list-item]
 
     @property
     def logger(self) -> logging.Logger:

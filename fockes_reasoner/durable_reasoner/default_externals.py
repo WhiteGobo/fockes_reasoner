@@ -264,7 +264,7 @@ class numeric_mod:
     """
     left: RESOLVABLE
     right: RESOLVABLE
-    def __call__(self, bindings:BINDING) -> bool:
+    def __call__(self, bindings:BINDING) -> Literal:
         left = _resolve(self.left, bindings)
         right = _resolve(self.right, bindings)
         raise Exception()
