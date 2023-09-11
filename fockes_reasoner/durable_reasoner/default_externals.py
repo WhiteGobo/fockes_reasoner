@@ -93,6 +93,52 @@ class append:
         items = (_resolve(item, bindings) for item in self.items)
         return _term_list(list(it.chain(target, items)))
 
+
+@dataclass
+class union:
+    """
+    :TODO: This is currently the same as concatenate
+    """
+    first: RESOLVABLE
+    second: RESOLVABLE
+    def __call__(self, bindings: BINDING) -> TRANSLATEABLE_TYPES:
+        first = _resolve(self.first, bindings)
+        assert isinstance(first, term_list)
+        second = _resolve(self.second, bindings)
+        assert isinstance(second, term_list)
+        return _term_list(list(it.chain(first, second)))
+
+@dataclass
+class distinct_values:
+    target: RESOLVABLE
+    def __call__(self, bindings: BINDING) -> TRANSLATEABLE_TYPES:
+        target = _resolve(self.target, bindings)
+        assert isinstance(target, term_list)
+        return _term_list(list(set(target)))
+
+@dataclass
+class intersect:
+    first: RESOLVABLE
+    second: RESOLVABLE
+    def __call__(self, bindings: BINDING) -> TRANSLATEABLE_TYPES:
+        first = _resolve(self.first, bindings)
+        assert isinstance(first, term_list)
+        second = _resolve(self.second, bindings)
+        assert isinstance(second, term_list)
+        return _term_list([x for x in first if x in second])
+
+@dataclass
+class list_except:
+    target: RESOLVABLE
+    switch: RESOLVABLE
+    def __call__(self, bindings: BINDING) -> TRANSLATEABLE_TYPES:
+        target = _resolve(self.target, bindings)
+        assert isinstance(target, term_list)
+        switch = _resolve(self.switch, bindings)
+        assert isinstance(switch, term_list)
+        return _term_list([x for x in target if x not in switch])
+
+
 @dataclass
 class concatenate:
     first: RESOLVABLE

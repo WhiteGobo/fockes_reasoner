@@ -669,6 +669,14 @@ class _machine_default_externals(_base_durable_machine):
                       asassign=def_ext.reverse_list)
         self.register(func["index-of"],
                       asassign=def_ext.index_of)
+        self.register(func["union"],
+                      asassign=def_ext.union)
+        self.register(func["distinct-values"],
+                      asassign=def_ext.distinct_values)
+        self.register(func["intersect"],
+                      asassign=def_ext.intersect)
+        self.register(func["except"],
+                      asassign=def_ext.list_except)
         self.register(pred["is-literal-hexBinary"],
                       ascondition=def_ext.is_literal_hexBinary)
         self.register(pred["is-literal-not-hexBinary"],

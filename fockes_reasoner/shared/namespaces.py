@@ -64,6 +64,8 @@ class func(DefinedNamespace):
     get: URIRef
     append: URIRef
     reverse: URIRef
+    union: URIRef
+    intersect: URIRef
     _extras = [
             "count",
             "make-list",
@@ -72,6 +74,8 @@ class func(DefinedNamespace):
             "insert-before",
             "remove",
             "index-of",
+            "except",
+            "distinct-values",
             "numeric-subtract",
             "numeric-add",
             "numeric-multiply",
