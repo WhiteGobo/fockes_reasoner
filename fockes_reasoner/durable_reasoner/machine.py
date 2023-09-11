@@ -288,7 +288,7 @@ class _base_durable_machine(abc_machine.machine):
             rls.retract_fact(self._rulename, {MACHINESTATE: RUNNING_STATE})
         else:
             raise NotImplementedError()
-            for t in steps:
+            for t in range(steps):
                 rls.post(self._rulename, {MACHINESTATE: RUNNING_STATE})
         if self.errors:
             raise Exception("Rules produced an error.", self.errors)
