@@ -5,13 +5,13 @@ import abc
 import logging
 import traceback
 from typing import Union, Mapping, Iterable, Callable, Any, MutableMapping, Optional, Container, Dict, Set, get_args, Tuple
-from collections.abc import MutableSequence
 from dataclasses import dataclass
 from hashlib import sha1
 import rdflib
 from rdflib import URIRef, Variable, Literal, BNode, Graph, IdentifiedNode, XSD
 from . import abc_machine
 from .abc_machine import TRANSLATEABLE_TYPES, FACTTYPE, BINDING, VARIABLE_LOCATOR, NoPossibleExternal, importProfile, RESOLVABLE, ATOM_ARGS, abc_external, RESOLVER, RuleNotComplete, pattern_generator
+ll = logging.getLogger(__name__)
 
 from .bridge_rdflib import rdflib2string, string2rdflib
 
@@ -448,18 +448,19 @@ class durable_action(abc_machine.action):
 
 class durable_rule(abc_machine.implication, abc_machine.rule):
     patterns: list[rls.value]
-    action: Optional[Callable[[BINDING], None]]
     bindings: MutableMapping[Variable, VARIABLE_LOCATOR]
     machine: _base_durable_machine
     conditions: list[Callable[[BINDING], Union[Literal, bool]]]
+    action: Optional[Callable[[BINDING], None]] = None
+    finalized: bool = False
     _orig_pattern: list[Any]
     __tmp_pattern_organizer: "_pattern_organizer"
     def __init__(self, machine: _base_durable_machine):
         self.machine = machine
         self.patterns = [getattr(rls.m, MACHINESTATE) == RUNNING_STATE]
-        self.action = None
+        #self.action = None
         self.conditions = []
-        self.finalized = False
+        #self.finalized = False
         self.bindings = {}
 
         self._orig_pattern = []
@@ -468,7 +469,7 @@ class durable_rule(abc_machine.implication, abc_machine.rule):
     class _pattern_organizer(abc_machine.pattern_organizer):
         _parent: "durable_rule"
         def __getitem__(self, index): #type: ignore[no-untyped-def]
-            return self._parent._orig_pattern
+            return self._parent._orig_pattern[index]
 
         def __setitem__(self, index, item): #type: ignore[no-untyped-def]
             if self._parent.finalized:
@@ -486,7 +487,10 @@ class durable_rule(abc_machine.implication, abc_machine.rule):
             if self._parent.finalized:
                 raise SyntaxError("Cant change pattern after finalizing.")
             assert isinstance(item, (fact, abc_external))
-            self._parent._orig_pattern.inser(index, item)
+            self._parent._orig_pattern.insert(index, item)
+
+        def __bool__(self) -> bool:
+            return bool(self._parent._orig_pattern)
 
         def append(self, item: Union[fact, abc_external, "pattern_generator"],
                    ) -> None:
@@ -494,9 +498,11 @@ class durable_rule(abc_machine.implication, abc_machine.rule):
                 item._add_pattern(self._parent)
             elif isinstance(item, abc_external):
                 self._parent.generate_pattern_external(item.op, item.args)
+                self.insert(-1, item)
             else:
                 pattern = item.as_dict()
                 self._parent._add_pattern(pattern)
+                self.insert(-1, item)
 
     @property
     def orig_pattern(self) -> _pattern_organizer:
@@ -511,7 +517,7 @@ class durable_rule(abc_machine.implication, abc_machine.rule):
         raise NotImplementedError()
 
     @dataclass
-    class conditional_action:
+    class _conditional_action:
         action: Callable[[BINDING], None]
         logger: logging.Logger
         conditions: Iterable[Callable[[BINDING], Union[Literal, bool]]]
@@ -541,7 +547,7 @@ class durable_rule(abc_machine.implication, abc_machine.rule):
                 raise FailedInternalAction() from err
 
     @dataclass
-    class simple_action:
+    class _simple_action:
         action: Callable[[BINDING], None]
         logger: logging.Logger
         def __call__(self, bindings: BINDING) -> None:
@@ -553,6 +559,25 @@ class durable_rule(abc_machine.implication, abc_machine.rule):
             ) -> Tuple[Iterable[rls.value],
                        Iterable[Callable[[BINDING], Union[Literal, bool]]],
                        Mapping[Variable, VARIABLE_LOCATOR]]:
+        conditions = []
+        bindings: MutableMapping[Variable, VARIABLE_LOCATOR] = {}
+        if self.orig_pattern:
+            patterns = [getattr(rls.m, MACHINESTATE) == RUNNING_STATE]
+            for q in self.orig_pattern:
+                if isinstance(q, fact):
+                    patterns.append(self._generate_pattern(q.as_dict(),
+                                                           bindings))
+                elif isinstance(q, abc_external):
+                    tmp_p, tmp_c = self._process_external(q.op, q.args)
+                    patterns.extend(tmp_p)
+                    conditions.extend(tmp_c)
+                else:
+                    raise Exception(type(q))
+        else:
+            raise NotImplementedError()
+            patterns = [getattr(rls.m, MACHINESTATE) == INIT_STATE]
+
+        return patterns, conditions, bindings
         return self.patterns, self.conditions, self.bindings
 
     def _generate_action(
@@ -561,11 +586,10 @@ class durable_rule(abc_machine.implication, abc_machine.rule):
             ) -> Callable[[BINDING], None]:
         assert self.action is not None
         if conditions:
-            return self.conditional_action(self.action, self.machine.logger, conditions)
+            return self._conditional_action(self.action, self.machine.logger, conditions)
         else:
             self.machine.logger.debug("Create Rule. Condition: %s\nAction %s\nBindings%s" % (self._orig_pattern, self.action, self.bindings))
-            return self.action
-            return self.simple_action(self.action, self.machine.logger)
+            return self._simple_action(self.action, self.machine.logger)
 
     def finalize(self) -> None:
         if self.finalized:
@@ -576,6 +600,17 @@ class durable_rule(abc_machine.implication, abc_machine.rule):
         patterns, conditions, bindings = self._generate_action_prerequisites()
         action = self._generate_action(conditions)
         self.machine._make_rule(patterns, action, bindings)
+
+    def _process_external(
+            self,
+            op: IdentifiedNode,
+            args: ATOM_ARGS,
+            ) -> Tuple[Iterable[rls.value],
+                       Iterable[Callable[[BINDING], Union[bool, Literal]]]]:
+        new_condition = self.machine._create_condition_from_external(op, args)
+        assert isinstance(new_condition, Callable), "something went wrong, when external function was created: %s %s\n%s" % (op, args, new_condition)#type: ignore[arg-type]
+        self.conditions.append(new_condition)#type: ignore[arg-type]
+        return [], [new_condition]
 
     def generate_pattern_external(self, op: IdentifiedNode, args: ATOM_ARGS) -> None:
         err_messages = []
@@ -603,11 +638,54 @@ class durable_rule(abc_machine.implication, abc_machine.rule):
     def logger(self) -> logging.Logger:
         return self.machine.logger
 
+    def _generate_pattern(
+            self,
+            pattern: Mapping[str, Union[Variable, str, TRANSLATEABLE_TYPES]],
+            bindings: MutableMapping[Variable, VARIABLE_LOCATOR],
+            factname: Optional[str] = None,
+            ) -> None:
+        if factname is None:
+            _as_string = repr(sorted(pattern.items()))
+            factname = "f%s" % sha1(_as_string.encode("utf8")).hexdigest()
+        next_constraint: rls.value
+        constraint: Union[rls.value, None] = None
+        for key, value in pattern.items():
+            next_constraint = None
+            if type(value) == str:
+                next_constraint = getattr(rls.m, key) == value
+            elif isinstance(value, rdflib.Variable):
+                if value in bindings:
+                    loc = bindings[value]
+                    newpattern = getattr(rls.m, key) == loc(rls.c)
+                    #log.append(f"rls.m.{fact_label} == {loc}")
+                else:
+                    loc = _value_locator(factname, key)
+                    bindings[value] = loc
+                    next_constraint = None
+                    #logger.debug("bind: %r-> %r" % (value, loc))
+            elif isinstance(value, (URIRef, BNode, Literal)):
+                next_constraint = getattr(rls.m, key) == rdflib2string(value)
+            elif isinstance(value, external):
+                raise NotImplementedError()
+                #newnode = value.serialize(c, bindings, external_resolution)
+                #next_constraint = getattr(rls.m, key) == newnode
+            else:
+                raise NotImplementedError(value, type(value))
+            if next_constraint is not None:
+                if constraint is None:
+                    constraint = next_constraint
+                else:
+                    constraint = constraint & next_constraint
+        if constraint is None:
+            raise Exception("Cant handle %s" % pattern)
+        pattern_part = getattr(rls.c, factname) << constraint
+        return pattern_part
+
     def _add_pattern(self,
                     pattern: Mapping[str, Union[Variable, str, TRANSLATEABLE_TYPES]],
                     factname: Union[str, None] = None,
                     ) -> None:
-        self._orig_pattern.append(dict(pattern))
+        #self._orig_pattern.append(dict(pattern))
         pattern = dict(pattern)
         if factname is None:
             _as_string = repr(sorted(pattern.items()))
@@ -664,7 +742,11 @@ class _value_locator:
                  c: Union[durable.engine.Closure, rls.closure],
                  ) -> Union[TRANSLATEABLE_TYPES, rls.value]:
         fact = getattr(c, self.factname)
-        val = getattr(fact, self.in_fact_label)
+        try:
+            val = getattr(fact, self.in_fact_label)
+        except Exception:
+            ll.critical("In facts(%s) value locator failed: %s" % (c._m, self))
+            raise
         if isinstance(val, str):
             return string2rdflib(val)
         else:
