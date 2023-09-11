@@ -488,12 +488,10 @@ class durable_rule(abc_machine.implication, abc_machine.rule):
             if isinstance(item, pattern_generator):
                 item._add_pattern(self._parent)
             elif isinstance(item, external):
-                #item.add_pattern(self._parent)
                 self._parent.generate_pattern_external(item.op, item.args)
             else:
                 pattern = item.as_dict()
                 self._parent.add_pattern(pattern)
-            #self._parent._orig_pattern.insert(index, item)
 
     @property
     def orig_pattern(self) -> _pattern_organizer:

@@ -226,13 +226,6 @@ class rule(abc.ABC):
         ...
 
     @abc.abstractmethod
-    def add_pattern(self,
-                    pattern: Mapping[str, Union[str, TRANSLATEABLE_TYPES]],
-                    factname: Optional[str] = None,
-                    ) -> None:
-        ...
-
-    @abc.abstractmethod
     def generate_pattern_external(self, op: IdentifiedNode, args: ATOM_ARGS) -> None:
         ...
 
@@ -258,13 +251,6 @@ class implication(rule, abc.ABC):
 
     @abc.abstractmethod
     def finalize(self) -> None:
-        ...
-
-    @abc.abstractmethod
-    def add_pattern(self,
-                    pattern: Mapping[str, Union[str, TRANSLATEABLE_TYPES]],
-                    factname: Optional[str] = None,
-                    ) -> None:
         ...
 
     @abc.abstractmethod
