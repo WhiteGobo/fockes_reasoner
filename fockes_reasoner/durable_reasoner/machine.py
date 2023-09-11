@@ -467,27 +467,30 @@ class durable_rule(abc_machine.implication, abc_machine.rule):
     @dataclass
     class _pattern_organizer(abc_machine.pattern_organizer):
         _parent: "durable_rule"
-        def __getitem__(self, index):
+        def __getitem__(self, index): #type: ignore[no-untyped-def]
             return self._parent._orig_pattern
-        def __setitem__(self, index, item):
+        def __setitem__(self, index, item): #type: ignore[no-untyped-def]
             if self._parent.finalized:
                 raise SyntaxError("Cant change pattern after finalizing.")
             raise NotImplementedError()
             self._parent._orig_pattern.__setitem__(index, item)
-        def __delitem__(self, item):
-            self._parent._orig_pattern.__delitem__(item)
+        def __delitem__(self, index: Union[int, slice]) -> None:
+            self._parent._orig_pattern.__delitem__(index)
 
-        def __len__(self):
+        def __len__(self) -> int:
             return len(self._parent._orig_pattern)
 
-        def insert(self, index, item):
+        def insert(self, index, item): #type: ignore[no-untyped-def]
             if self._parent.finalized:
                 raise SyntaxError("Cant change pattern after finalizing.")
-            if index != len(self):
-                raise NotImplementedError()
+            assert isinstance(item, (fact, abc_external))
+            self._parent._orig_pattern.inser(index, item)
+
+        def append(self, item: Union[fact, abc_external, "pattern_generator"],
+                   ) -> None:
             if isinstance(item, pattern_generator):
                 item._add_pattern(self._parent)
-            elif isinstance(item, external):
+            elif isinstance(item, abc_external):
                 self._parent.generate_pattern_external(item.op, item.args)
             else:
                 pattern = item.as_dict()

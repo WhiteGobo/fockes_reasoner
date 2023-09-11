@@ -179,34 +179,10 @@ class action:
 
 
 class pattern_organizer(MutableSequence[Union[fact, abc_external]]):
-    @overload
-    def __setitem__(self, index: int,
-                    item: "pattern_generator",
-                    ) -> None:
-        ...
-
-    @overload
-    def __setitem__(self, index: int,
-                    item: Union[fact, abc_external],
-                    ) -> None:
-        ...
-
-    @overload
-    def __setitem__(self, index: slice,
-                    item: Iterable[Union[fact, abc_external]],
-                    ) -> None:
-        ...
-
     @abc.abstractmethod
-    def __setitem__(self, index: Union[int, slice],
-                    item: Union[Union[fact, abc_external], "pattern_generator",
-                                Iterable[Union[fact, abc_external]]],
-                    ) -> None:
-        ...
-
     def append(self, item: Union[fact, abc_external, "pattern_generator"],
                ) -> None:
-        super().append(item)#type: ignore[arg-type]
+        ...
 
 class rule(abc.ABC):
     patterns: typ.Any

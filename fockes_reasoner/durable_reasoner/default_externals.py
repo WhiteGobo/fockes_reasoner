@@ -43,7 +43,7 @@ class list_contains:
 
 class make_list:
     items: Iterable[RESOLVABLE]
-    def __init__(self, *items):
+    def __init__(self, *items: RESOLVABLE) -> None:
         self.items = items
 
     def __call__(self, bindings: BINDING) -> _term_list:

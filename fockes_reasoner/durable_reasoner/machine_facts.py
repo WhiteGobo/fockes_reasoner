@@ -78,7 +78,8 @@ class fact_subclass(fact):
         self.sub_class = sub_class
         self.super_class = super_class
 
-    def as_dict(self, bindings):
+    def as_dict(self, bindings: Optional[BINDING] = None,
+                ) -> Mapping[str, Union[str, Variable, TRANSLATEABLE_TYPES]]:
         raise NotImplementedError()
 
     def check_for_pattern(self, c: abc_machine.machine,
@@ -263,7 +264,8 @@ class subclass(fact):
                ) -> None:
         raise NotImplementedError()
 
-    def as_dict(self, bindings = None):
+    def as_dict(self, bindings: Optional[BINDING] = None,
+                ) -> Mapping[str, Union[str, Variable, TRANSLATEABLE_TYPES]]:
         raise NotImplementedError()
 
     def retract_fact(self, c: abc_machine.machine,
@@ -293,7 +295,8 @@ class atom(fact):
         self.op = op
         self.args = tuple(args)
 
-    def as_dict(self):
+    def as_dict(self, bindings: Optional[BINDING] = None,
+                ) -> Mapping[str, Union[str, Variable, TRANSLATEABLE_TYPES]]:
         raise NotImplementedError()
 
     def check_for_pattern(self, c: abc_machine.machine,
