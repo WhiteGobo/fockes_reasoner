@@ -2,7 +2,7 @@ import abc
 import logging
 logger = logging.getLogger(__name__)
 import uuid
-from .durable_reasoner import machine_facts, fact, NoPossibleExternal, _resolve, ATOM_ARGS, term_list, machine_list
+from .durable_reasoner import machine_facts, fact, NoPossibleExternal, _resolve, ATOM_ARGS, term_list, machine_list, pattern_generator
 from .durable_reasoner.machine_facts import external, TRANSLATEABLE_TYPES
 import rdflib
 from rdflib import IdentifiedNode, Graph, Variable, Literal, URIRef
@@ -31,7 +31,7 @@ class NotPossibleAction(SyntaxError):
 class RIFSyntaxError(Exception):
     """The given RIF Document has syntaxerrors"""
 
-class rif_fact(abc.ABC):
+class rif_fact(pattern_generator, abc.ABC):
     @abc.abstractmethod
     def check(self,
             machine: durable_reasoner.machine,
@@ -252,12 +252,12 @@ class rif_forall:
         if isinstance(self.formula.if_, rif_and):
             for pat in self.formula.if_.formulas:
                 try:
-                    pat.add_pattern(newrule)
+                    newrule.orig_pattern.append(pat)
                 except Exception:
                     raise
                     conditions.append(pat.generate_condition(machine))
         else:
-            self.formula.if_.add_pattern(newrule)
+            newrule.orig_pattern.append(self.formula.if_)
         if len(conditions) == 0:
             action = self.formula.then_.generate_action(machine)
         else:
@@ -272,12 +272,12 @@ class rif_forall:
         if isinstance(self.formula.if_, rif_and):
             for pat in self.formula.if_.formulas:
                 try:
-                    pat.add_pattern(newrule)
+                    newrule.orig_pattern.append(pat)
                 except Exception:
                     raise
                     conditions.append(pat.generate_condition(machine))
         else:
-            self.formula.if_.add_pattern(newrule)
+            newrule.orig_pattern.append(self.formula.if_)
         if isinstance(self.formula.then_, rif_do):
             raise NotImplementedError()
         if len(conditions) == 0:
@@ -363,14 +363,14 @@ class rif_implies:
         if isinstance(self.if_, rif_and):
             for pat in self.if_.formulas:
                 try:
-                    pat.add_pattern(newrule)
+                    newrule.orig_pattern.append(pat)
                     logger.debug("added pat %s" % pat)
                 except NotPossibleAction:
                     tmp_cond = pat.generate_condition(machine)
                     conditions.append(tmp_cond)
                     logger.debug("added with %s cond %s" % (pat, tmp_cond))
         else:
-            self.if_.add_pattern(newrule)
+            newrule.orig_pattern.append(self.if_)
         if isinstance(self.then_, rif_do):
             raise NotImplementedError()
         if len(conditions) == 0:
@@ -414,15 +414,15 @@ class rif_implies:
     def __repr__(self) -> str:
         return "If %s Then %s" %(self.if_, self.then_)
 
-class rif_and:
+class rif_and(pattern_generator):
     formulas: Iterable[Union["rif_frame"]]
     _formulas_generators: Mapping
     def __init__(self, formulas: Iterable[Union["rif_frame"]]):
         self.formulas = list(formulas)
 
-    def add_pattern(self, rule: durable_reasoner.rule) -> None:
+    def _add_pattern(self, rule: durable_reasoner.rule) -> None:
         for form in self.formulas:
-            form.add_pattern(rule)
+            rule.orig_pattern.append(form)
 
     @classmethod
     def from_rdf(cls, infograph: rdflib.Graph,
@@ -488,6 +488,9 @@ class rif_atom(rif_fact):
         self.op = op
         self.args = list(args)
 
+    def _add_pattern(self, rule: durable_reasoner.rule) -> None:
+        raise NotImplementedError()
+
     def check(self,
             machine: durable_reasoner.machine,
             bindings: BINDING = {},
@@ -540,7 +543,7 @@ class rif_atom(rif_fact):
     def __repr__(self) -> str:
         return "%s (%s)" % (self.op, ", ".join(str(x) for x in self.args))
 
-class rif_external(_resolvable_gen):
+class rif_external(_resolvable_gen, pattern_generator):
     op: URIRef
     args: Sequence[ATOM]
     _atom_args_generator: Mapping[IdentifiedNode, Callable[[Graph, IdentifiedNode], ATOM]]
@@ -573,9 +576,9 @@ class rif_external(_resolvable_gen):
                            ) -> Callable[[BINDING], bool]:
         raise NotImplementedError()
 
-    def add_pattern(self, rule: durable_reasoner.rule) -> None:
+    def _add_pattern(self, rule: durable_reasoner.rule) -> None:
         m = self.as_machinefact()
-        m.add_pattern(rule)
+        rule.orig_pattern.append(m)
 
     @classmethod
     def from_rdf(cls, infograph: rdflib.Graph,
@@ -676,13 +679,13 @@ class rif_frame(rif_fact):
             slotkey, slotvalue = (x.as_machinefact() if isinstance(x, _resolvable_gen) else x for x in slot)
             yield slotkey, slotvalue
 
-    def add_pattern(self, rule: durable_reasoner.rule) -> None:
+    def _add_pattern(self, rule: durable_reasoner.rule) -> None:
         obj = _try_as_machinefact(self.obj)
         for slotkey, slotvalue in self._machinefact_slots:
             sk = _try_as_machinefact(slotkey)
             sv = _try_as_machinefact(slotvalue)
             f = machine_facts.frame(obj, sk, sv)
-            f.add_pattern(rule)
+            rule.orig_pattern.append(f)
 
     def generate_condition(self,
                            machine: durable_reasoner.machine,

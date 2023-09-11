@@ -1,9 +1,10 @@
 import abc
 import logging
 import typing as typ
-from typing import MutableMapping, Mapping, Union, Callable, Iterable, Optional
+from typing import MutableMapping, Mapping, Union, Callable, Iterable, Optional, overload
 import rdflib
 from rdflib import IdentifiedNode, Graph, Literal, Variable
+from collections.abc import MutableSequence
 
 FACTTYPE = "type"
 """Labels in where the type of fact is saved"""
@@ -82,7 +83,8 @@ class fact(abc.ABC):
         ...
 
     @abc.abstractmethod
-    def add_pattern(self, rule: "rule") -> None:
+    def as_dict(self, bindings: Optional[BINDING] = None,
+                ) -> Mapping[str, Union[str, Variable, TRANSLATEABLE_TYPES]]:
         ...
 
     @abc.abstractmethod
@@ -175,10 +177,46 @@ class action:
     def finalize(self) -> None:
         ...
 
+
+class pattern_organizer(MutableSequence[Union[fact, abc_external]]):
+    @overload
+    def __setitem__(self, index: int,
+                    item: "pattern_generator",
+                    ) -> None:
+        ...
+
+    @overload
+    def __setitem__(self, index: int,
+                    item: Union[fact, abc_external],
+                    ) -> None:
+        ...
+
+    @overload
+    def __setitem__(self, index: slice,
+                    item: Iterable[Union[fact, abc_external]],
+                    ) -> None:
+        ...
+
+    @abc.abstractmethod
+    def __setitem__(self, index: Union[int, slice],
+                    item: Union[Union[fact, abc_external], "pattern_generator",
+                                Iterable[Union[fact, abc_external]]],
+                    ) -> None:
+        ...
+
+    def append(self, item: Union[fact, abc_external, "pattern_generator"],
+               ) -> None:
+        super().append(item)#type: ignore[arg-type]
+
 class rule(abc.ABC):
     patterns: typ.Any
     action: Optional[Callable]
     machine: machine
+
+    @property
+    @abc.abstractmethod
+    def orig_pattern(self) -> pattern_organizer:
+        ...
 
     @abc.abstractmethod
     def finalize(self) -> None:
@@ -205,6 +243,13 @@ class rule(abc.ABC):
         :raises NoPossibleExternal:
         """
         ...
+
+
+class pattern_generator(abc.ABC):
+    @abc.abstractmethod
+    def _add_pattern(self, rule: rule) -> None:
+        ...
+
 
 class implication(rule, abc.ABC):
     patterns: typ.Any

@@ -5,11 +5,13 @@ import abc
 import logging
 import traceback
 from typing import Union, Mapping, Iterable, Callable, Any, MutableMapping, Optional, Container, Dict, Set, get_args
+from collections.abc import MutableSequence
+from dataclasses import dataclass
 from hashlib import sha1
 import rdflib
 from rdflib import URIRef, Variable, Literal, BNode, Graph, IdentifiedNode, XSD
 from . import abc_machine
-from .abc_machine import TRANSLATEABLE_TYPES, FACTTYPE, BINDING, VARIABLE_LOCATOR, NoPossibleExternal, importProfile, RESOLVABLE, ATOM_ARGS, abc_external, RESOLVER, RuleNotComplete
+from .abc_machine import TRANSLATEABLE_TYPES, FACTTYPE, BINDING, VARIABLE_LOCATOR, NoPossibleExternal, importProfile, RESOLVABLE, ATOM_ARGS, abc_external, RESOLVER, RuleNotComplete, pattern_generator
 
 from .bridge_rdflib import rdflib2string, string2rdflib
 
@@ -451,6 +453,7 @@ class durable_rule(abc_machine.implication, abc_machine.rule):
     machine: _base_durable_machine
     conditions: list[Callable[[BINDING], Union[Literal, bool]]]
     _orig_pattern: list[Any]
+    __tmp_pattern_organizer: "_pattern_organizer"
     def __init__(self, machine: _base_durable_machine):
         self.machine = machine
         self.patterns = [getattr(rls.m, MACHINESTATE) == RUNNING_STATE]
@@ -460,6 +463,45 @@ class durable_rule(abc_machine.implication, abc_machine.rule):
         self.bindings = {}
 
         self._orig_pattern = []
+
+    @dataclass
+    class _pattern_organizer(abc_machine.pattern_organizer):
+        _parent: "durable_rule"
+        def __getitem__(self, index):
+            return self._parent._orig_pattern
+        def __setitem__(self, index, item):
+            if self._parent.finalized:
+                raise SyntaxError("Cant change pattern after finalizing.")
+            raise NotImplementedError()
+            self._parent._orig_pattern.__setitem__(index, item)
+        def __delitem__(self, item):
+            self._parent._orig_pattern.__delitem__(item)
+
+        def __len__(self):
+            return len(self._parent._orig_pattern)
+
+        def insert(self, index, item):
+            if self._parent.finalized:
+                raise SyntaxError("Cant change pattern after finalizing.")
+            if index != len(self):
+                raise NotImplementedError()
+            if isinstance(item, pattern_generator):
+                item._add_pattern(self._parent)
+            elif isinstance(item, external):
+                #item.add_pattern(self._parent)
+                self._parent.generate_pattern_external(item.op, item.args)
+            else:
+                pattern = item.as_dict()
+                self._parent.add_pattern(pattern)
+            #self._parent._orig_pattern.insert(index, item)
+
+    @property
+    def orig_pattern(self) -> _pattern_organizer:
+        try:
+            return self.__tmp_pattern_organizer
+        except AttributeError:
+            self.__tmp_pattern_organizer = self._pattern_organizer(self)
+            return self.__tmp_pattern_organizer
 
     def generate_node_external(self, op: IdentifiedNode, args: ATOM_ARGS,
             ) -> Union[str, rdflib.BNode, rdflib.URIRef, rdflib.Literal]:

@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 import rdflib
 from rdflib import URIRef, BNode, Literal, Variable
 import typing as typ
-from typing import MutableMapping, Mapping, Union, Callable, Iterable, Tuple
+from typing import MutableMapping, Mapping, Union, Callable, Iterable, Tuple, Optional
 
 
 from .abc_machine import BINDING, CLOSURE_BINDINGS, VARIABLE_LOCATOR, TRANSLATEABLE_TYPES, ATOM_ARGS, abc_external, RESOLVABLE, _resolve
@@ -26,9 +26,6 @@ class external(abc_external):
     def __init__(self, op: URIRef, args: Iterable[Union[TRANSLATEABLE_TYPES, "external", Variable]]) -> None:
         self.op = op
         self.args = list(args)
-
-    def add_pattern(self, rule: abc_machine.rule) -> None:
-        rule.generate_pattern_external(self.op, self.args)
 
     @dataclass
     class __resolver:
@@ -84,6 +81,9 @@ class fact_subclass(fact):
         self.sub_class = sub_class
         self.super_class = super_class
 
+    def as_dict(self, bindings):
+        raise NotImplementedError()
+
     def check_for_pattern(self, c: abc_machine.machine,
                           bindings: BINDING = {},
                           ) -> bool:
@@ -101,9 +101,6 @@ class fact_subclass(fact):
     def assert_fact(self, c: abc_machine.machine,
                bindings: BINDING = {},
                ) -> None:
-        raise NotImplementedError()
-
-    def add_pattern(self, rule: abc_machine.rule) -> None:
         raise NotImplementedError()
 
     def retract_fact(self, c: abc_machine.machine,
@@ -157,7 +154,8 @@ class frame(fact):
             fact[label] = _node2string(x, c, bindings)
         c.assert_fact(fact)
 
-    def add_pattern(self, rule: abc_machine.rule) -> None:
+    def as_dict(self, bindings: Optional[BINDING] = None,
+                ) -> Mapping[str, Union[str, Variable, TRANSLATEABLE_TYPES]]:
         if isinstance(self.obj, external) or isinstance(self.slotkey, external) or isinstance(self.slotvalue, external):
             raise NotImplementedError()
         pattern: Mapping[str, Union[str, Variable, TRANSLATEABLE_TYPES]]\
@@ -166,7 +164,7 @@ class frame(fact):
                    self.FRAME_SLOTKEY: self.slotkey,
                    self.FRAME_SLOTVALUE: self.slotvalue,
                    }
-        rule.add_pattern(pattern)
+        return pattern
 
     @property
     def used_variables(self) -> Iterable[Variable]:
@@ -240,9 +238,6 @@ class member(fact):
                ) -> None:
         raise NotImplementedError()
 
-    def add_pattern(self, rule: abc_machine.rule) -> None:
-        raise NotImplementedError()
-
     def retract_fact(self, c: abc_machine.machine,
                 bindings: BINDING = {},
                 ) -> None:
@@ -271,7 +266,7 @@ class subclass(fact):
                ) -> None:
         raise NotImplementedError()
 
-    def add_pattern(self, rule: abc_machine.rule) -> None:
+    def as_dict(self, bindings = None):
         raise NotImplementedError()
 
     def retract_fact(self, c: abc_machine.machine,
@@ -301,6 +296,9 @@ class atom(fact):
         self.op = op
         self.args = tuple(args)
 
+    def as_dict(self):
+        raise NotImplementedError()
+
     def check_for_pattern(self, c: abc_machine.machine,
                           bindings: BINDING = {},
                           ) -> bool:
@@ -324,9 +322,6 @@ class atom(fact):
             label = self.ATOM_ARGS % i
             fact[label] = rdflib2string(_resolve(x, bindings))
         c.assert_fact(fact)
-
-    def add_pattern(self, rule: abc_machine.rule) -> None:
-        raise NotImplementedError()
 
     def retract_fact(self, c: abc_machine.machine,
                 bindings: BINDING = {},
