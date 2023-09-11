@@ -4,7 +4,7 @@ import uuid
 import abc
 import logging
 import traceback
-from typing import Union, Mapping, Iterable, Callable, Any, MutableMapping, Optional, Container, Dict, Set, get_args
+from typing import Union, Mapping, Iterable, Callable, Any, MutableMapping, Optional, Container, Dict, Set, get_args, Tuple
 from collections.abc import MutableSequence
 from dataclasses import dataclass
 from hashlib import sha1
@@ -448,7 +448,7 @@ class durable_action(abc_machine.action):
 
 class durable_rule(abc_machine.implication, abc_machine.rule):
     patterns: list[rls.value]
-    action: Optional[Callable]
+    action: Optional[Callable[[BINDING], None]]
     bindings: MutableMapping[Variable, VARIABLE_LOCATOR]
     machine: _base_durable_machine
     conditions: list[Callable[[BINDING], Union[Literal, bool]]]
@@ -469,11 +469,13 @@ class durable_rule(abc_machine.implication, abc_machine.rule):
         _parent: "durable_rule"
         def __getitem__(self, index): #type: ignore[no-untyped-def]
             return self._parent._orig_pattern
+
         def __setitem__(self, index, item): #type: ignore[no-untyped-def]
             if self._parent.finalized:
                 raise SyntaxError("Cant change pattern after finalizing.")
             raise NotImplementedError()
             self._parent._orig_pattern.__setitem__(index, item)
+
         def __delitem__(self, index: Union[int, slice]) -> None:
             self._parent._orig_pattern.__delitem__(index)
 
@@ -494,7 +496,7 @@ class durable_rule(abc_machine.implication, abc_machine.rule):
                 self._parent.generate_pattern_external(item.op, item.args)
             else:
                 pattern = item.as_dict()
-                self._parent.add_pattern(pattern)
+                self._parent._add_pattern(pattern)
 
     @property
     def orig_pattern(self) -> _pattern_organizer:
@@ -508,51 +510,72 @@ class durable_rule(abc_machine.implication, abc_machine.rule):
             ) -> Union[str, rdflib.BNode, rdflib.URIRef, rdflib.Literal]:
         raise NotImplementedError()
 
-    def _action_without_condition(self, bindings: BINDING) -> None:
-        self.machine.logger.debug("execute %s" % self)
-        if self.action is not None:
-            self.action(bindings)
-        else:
-            raise RuleNotComplete("action is missing.")
-
-    def _action_with_condition(self, bindings: BINDING) -> None:
-        self.machine.logger.debug("execute %s" % self)
-        for cond in self.conditions:
+    @dataclass
+    class conditional_action:
+        action: Callable[[BINDING], None]
+        logger: logging.Logger
+        conditions: Iterable[Callable[[BINDING], Union[Literal, bool]]]
+        def __call__(self, bindings: BINDING) -> None:
+            self.logger.debug("execute %s" % self)
+            for cond in self.conditions:
+                try:
+                    if not cond(bindings):
+                        self.logger.debug("Stopped rule because %s"
+                                                  % cond)
+                        return
+                except Exception as err:
+                    self.logger.info("Failed at condition %r with "
+                                "bindings %s. Produced traceback:\n%s"
+                                 % (cond, bindings,
+                                    traceback.format_exc()))
+                    raise FailedInternalAction() from err
+            if self.action is None:
+                raise RuleNotComplete("action is missing")
             try:
-                if not cond(bindings):
-                    self.machine.logger.debug("Stopped rule because %s"
-                                              % cond)
-                    return
+                self.action(bindings)
             except Exception as err:
-                self.machine.logger.info("Failed at condition %r with "
-                            "bindings %s. Produced traceback:\n%s"
-                             % (cond, bindings,
-                                traceback.format_exc()))
+                self.logger.info("Failed at action %r with bindings %s. "
+                                 "Produced traceback:\n%s"
+                                 % (self.action, bindings,
+                                    traceback.format_exc()))
                 raise FailedInternalAction() from err
-        if self.action is None:
-            raise RuleNotComplete("action is missing")
-        try:
+
+    @dataclass
+    class simple_action:
+        action: Callable[[BINDING], None]
+        logger: logging.Logger
+        def __call__(self, bindings: BINDING) -> None:
+            self.logger.debug("execute %s" % self)
             self.action(bindings)
-        except Exception as err:
-            self.machine.logger.info("Failed at action %r with bindings %s. "
-                             "Produced traceback:\n%s"
-                             % (self.action, bindings,
-                                traceback.format_exc()))
-            raise FailedInternalAction() from err
+
+    def _generate_action_prerequisites(
+            self,
+            ) -> Tuple[Iterable[rls.value],
+                       Iterable[Callable[[BINDING], Union[Literal, bool]]],
+                       Mapping[Variable, VARIABLE_LOCATOR]]:
+        return self.patterns, self.conditions, self.bindings
+
+    def _generate_action(
+            self,
+            conditions: Iterable[Callable[[BINDING], Union[Literal, bool]]],
+            ) -> Callable[[BINDING], None]:
+        assert self.action is not None
+        if conditions:
+            return self.conditional_action(self.action, self.machine.logger, conditions)
+        else:
+            self.machine.logger.debug("Create Rule. Condition: %s\nAction %s\nBindings%s" % (self._orig_pattern, self.action, self.bindings))
+            return self.action
+            return self.simple_action(self.action, self.machine.logger)
 
     def finalize(self) -> None:
         if self.finalized:
             raise Exception()
         if self.action is None:
             raise Exception()
-        if not self.conditions:
-            self.machine.logger.debug("Create Rule. Condition: %s\nAction %s\nBindings%s" % (self._orig_pattern, self.action, self.bindings))
-            self.machine._make_rule(self.patterns,
-                                    self._action_without_condition,
-                                    self.bindings)
-        else:
-            self.machine._make_rule(self.patterns, self._action_with_condition, self.bindings)
         self.finalized = True
+        patterns, conditions, bindings = self._generate_action_prerequisites()
+        action = self._generate_action(conditions)
+        self.machine._make_rule(patterns, action, bindings)
 
     def generate_pattern_external(self, op: IdentifiedNode, args: ATOM_ARGS) -> None:
         err_messages = []
@@ -580,7 +603,7 @@ class durable_rule(abc_machine.implication, abc_machine.rule):
     def logger(self) -> logging.Logger:
         return self.machine.logger
 
-    def add_pattern(self,
+    def _add_pattern(self,
                     pattern: Mapping[str, Union[Variable, str, TRANSLATEABLE_TYPES]],
                     factname: Union[str, None] = None,
                     ) -> None:
