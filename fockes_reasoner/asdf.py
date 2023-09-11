@@ -24,7 +24,7 @@ class importManager(Mapping[IdentifiedNode, Graph]):
     def __repr__(self) -> str:
         return "importManager[%s]" % ", ".join(iter(self.documents))
 
-    def __getitem__(self, document: IdentifiedNode) -> Graph:
+    def __getitem__(self, document: Union[IdentifiedNode, str]) -> Graph:
         try:
             if isinstance(document, IdentifiedNode):
                 return self.documents[document]
