@@ -208,6 +208,7 @@ class rif_import:
 
 class rif_group:
     sentences: tuple[Union["rif_forall", "rif_frame", "rif_group", "rif_implies"], ...]
+    _sentence_generators: Mapping[IdentifiedNode, Callable[[Graph, IdentifiedNode], Any]]
     def __init__(self,
                  sentences: Iterable[Union["rif_forall", "rif_frame", "rif_group", "rif_implies"]],
                  ) -> None:
@@ -228,16 +229,8 @@ class rif_group:
                 = rdflib.collection.Collection(infograph, sentences_list_node) #type: ignore[assignment]
         for sentence_node in sentences_list:
             sentence_type = infograph.value(sentence_node, RDF.type)
-            if sentence_type == RIF.Forall:
-                next_sentence = rif_forall.from_rdf(infograph, sentence_node)
-            elif sentence_type == RIF.Frame:
-                next_sentence = rif_frame.from_rdf(infograph, sentence_node)
-            elif sentence_type == RIF.Group:
-                next_sentence = rif_group.from_rdf(infograph, sentence_node)
-            elif sentence_type == RIF.Implies:
-                next_sentence = rif_implies.from_rdf(infograph, sentence_node)
-            else:
-                raise NotImplementedError(sentence_type)
+            gen = cls._sentence_generators[sentence_type]
+            next_sentence =  gen(infograph, sentence_node)
             sentences.append(next_sentence)
         return cls(sentences, **kwargs)
 
@@ -966,9 +959,17 @@ rif_implies._then_generators = {
 _formulas = {RIF.External: rif_external.from_rdf,
              RIF.Frame: rif_frame.from_rdf,
              RIF.Equal: rif_equal.from_rdf,
+             RIF.Atom: rif_atom.from_rdf,
              }
 rif_and._formulas_generators = dict(_formulas)
 #rif_equal._side_generators = {}
+rif_group._sentence_generators = {
+        RIF.Forall: rif_forall.from_rdf,
+        RIF.Group: rif_group.from_rdf,
+        RIF.Implies: rif_implies.from_rdf,
+        RIF.Frame: rif_frame.from_rdf,
+        RIF.Atom: rif_atom.from_rdf,
+        }
 
 _term_generators: Mapping[IdentifiedNode, Callable[[Graph, IdentifiedNode], ATOM]] = {
         RIF.Const: slot2node,
