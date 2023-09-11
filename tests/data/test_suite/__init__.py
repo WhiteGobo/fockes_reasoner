@@ -7,7 +7,12 @@ _PRD = importlib.resources.files(PRD)
 from . import Core
 _Core = importlib.resources.files(Core)
 
-PositiveEntailmentTest = namedtuple("PositiveEntailmentTest", ("premise", "conclusion"))
+#PositiveEntailmentTest = namedtuple("PositiveEntailmentTest", ("premise", "conclusion"))
+class PositiveEntailmentTest:
+    def __init__(self, premise, conclusion, importedDocuments={}):
+        self.premise = str(premise)
+        self.conclusion = str(conclusion)
+        self.importedDocuments = {x: y for x, y in dict(importedDocuments).items()}
 #NegativeEntailmentTest = namedtuple("NegativeEntailmentTest", ("premise", "conclusion"))
 class NegativeEntailmentTest:
     def __init__(self, premise, nonconclusion, importedDocuments={}):
@@ -128,9 +133,13 @@ PET_IRI_from_RDF_Literal = PositiveEntailmentTest(
         _Core.joinpath("PositiveEntailmentTest/IRI_from_RDF_Literal/IRI_from_RDF_Literal-premise.rif"),
         _Core.joinpath("PositiveEntailmentTest/IRI_from_RDF_Literal/IRI_from_RDF_Literal-conclusion.rif"),
         )
+from .Core.PositiveEntailmentTest import Modeling_Brain_Anatomy
+tmp = files(Modeling_Brain_Anatomy)
 PET_Modeling_Brain_Anatomy = PositiveEntailmentTest(
         _Core.joinpath("PositiveEntailmentTest/Modeling_Brain_Anatomy/Modeling_Brain_Anatomy-premise.rif"),
         _Core.joinpath("PositiveEntailmentTest/Modeling_Brain_Anatomy/Modeling_Brain_Anatomy-conclusion.rif"),
+        {"http://www.w3.org/2005/rules/test/repository/tc/Modeling_Brain_Anatomy/Modeling_Brain_Anatomy-import001.rdf":
+        tmp.joinpath("Modeling_Brain_Anatomy-import001.rdf")},
         )
 PET_OWL_Combination_Vocabulary_Separation_Inconsistency_1 = PositiveEntailmentTest(
         _Core.joinpath("PositiveEntailmentTest/OWL_Combination_Vocabulary_Separation_Inconsistency_1/OWL_Combination_Vocabulary_Separation_Inconsistency_1-premise.rif"),

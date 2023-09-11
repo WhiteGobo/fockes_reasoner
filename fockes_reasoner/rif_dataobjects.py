@@ -120,7 +120,6 @@ class rif_document:
         """
         :param extraDocuments: A Manager of all importable documents
         """
-        directives_lists: Iterable[IdentifiedNode]
         kwargs = {}
         payload_nodes: list[IdentifiedNode] = list(infograph.objects(rootnode, RIF.payload)) #type: ignore[assignment, arg-type]
         if len(payload_nodes) == 1:
@@ -136,14 +135,13 @@ class rif_document:
 
         try:
             directives_node, = infograph.objects(rootnode, RIF.directives)
-            tmp = rdflib.collection.Collection(infograph, directives_node)
-            if not all(isinstance(x, IdentifiedNode) for x in directives_lists):
-                raise Exception("graph has not RIF-compatible Syntax")
-            directives_lists = tmp#type: ignore[assignment]
+            directives_lists = rdflib.collection.Collection(infograph, directives_node)
+            typ.cast(directives_lists, Iterable[IdentifiedNode])
         except ValueError:
             directives_lists = []
         for directive_node in directives_lists:
-            tmp_directive = cls._generate_directive(infograph, directive_node, extraDocuments)
+            tmp_directive = cls._generate_directive(infograph, directive_node,
+                                                    extraDocuments)
             kwargs.setdefault("directives", []).append(tmp_directive)
 
         return cls(**kwargs)
@@ -183,7 +181,10 @@ class rif_import:
 
     def apply_to(self, machine: durable_reasoner.machine,
                  ) -> None:
-        infograph = self.extraDocuments[self.location]
+        try:
+            infograph = self.extraDocuments[self.location]
+        except Exception as err:
+            raise Exception(self.extraDocuments) from err
         if self.profile is not None:
             machine.import_data(infograph,
                                 self.location, self.profile,
@@ -198,12 +199,16 @@ class rif_import:
                  extraDocuments: Mapping[IdentifiedNode, Graph] = {},
                  **kwargs: Any) -> "rif_import":
         location, = infograph.objects(rootnode, RIF.location)
+        loc_as_uri = URIRef(location)
+        if loc_as_uri not in extraDocuments:
+            raise SyntaxError("Have the directive to import '%s' but it isnt "
+                              "in supplied extraDocuments %s"
+                              % (loc_as_uri, extraDocuments))
         profile = infograph.value(rootnode, RIF.profile)
-        assert isinstance(location, URIRef)
+        #assert isinstance(location, URIRef), repr(location)
         if profile:
-            assert isinstance(profile, URIRef)
-            return cls(extraDocuments, location, profile)
-        return cls(extraDocuments, location)
+            return cls(extraDocuments, URIRef(location), URIRef(profile))
+        return cls(extraDocuments, URIRef(location))
 
 
 class rif_group:

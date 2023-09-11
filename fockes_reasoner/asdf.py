@@ -21,9 +21,15 @@ class importManager(Mapping[IdentifiedNode, Graph]):
             else:
                 self.documents[URIRef(location)] = infograph
 
+    def __repr__(self) -> str:
+        return "importManager[%s]" % ", ".join(iter(self.documents))
+
     def __getitem__(self, document: IdentifiedNode) -> Graph:
         try:
-            return self.documents[document]
+            if isinstance(document, IdentifiedNode):
+                return self.documents[document]
+            else:
+                return self.documents[URIRef(document)]
         except KeyError:
             logger.error("tried to retrieve %s. Given documents are %s"
                          % (document, tuple(self.documents.keys())))

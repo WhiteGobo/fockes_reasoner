@@ -1,6 +1,7 @@
 import pytest
 from pytest import param, mark
 import rdflib
+import traceback
 import logging
 logger = logging.getLogger(__name__)
 
@@ -63,6 +64,18 @@ from data.test_suite import \
          NET_RDF_Combination_SubClass,
          )
 import data.test_suite
+
+def _import_graph(filepath) -> rdflib.Graph:
+    fp = str(filepath)
+    formats = (filepath.suffix[1:], "xml")
+    for f in formats:
+        try:
+            return rdflib.Graph().parse(fp, format=f)
+        except rdflib.plugin.PluginException as err:
+            logger.debug(traceback.format_exc())
+    raise Exception("No rdf plugin succesfull. See logging(debug) "
+                    "for more info")
+
 
 _rif_type_to_constructor = {RIF.Frame: rif_frame.from_rdf,
                             #RIF.External: rif_external.from_rdf,
@@ -129,8 +142,7 @@ def test_simpletestrun():
                  marks=mark.skip("not yet implemented")),
     pytest.param(PET_IRI_from_RDF_Literal,
                  marks=mark.skip("not yet implemented")),
-    pytest.param(PET_Modeling_Brain_Anatomy,
-                 marks=mark.skip("not yet implemented")),
+    pytest.param(PET_Modeling_Brain_Anatomy),
     pytest.param(PET_OWL_Combination_Vocabulary_Separation_Inconsistency_1,
                  marks=mark.skip("not yet implemented")),
     pytest.param(PET_OWL_Combination_Vocabulary_Separation_Inconsistency_2,
@@ -163,7 +175,9 @@ def test_PositiveEntailmentTests(testinfo):
         pytest.skip("Need rdflib parser plugin to load RIF-file")
     logger.debug("premise in ttl:\n%s" % g.serialize())
 
-    q = fockes_reasoner.simpleLogicMachine.from_rdf(g)
+    extra_documents = {uri: _import_graph(filepath)
+                       for uri, filepath in testinfo.importedDocuments.items()}
+    q = fockes_reasoner.simpleLogicMachine.from_rdf(g, extra_documents)
     logger.debug("Running Machine ... ")
     myfacts = q.run()
     logger.debug("Expected conclusions in ttl:\n%s" % conc_graph.serialize())
@@ -203,7 +217,9 @@ def test_NegativeEntailmentTests(testinfo):
     logger.info("premise in ttl:\n%s" % g.serialize())
 
     #filepath.suffix is eg ".rif" so filepath.suffix[1:]=="rif"
-    extra_documents = {uri: rdflib.Graph().parse(str(filepath), format=filepath.suffix[1:]) for uri, filepath in testinfo.importedDocuments.items()}
+    extra_documents = {uri: rdflib.Graph().parse(str(filepath),
+                                                 format=filepath.suffix[1:])
+                       for uri, filepath in testinfo.importedDocuments.items()}
     q = fockes_reasoner.simpleLogicMachine.from_rdf(g, extra_documents)
     myfacts = q.run()
     logger.info("Not expected conclusions in ttl:\n%s"
