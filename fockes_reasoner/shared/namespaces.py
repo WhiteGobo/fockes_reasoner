@@ -63,12 +63,15 @@ class func(DefinedNamespace):
     sublist: URIRef
     get: URIRef
     append: URIRef
+    reverse: URIRef
     _extras = [
             "count",
             "make-list",
             "concatenate",
             "list-contains",
             "insert-before",
+            "remove",
+            "index-of",
             "numeric-subtract",
             "numeric-add",
             "numeric-multiply",

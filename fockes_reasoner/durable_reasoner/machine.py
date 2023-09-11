@@ -655,6 +655,20 @@ class _machine_default_externals(_base_durable_machine):
                       asassign=def_ext.count)
         self.register(func["get"],
                       asassign=def_ext.list_get)
+        self.register(func["sublist"],
+                      asassign=def_ext.sublist)
+        self.register(func["append"],
+                      asassign=def_ext.append)
+        self.register(func["concatenate"],
+                      asassign=def_ext.concatenate)
+        self.register(func["insert-before"],
+                      asassign=def_ext.insert_before)
+        self.register(func["remove"],
+                      asassign=def_ext.remove)
+        self.register(func["reverse"],
+                      asassign=def_ext.reverse_list)
+        self.register(func["index-of"],
+                      asassign=def_ext.index_of)
         self.register(pred["is-literal-hexBinary"],
                       ascondition=def_ext.is_literal_hexBinary)
         self.register(pred["is-literal-not-hexBinary"],
