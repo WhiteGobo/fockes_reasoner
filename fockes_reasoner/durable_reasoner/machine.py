@@ -288,7 +288,8 @@ class _base_durable_machine(abc_machine.machine):
         return self._ruleset.name #type: ignore[no-any-return]
 
     def add_init_action(self, action: Callable[[BINDING], None]) -> None:
-        q = durable_action(self, action)
+        q = durable_rule(self)
+        q.action = action
         q.finalize()
 
     def create_rule_builder(self) -> "durable_rule":
@@ -419,31 +420,6 @@ class RDFmachine(_base_durable_machine):
 
 
 
-class durable_action(abc_machine.action):
-    action: Optional[Callable[[BINDING], None]]
-    """action that is executed in initstate (machinestate==init)"""
-    machine: _base_durable_machine
-    """Rulemachine for this action"""
-    finalized: bool
-    """Shows if action is already implemented in machine"""
-    def __init__(self, machine: _base_durable_machine,
-                 action: Union[None, Callable] = None) -> None:
-        self.machine = machine
-        self.action = action
-        self.finalized = False
-
-    def finalize(self) -> None:
-        if self.finalized:
-            raise Exception()
-        if self.action is None:
-            raise Exception()
-        self.finalized = True
-        patterns = [getattr(rls.m, MACHINESTATE) == INIT_STATE]
-        self.machine._make_rule(patterns, self.action, {})
-
-    @property
-    def logger(self) -> logging.Logger:
-        return self.machine.logger
 
 
 class durable_rule(abc_machine.implication, abc_machine.rule):
@@ -564,19 +540,16 @@ class durable_rule(abc_machine.implication, abc_machine.rule):
         conditions: List[Callable[[BINDING], Union[Literal, bool]]] = []
         bindings: MutableMapping[Variable, VARIABLE_LOCATOR] = {}
         patterns: list[rls.value] = []
-        if self.orig_pattern:
-            for q in self.orig_pattern:
-                if isinstance(q, fact):
-                    patterns.append(self._generate_pattern(q.as_dict(),
-                                                           bindings))
-                elif isinstance(q, abc_external):
-                    tmp_p, tmp_c = self._process_external(q.op, q.args)
-                    patterns.extend(tmp_p)
-                    conditions.extend(tmp_c)
-                else:
-                    raise Exception(type(q))
-        else:
-            raise NotImplementedError()
+        for q in self.orig_pattern:
+            if isinstance(q, fact):
+                patterns.append(self._generate_pattern(q.as_dict(),
+                                                       bindings))
+            elif isinstance(q, abc_external):
+                tmp_p, tmp_c = self._process_external(q.op, q.args)
+                patterns.extend(tmp_p)
+                conditions.extend(tmp_c)
+            else:
+                raise Exception(type(q))
         if len(patterns) == 0 and len(conditions) == 0:
             #create rule as initialisation rule
             patterns.insert(0, getattr(rls.m, MACHINESTATE) == INIT_STATE)
