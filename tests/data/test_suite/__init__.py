@@ -25,6 +25,7 @@ class NegativeEntailmentTest:
         yield self.nonconclusion
         yield self.importedDocuments
 
+from .Core.PositiveEntailmentTest import Modeling_Brain_Anatomy
 PET_Assert = PositiveEntailmentTest(
         _PRD.joinpath("PositiveEntailmentTest/Assert/Assert-premise.rif"),
         _PRD.joinpath("PositiveEntailmentTest/Assert/Assert-conclusion.rif"),
@@ -133,7 +134,6 @@ PET_IRI_from_RDF_Literal = PositiveEntailmentTest(
         _Core.joinpath("PositiveEntailmentTest/IRI_from_RDF_Literal/IRI_from_RDF_Literal-premise.rif"),
         _Core.joinpath("PositiveEntailmentTest/IRI_from_RDF_Literal/IRI_from_RDF_Literal-conclusion.rif"),
         )
-from .Core.PositiveEntailmentTest import Modeling_Brain_Anatomy
 tmp = files(Modeling_Brain_Anatomy)
 PET_Modeling_Brain_Anatomy = PositiveEntailmentTest(
         _Core.joinpath("PositiveEntailmentTest/Modeling_Brain_Anatomy/Modeling_Brain_Anatomy-premise.rif"),
