@@ -4,7 +4,7 @@ import uuid
 import abc
 import logging
 import traceback
-from typing import Union, Mapping, Iterable, Callable, Any, MutableMapping, Optional, Container, Dict, Set, get_args, Tuple
+from typing import Union, Mapping, Iterable, Callable, Any, MutableMapping, Optional, Container, Dict, Set, get_args, Tuple, List
 from dataclasses import dataclass
 from hashlib import sha1
 import rdflib
@@ -497,11 +497,8 @@ class durable_rule(abc_machine.implication, abc_machine.rule):
             if isinstance(item, pattern_generator):
                 item._add_pattern(self._parent)
             elif isinstance(item, abc_external):
-                self._parent.generate_pattern_external(item.op, item.args)
                 self.insert(-1, item)
             else:
-                pattern = item.as_dict()
-                self._parent._add_pattern(pattern)
                 self.insert(-1, item)
 
     @property
@@ -559,7 +556,7 @@ class durable_rule(abc_machine.implication, abc_machine.rule):
             ) -> Tuple[Iterable[rls.value],
                        Iterable[Callable[[BINDING], Union[Literal, bool]]],
                        Mapping[Variable, VARIABLE_LOCATOR]]:
-        conditions = []
+        conditions: List[Callable[[BINDING], Union[Literal, bool]]] = []
         bindings: MutableMapping[Variable, VARIABLE_LOCATOR] = {}
         if self.orig_pattern:
             patterns = [getattr(rls.m, MACHINESTATE) == RUNNING_STATE]
@@ -578,7 +575,6 @@ class durable_rule(abc_machine.implication, abc_machine.rule):
             patterns = [getattr(rls.m, MACHINESTATE) == INIT_STATE]
 
         return patterns, conditions, bindings
-        return self.patterns, self.conditions, self.bindings
 
     def _generate_action(
             self,
@@ -609,30 +605,7 @@ class durable_rule(abc_machine.implication, abc_machine.rule):
                        Iterable[Callable[[BINDING], Union[bool, Literal]]]]:
         new_condition = self.machine._create_condition_from_external(op, args)
         assert isinstance(new_condition, Callable), "something went wrong, when external function was created: %s %s\n%s" % (op, args, new_condition)#type: ignore[arg-type]
-        self.conditions.append(new_condition)#type: ignore[arg-type]
-        return [], [new_condition]
-
-    def generate_pattern_external(self, op: IdentifiedNode, args: ATOM_ARGS) -> None:
-        err_messages = []
-        try:
-            self.machine._create_pattern_for_external(op, args)
-            return
-        except NoPossibleExternal:
-            err_messages.append(traceback.format_exc())
-            pass
-        try:
-            new_condition = self.machine._create_condition_from_external(op, args)
-            assert isinstance(new_condition, Callable), "something went wrong, when external function was created: %s %s\n%s" % (op, args, new_condition)#type: ignore[arg-type]
-            self.conditions.append(new_condition)#type: ignore[arg-type]
-            return
-        except NoPossibleExternal:
-            err_messages.append(traceback.format_exc())
-            pass
-        self.machine.logger.error("Couldnt process external %s %s with "
-                                  "errors:\n%s"
-                                  % (op, args, "\n---\n".join(err_messages)))
-        raise ValueError("Cant process external: %s %s\nMore info in "
-                         "logging" % (op, args))
+        return [], [new_condition]#type: ignore[list-item]
 
     @property
     def logger(self) -> logging.Logger:
@@ -643,7 +616,7 @@ class durable_rule(abc_machine.implication, abc_machine.rule):
             pattern: Mapping[str, Union[Variable, str, TRANSLATEABLE_TYPES]],
             bindings: MutableMapping[Variable, VARIABLE_LOCATOR],
             factname: Optional[str] = None,
-            ) -> None:
+            ) -> rls.value:
         if factname is None:
             _as_string = repr(sorted(pattern.items()))
             factname = "f%s" % sha1(_as_string.encode("utf8")).hexdigest()
@@ -680,51 +653,6 @@ class durable_rule(abc_machine.implication, abc_machine.rule):
             raise Exception("Cant handle %s" % pattern)
         pattern_part = getattr(rls.c, factname) << constraint
         return pattern_part
-
-    def _add_pattern(self,
-                    pattern: Mapping[str, Union[Variable, str, TRANSLATEABLE_TYPES]],
-                    factname: Union[str, None] = None,
-                    ) -> None:
-        #self._orig_pattern.append(dict(pattern))
-        pattern = dict(pattern)
-        if factname is None:
-            _as_string = repr(sorted(pattern.items()))
-            factname = "f%s" % sha1(_as_string.encode("utf8")).hexdigest()
-        #         c: typ.Union[durable.engine.Closure, str],
-        #         bindings: BINDING,
-        #         external_resolution: Mapping[typ.Union[rdflib.URIRef, rdflib.BNode], external],
-        next_constraint: rls.value
-        constraint: Union[rls.value, None] = None
-        for key, value in pattern.items():
-            next_constraint = None
-            if type(value) == str:
-                next_constraint = getattr(rls.m, key) == value
-            elif isinstance(value, rdflib.Variable):
-                if value in self.bindings:
-                    loc = self.bindings[value]
-                    newpattern = getattr(rls.m, key) == loc(rls.c)
-                    #log.append(f"rls.m.{fact_label} == {loc}")
-                else:
-                    loc = _value_locator(factname, key)
-                    self.bindings[value] = loc
-                    next_constraint = None
-                    #logger.debug("bind: %r-> %r" % (value, loc))
-            elif isinstance(value, (URIRef, BNode, Literal)):
-                next_constraint = getattr(rls.m, key) == rdflib2string(value)
-            elif isinstance(value, external):
-                raise NotImplementedError()
-                #newnode = value.serialize(c, bindings, external_resolution)
-                #next_constraint = getattr(rls.m, key) == newnode
-            else:
-                raise NotImplementedError(value, type(value))
-            if next_constraint is not None:
-                if constraint is None:
-                    constraint = next_constraint
-                else:
-                    constraint = constraint & next_constraint
-        if constraint is None:
-            raise Exception("Cant handle %s" % pattern)
-        self.patterns.append(getattr(rls.c, factname) << constraint)
 
     def __repr__(self) -> str:
         return f"rule: {self._orig_pattern}-> {self.action}"
