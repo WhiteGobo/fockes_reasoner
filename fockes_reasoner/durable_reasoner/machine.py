@@ -13,7 +13,7 @@ from . import abc_machine
 from .abc_machine import TRANSLATEABLE_TYPES, FACTTYPE, BINDING, VARIABLE_LOCATOR, NoPossibleExternal, importProfile, RESOLVABLE, ATOM_ARGS, abc_external, RESOLVER, RuleNotComplete, pattern_generator
 ll = logging.getLogger(__name__)
 
-from .bridge_rdflib import rdflib2string, string2rdflib
+from .bridge_rdflib import rdflib2string, string2rdflib, term_list
 
 from ..shared import RDF, pred, func
 from . import machine_facts
@@ -419,9 +419,6 @@ class RDFmachine(_base_durable_machine):
                 raise Exception("Couldnt transform all lists")
 
 
-
-
-
 class durable_rule(abc_machine.implication, abc_machine.rule):
     patterns: list[rls.value]
     bindings: MutableMapping[Variable, VARIABLE_LOCATOR]
@@ -588,9 +585,15 @@ class durable_rule(abc_machine.implication, abc_machine.rule):
             args: ATOM_ARGS,
             ) -> Tuple[Iterable[rls.value],
                        Iterable[Callable[[BINDING], Union[bool, Literal]]]]:
-        new_condition = self.machine._create_condition_from_external(op, args)
-        assert isinstance(new_condition, Callable), "something went wrong, when external function was created: %s %s\n%s" % (op, args, new_condition)#type: ignore[arg-type]
-        return [], [new_condition]#type: ignore[list-item]
+        try:
+            raise NoPossibleExternal()
+            patterns, conditions\
+                    = self.machine._create_pattern_from_external(op, args)
+            return patterns, conditions
+        except NoPossibleExternal:
+            cond = self.machine._create_assignment_from_external(op, args)
+        assert not isinstance(cond, (Variable, IdentifiedNode, Literal, term_list)), "Im not yet sure what i should do here"
+        return [], [cond]
 
     @property
     def logger(self) -> logging.Logger:
@@ -642,6 +645,7 @@ class durable_rule(abc_machine.implication, abc_machine.rule):
     def __repr__(self) -> str:
         return f"rule: {self._orig_pattern}-> {self.action}"
 
+
 class _value_locator:
     factname: str
     """Name of the fact, where the variable is defined"""
@@ -674,21 +678,22 @@ class _machine_default_externals(_base_durable_machine):
     """
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
-        invert = def_ext.invert
+        from .default_externals import invert
         self.register(pred["numeric-equal"],
-                      ascondition=def_ext.numeric_equal)
+                      asassign=def_ext.numeric_equal)
         self.register(pred["numeric-not-equal"],
-                      ascondition=invert.gen(def_ext.numeric_equal))
+                      asassign=invert.gen(def_ext.numeric_equal))
         self.register(pred["numeric-greater-than"],
-                      ascondition=def_ext.ascondition_pred_greater_than)
+                      asassign=def_ext.ascondition_pred_greater_than)
         self.register(pred["numeric-less-than-or-equal"],
-                      ascondition=invert.gen(def_ext.ascondition_pred_greater_than))
+                      asassign=invert.gen(
+                          def_ext.ascondition_pred_greater_than))
         self.register(pred["numeric-less-than"],
-                      ascondition=def_ext.pred_less_than)
+                      asassign=def_ext.pred_less_than)
         self.register(pred["numeric-greater-than-or-equal"],
-                      ascondition=invert.gen(def_ext.pred_less_than))
+                      asassign=invert.gen(def_ext.pred_less_than))
         self.register(pred["XMLLiteral-equal"],
-                      ascondition=def_ext.literal_equal)
+                      asassign=def_ext.literal_equal)
         self.register(func["numeric-add"],
                       asassign=def_ext.numeric_add)
         self.register(func["numeric-subtract"],
@@ -701,15 +706,14 @@ class _machine_default_externals(_base_durable_machine):
                       asassign=def_ext.numeric_integer_divide)
         self.register(func["numeric-mod"],
                       asassign=def_ext.numeric_mod)
-
         self.register(func["numeric-integer-mod"],
                       asassign=def_ext.numeric_integer_mod)
         self.register(pred["is-list"],
-                      ascondition=def_ext.is_list)
+                      asassign=def_ext.is_list)
         self.register(pred["list-contains"],
-                      ascondition=def_ext.list_contains)
+                      asassign=def_ext.list_contains)
         self.register(pred["literal-not-identical"],
-                      ascondition=def_ext.ascondition_pred_literal_not_identical)
+                      asassign=def_ext.ascondition_pred_literal_not_identical)
         self.register(func["make-list"],
                       asassign=def_ext.make_list)
         self.register(func["count"],
@@ -739,78 +743,87 @@ class _machine_default_externals(_base_durable_machine):
         self.register(func["except"],
                       asassign=def_ext.list_except)
         self.register(pred["is-literal-hexBinary"],
-                      ascondition=def_ext.is_literal_hexBinary)
+                      asassign=def_ext.is_literal_hexBinary)
         self.register(pred["is-literal-not-hexBinary"],
-                      ascondition=invert.gen(def_ext.is_literal_hexBinary))
+                      asassign=invert.gen(def_ext.is_literal_hexBinary))
         self.register(pred["is-literal-base64Binary"],
-                      ascondition=def_ext.condition_pred_is_literal_base64Binary)
+                      asassign=def_ext.condition_pred_is_literal_base64Binary)
         self.register(pred["is-literal-double"],
-                      ascondition=def_ext.condition_pred_is_literal_double)
+                      asassign=def_ext.condition_pred_is_literal_double)
         self.register(pred["is-literal-not-double"],
-                      ascondition=def_ext.condition_pred_is_literal_not_double)
+                      asassign=def_ext.condition_pred_is_literal_not_double)
         self.register(pred["is-literal-float"],
-                      ascondition=def_ext.condition_pred_is_literal_float)
+                      asassign=def_ext.condition_pred_is_literal_float)
         self.register(pred["is-literal-not-float"],
-                      ascondition=def_ext.condition_pred_is_literal_not_float)
+                      asassign=def_ext.condition_pred_is_literal_not_float)
         self.register(pred["is-literal-decimal"],
-                      ascondition=def_ext.condition_pred_is_literal_decimal)
+                      asassign=def_ext.condition_pred_is_literal_decimal)
         self.register(pred["is-literal-not-decimal"],
-                      ascondition=invert.gen(def_ext.condition_pred_is_literal_decimal))
+                      asassign=invert.gen(
+                          def_ext.condition_pred_is_literal_decimal))
         self.register(pred["is-literal-integer"],
-                      ascondition=def_ext.condition_pred_is_literal_integer)
+                      asassign=def_ext.condition_pred_is_literal_integer)
         self.register(pred["is-literal-not-integer"],
-                      ascondition=invert.gen(def_ext.condition_pred_is_literal_integer))
+                      asassign=invert.gen(def_ext.condition_pred_is_literal_integer))
         self.register(pred["is-literal-int"],
-                      ascondition=def_ext.condition_pred_is_literal_int)
+                      asassign=def_ext.condition_pred_is_literal_int)
         self.register(pred["is-literal-not-int"],
-                      ascondition=invert.gen(def_ext.condition_pred_is_literal_int))
+                      asassign=invert.gen(def_ext.condition_pred_is_literal_int))
         self.register(pred["is-literal-long"],
-                      ascondition=def_ext.condition_pred_is_literal_long)
+                      asassign=def_ext.condition_pred_is_literal_long)
         self.register(pred["is-literal-not-long"],
-                      ascondition=invert.gen(def_ext.condition_pred_is_literal_long))
+                      asassign=invert.gen(def_ext.condition_pred_is_literal_long))
         self.register(pred["is-literal-short"],
-                      ascondition=def_ext.condition_pred_is_literal_short)
+                      asassign=def_ext.condition_pred_is_literal_short)
         self.register(pred["is-literal-not-short"],
-                      ascondition=invert.gen(def_ext.condition_pred_is_literal_short))
+                      asassign=invert.gen(
+                          def_ext.condition_pred_is_literal_short))
         self.register(pred["is-literal-byte"],
-                      ascondition=def_ext.condition_pred_is_literal_byte)
+                      asassign=def_ext.condition_pred_is_literal_byte)
         self.register(pred["is-literal-not-byte"],
-                      ascondition=invert.gen(def_ext.condition_pred_is_literal_byte))
+                      asassign=invert.gen(def_ext.condition_pred_is_literal_byte))
         self.register(pred["is-literal-nonNegativeInteger"],
-                      ascondition=def_ext.condition_pred_is_literal_positiveInteger)
+                      asassign=def_ext.condition_pred_is_literal_positiveInteger)
         self.register(pred["is-literal-not-nonNegativeInteger"],
-                      ascondition=invert.gen(def_ext.condition_pred_is_literal_positiveInteger))
+                      asassign=invert.gen(
+                          def_ext.condition_pred_is_literal_positiveInteger))
         self.register(pred["is-literal-positiveInteger"],
-                      ascondition=def_ext.condition_pred_is_literal_positiveInteger)
+                      asassign=def_ext.condition_pred_is_literal_positiveInteger)
         self.register(pred["is-literal-not-positiveInteger"],
-                      ascondition=invert.gen(def_ext.condition_pred_is_literal_positiveInteger))
+                      asassign=invert.gen(
+                          def_ext.condition_pred_is_literal_positiveInteger))
         self.register(pred["is-literal-nonPositiveInteger"],
-                      ascondition=def_ext.condition_pred_is_literal_negativeInteger)
+                      asassign=def_ext.condition_pred_is_literal_negativeInteger)
         self.register(pred["is-literal-not-nonPositiveInteger"],
-                      ascondition=invert.gen(def_ext.condition_pred_is_literal_negativeInteger))
+                      asassign=invert.gen(
+                          def_ext.condition_pred_is_literal_negativeInteger))
         self.register(pred["is-literal-negativeInteger"],
-                      ascondition=def_ext.condition_pred_is_literal_negativeInteger)
+                      asassign=def_ext.condition_pred_is_literal_negativeInteger)
         self.register(pred["is-literal-not-negativeInteger"],
-                      ascondition=invert.gen(def_ext.condition_pred_is_literal_negativeInteger))
+                      asassign=invert.gen(
+                          def_ext.condition_pred_is_literal_negativeInteger))
         self.register(pred["is-literal-unsignedLong"],
-                      ascondition=def_ext.condition_pred_is_literal_unsignedLong)
+                      asassign=def_ext.condition_pred_is_literal_unsignedLong)
         self.register(pred["is-literal-not-unsignedLong"],
-                      ascondition=invert.gen(def_ext.condition_pred_is_literal_unsignedLong))
+                      asassign=invert.gen(
+                          def_ext.condition_pred_is_literal_unsignedLong))
         self.register(pred["is-literal-unsignedInt"],
-                      ascondition=def_ext.condition_pred_is_literal_unsignedInt)
+                      asassign=def_ext.condition_pred_is_literal_unsignedInt)
         self.register(pred["is-literal-not-unsignedInt"],
-                      ascondition=def_ext.invert.gen(def_ext.condition_pred_is_literal_unsignedInt))
+                      asassign=def_ext.invert.gen(
+                          def_ext.condition_pred_is_literal_unsignedInt))
         self.register(pred["is-literal-unsignedShort"],
-                      ascondition=def_ext.condition_pred_is_literal_unsignedShort)
+                      asassign=def_ext.condition_pred_is_literal_unsignedShort)
         self.register(pred["is-literal-not-unsignedShort"],
-                      ascondition=invert.gen(def_ext.condition_pred_is_literal_unsignedShort))
+                      asassign=invert.gen(
+                          def_ext.condition_pred_is_literal_unsignedShort))
         self.register(pred["is-literal-unsignedByte"],
-                      ascondition=def_ext.condition_pred_is_literal_unsignedByte)
+                      asassign=def_ext.condition_pred_is_literal_unsignedByte)
         self.register(pred["is-literal-not-unsignedByte"],
-                      ascondition=invert.gen(def_ext.condition_pred_is_literal_unsignedByte))
-        #self.register(pred["is-literal-base64Binary"], ascondition=def_ext.ascondition_is_literal_base64Binary)
+                      asassign=invert.gen(
+                          def_ext.condition_pred_is_literal_unsignedByte))
         self.register(pred["is-literal-not-base64Binary"],
-                      ascondition=def_ext.ascondition_is_literal_not_base64Binary)
+                      asassign=def_ext.ascondition_is_literal_not_base64Binary)
         self.register(XSD["base64Binary"],
                       asassign=def_ext.asassign_xs_base64Binary)
         self.register(XSD["double"],
