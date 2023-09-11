@@ -1,8 +1,6 @@
 import abc
 #from .machine import FACTTYPE, MACHINESTATE, RUNNING_STATE, machine
 from . import abc_machine
-import durable.engine
-import durable.lang as rls
 from dataclasses import dataclass
 
 import logging
@@ -65,7 +63,6 @@ class machine_list(external):
 
     def __repr__(self) -> str:
         return "m[%s]" % ", ".join(str(x) for x in self.items)
-
 
 
 class fact_subclass(fact):
