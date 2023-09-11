@@ -15,7 +15,7 @@ ll = logging.getLogger(__name__)
 
 from .bridge_rdflib import rdflib2string, string2rdflib, term_list
 
-from ..shared import RDF, pred, func
+from ..shared import RDF, pred, func, entailment
 from . import machine_facts
 from .machine_facts import frame, member, subclass, fact, external, atom, rdflib2string
 #from .machine_facts import frame, member, subclass, fact
@@ -682,6 +682,13 @@ class _machine_default_externals(_base_durable_machine):
     """
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
+        self.__register_externals()
+        self.__register_importProfiles()
+
+    def __register_importProfiles(self):
+        self.available_import_profiles[entailment["OWL-Direct"]] = None
+
+    def __register_externals(self):
         from .default_externals import invert
         self.register(pred["numeric-equal"],
                       asassign=def_ext.numeric_equal)

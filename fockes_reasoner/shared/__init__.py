@@ -9,7 +9,7 @@ tmpdata = rdflib.Namespace("http://example.com/temporarydata#")
 focke = rdflib.Namespace("http://example.com/internaldata#")
 RIF = rdflib.Namespace("http://www.w3.org/2007/rif#")
 act = rdflib.Namespace("http://www.w3.org/2007/rif-builtin-action#")
-from .namespaces import func, pred, rif2internal
+from .namespaces import func, pred, rif2internal, entailment
 from rdflib import XSD
 from rdflib import RDF
 

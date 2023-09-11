@@ -57,6 +57,12 @@ class pred(DefinedNamespace):
             ]
     _NS = Namespace("http://www.w3.org/2007/rif-builtin-predicate#")
 
+class entailment(DefinedNamespace):
+    _extras = [
+            "OWL-Direct",
+            ]
+    _NS = Namespace("http://www.w3.org/ns/entailment/")
+
 class func(DefinedNamespace):
     _fail = True
 
