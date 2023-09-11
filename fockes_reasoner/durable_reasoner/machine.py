@@ -153,7 +153,6 @@ class _base_durable_machine(abc_machine.machine):
     available_import_profiles: MutableMapping[Optional[IdentifiedNode], importProfile]
 
     _registered_pattern_generator: Dict[IdentifiedNode, Callable[..., RESOLVABLE]]
-    _registered_condition_generator: Dict[IdentifiedNode, Callable[..., RESOLVABLE]]
     _registered_action_generator: Dict[IdentifiedNode, Callable[..., RESOLVABLE]]
     _registered_assignment_generator: Dict[IdentifiedNode, Callable[..., RESOLVABLE]]
     _imported_locations: Set[Optional[IdentifiedNode]]
@@ -168,7 +167,6 @@ class _base_durable_machine(abc_machine.machine):
         self._initialized = False
 
         self._registered_pattern_generator = {}
-        self._registered_condition_generator = {}
         self._registered_action_generator = {}
         self._registered_assignment_generator = {}
 
@@ -313,29 +311,11 @@ class _base_durable_machine(abc_machine.machine):
         useable_args = _transform_all_externals_to_calls(args, self)
         return mygen(*useable_args)
 
-    def _create_condition_from_external(self, op: IdentifiedNode, args: ATOM_ARGS) -> RESOLVABLE:
-        """Create a condition from given external.
-        :raises NoPossibleExternal: If given external is not defined or cant be used to
-            directly produce a condition raise this error.
-        """
-        try:
-            mygen = self._registered_condition_generator[op]
-        except KeyError as err:
-            raise NoPossibleExternal(op) from err
-        useable_args = _transform_all_externals_to_calls(args, self)
-        try:
-            return mygen(*useable_args)
-        except TypeError as err:
-            raise Exception(mygen, useable_args, op, args) from err
-
     def register(self, op: rdflib.URIRef, asaction: Optional[Callable] = None,
-            ascondition: Optional[Callable] = None,
             asassign: Optional[Callable] = None,
             aspattern: Optional[Callable] = None) -> None:
         if asaction is not None:
             self._registered_action_generator[op] = asaction
-        if ascondition is not None:
-            self._registered_condition_generator[op] = ascondition
         if asassign is not None:
             self._registered_assignment_generator[op] = asassign
         if aspattern is not None:
