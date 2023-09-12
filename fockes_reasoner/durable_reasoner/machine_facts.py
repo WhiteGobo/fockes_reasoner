@@ -297,7 +297,17 @@ class atom(fact):
 
     def as_dict(self, bindings: Optional[BINDING] = None,
                 ) -> Mapping[str, Union[str, Variable, TRANSLATEABLE_TYPES]]:
-        raise NotImplementedError()
+        if isinstance(self.op, external):
+            raise NotImplementedError()
+        pattern: Mapping[str, Union[str, Variable, TRANSLATEABLE_TYPES]]\
+                = {abc_machine.FACTTYPE: self.ID,
+                   self.ATOM_OP: self.op,
+                   }
+        for i, arg in enumerate(self.args):
+            if isinstance(arg, external):
+                raise NotImplementedError()
+            pattern[self.ATOM_ARGS % i] = arg
+        return pattern
 
     def check_for_pattern(self, c: abc_machine.machine,
                           bindings: BINDING = {},
