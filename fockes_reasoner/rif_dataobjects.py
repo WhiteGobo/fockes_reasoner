@@ -52,6 +52,7 @@ class _rif_check(abc.ABC):
         ...
 
 class rif_fact(pattern_generator, _rif_check, _action_gen, _rule_gen):
+    @abc.abstractmethod
     def _create_facts(self) -> Iterable[fact]:
         ...
 
