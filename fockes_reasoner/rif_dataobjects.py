@@ -337,6 +337,7 @@ class rif_implies:
     if_: Union["rif_frame"]
     then_: Union["rif_do"]
     #is set at end of file
+    _if_generators: Mapping[IdentifiedNode, Callable[[Graph, IdentifiedNode], Any]]
     _then_generators: Mapping[IdentifiedNode, Callable[[Graph, IdentifiedNode], Any]]
     def __init__(self, if_: Union["rif_frame"], then_: Union["rif_do"]):
         self.if_ = if_
@@ -400,8 +401,6 @@ class rif_implies:
     def from_rdf(cls, infograph: rdflib.Graph,
                  rootnode: rdflib.IdentifiedNode,
                  ) -> "rif_implies":
-        from .class_rdfmodel import rdfmodel
-        model = rdfmodel()
         if_node: IdentifiedNode
         then_node: IdentifiedNode
         info = dict(infograph.predicate_objects(rootnode))
@@ -410,8 +409,7 @@ class rif_implies:
             then_node = info[RIF["then"]] #type: ignore[assignment]
         except KeyError as err:
             raise RIFSyntaxError() from err
-        if_ = model.generate_object(infograph, if_node)
-        #then_ = model.generate_object(infograph, then_node)
+        if_ = _generate_object(infograph, if_node, cls._if_generators)
         then_ = _generate_object(infograph, then_node, cls._then_generators)
         return cls(if_, then_)
 
@@ -958,6 +956,12 @@ class rif_list(_resolvable_gen):
         return machine_list(items)
 
 
+rif_implies._if_generators = {
+        RIF.And: rif_and.from_rdf,
+        RIF.Frame: rif_frame.from_rdf,
+        RIF.Atom: rif_atom.from_rdf,
+        RIF.Subclass: rif_subclass.from_rdf,
+        }
 rif_implies._then_generators = {
         RIF.Frame: rif_frame.from_rdf,
         RIF.Do: rif_do.from_rdf,

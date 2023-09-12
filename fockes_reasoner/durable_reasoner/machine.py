@@ -685,10 +685,10 @@ class _machine_default_externals(_base_durable_machine):
         self.__register_externals()
         self.__register_importProfiles()
 
-    def __register_importProfiles(self):
+    def __register_importProfiles(self) -> None:
         self.available_import_profiles[entailment["OWL-Direct"]] = None
 
-    def __register_externals(self):
+    def __register_externals(self) -> None:
         from .default_externals import invert
         self.register(pred["numeric-equal"],
                       asassign=def_ext.numeric_equal)
