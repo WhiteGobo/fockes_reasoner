@@ -31,13 +31,45 @@ class NotPossibleAction(SyntaxError):
 class RIFSyntaxError(Exception):
     """The given RIF Document has syntaxerrors"""
 
-class rif_fact(pattern_generator, abc.ABC):
+class _action_gen(abc.ABC):
+    @abc.abstractmethod
+    def generate_action(self,
+                        machine: durable_reasoner.machine,
+                        ) -> Callable[..., None]:
+        ...
+
+class rif_fact(pattern_generator, _action_gen, abc.ABC):
+    def _create_facts(self) -> Iterable[fact]:
+        ...
+
     @abc.abstractmethod
     def check(self,
             machine: durable_reasoner.machine,
             bindings: BINDING = {},
             ) -> bool:
         ...
+
+    @dataclass
+    class __assert_action(_child_action):
+        parent: "rif_fact"
+        facts: Iterable[fact]
+        machine: durable_reasoner.machine
+        def __call__(self, bindings: BINDING) -> None:
+            for f in self.facts:
+                f.assert_fact(self.machine, bindings)
+
+    def generate_action(self,
+                        machine: durable_reasoner.machine,
+                        ) -> Callable[..., None]:
+        return self.generate_assert_action(machine)
+
+    def generate_assert_action(self,
+                               machine: durable_reasoner.machine,
+                               ) -> Callable[[machine_facts.BINDING], None]:
+        """
+        :TODO: Creation of variable is not safe
+        """
+        return self.__assert_action(self, self.facts, machine)
 
 
 class _resolvable_gen(abc.ABC):
@@ -61,13 +93,6 @@ def _try_as_machinefact(x: Union[TRANSLATEABLE_TYPES, external, Variable, _resol
         return x.as_machinefact()
     else:
         return x
-
-class _action_gen(abc.ABC):
-    @abc.abstractmethod
-    def generate_action(self,
-                        machine: durable_reasoner.machine,
-                        ) -> Callable[..., None]:
-        ...
 
 def _generate_object(infograph: Graph, target: IdentifiedNode,
                      type_to_generator: Mapping[IdentifiedNode, Callable[[Graph, IdentifiedNode], Any]]) -> Any:
@@ -251,7 +276,10 @@ class rif_forall:
         self.formula = formula
         self.pattern = pattern
 
-    def _create_generell_rule_without_pattern(self, machine: durable_reasoner.machine) -> None:
+    def _create_generell_rule_without_pattern(
+            self,
+            machine: durable_reasoner.machine,
+            ) -> None:
         newrule = machine.create_rule_builder()
         conditions: list[Callable[[BINDING], Union[Literal, bool]]] = []
         if isinstance(self.formula.if_, rif_and):
@@ -492,6 +520,11 @@ class rif_atom(rif_fact):
         self.args = list(args)
 
     def _add_pattern(self, rule: durable_reasoner.rule) -> None:
+        args = [_try_as_machinefact(arg) for arg in self.args]
+        f = machine_facts.atom(self.op, args)
+        rule.orig_pattern.append(f)
+
+    def _create_facts(self) -> Iterable[fact]:
         raise NotImplementedError()
 
     def check(self,
@@ -619,6 +652,9 @@ class rif_subclass(rif_fact):
     def __init__(self, sub_class: ATOM, super_class: ATOM) -> None:
         self.sub_class = sub_class
         self.super_class = super_class
+
+    def _create_facts(self) -> Iterable[fact]:
+        raise NotImplementedError()
 
     @classmethod
     def from_rdf(cls, infograph: rdflib.Graph,
@@ -752,6 +788,9 @@ class rif_frame(rif_fact):
         slots = ", ".join("%s->%s"%(conv(slotkey), conv(slotvalue))
                           for slotkey, slotvalue in self.slots)
         return "%s[%s]" % (conv(self.obj), slots) #type: ignore[arg-type]
+
+    def _create_facts(self) -> Iterable[fact]:
+        raise NotImplementedError()
 
     @classmethod
     def from_rdf(cls, infograph: rdflib.Graph,
