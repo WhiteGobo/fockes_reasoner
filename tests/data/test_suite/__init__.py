@@ -25,7 +25,7 @@ class NegativeEntailmentTest:
         yield self.nonconclusion
         yield self.importedDocuments
 
-from .Core.PositiveEntailmentTest import Modeling_Brain_Anatomy
+from .Core.PositiveEntailmentTest import Modeling_Brain_Anatomy, IRI_from_RDF_Literal
 PET_Assert = PositiveEntailmentTest(
         _PRD.joinpath("PositiveEntailmentTest/Assert/Assert-premise.rif"),
         _PRD.joinpath("PositiveEntailmentTest/Assert/Assert-conclusion.rif"),
@@ -130,9 +130,12 @@ PET_Guards_and_subtypes = PositiveEntailmentTest(
         _Core.joinpath("PositiveEntailmentTest/Guards_and_subtypes/Guards_and_subtypes-premise.rif"),
         _Core.joinpath("PositiveEntailmentTest/Guards_and_subtypes/Guards_and_subtypes-conclusion.rif"),
         )
+tmp = files(IRI_from_RDF_Literal)
 PET_IRI_from_RDF_Literal = PositiveEntailmentTest(
         _Core.joinpath("PositiveEntailmentTest/IRI_from_RDF_Literal/IRI_from_RDF_Literal-premise.rif"),
         _Core.joinpath("PositiveEntailmentTest/IRI_from_RDF_Literal/IRI_from_RDF_Literal-conclusion.rif"),
+        {"http://www.w3.org/2005/rules/test/repository/tc/IRI_from_RDF_Literal/IRI_from_RDF_Literal-import001":
+         tmp.joinpath("IRI_from_RDF_Literal-import001.ttl")},
         )
 tmp = files(Modeling_Brain_Anatomy)
 PET_Modeling_Brain_Anatomy = PositiveEntailmentTest(
