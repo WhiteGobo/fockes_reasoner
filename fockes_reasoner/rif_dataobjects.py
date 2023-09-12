@@ -475,6 +475,9 @@ class rif_exists(_rif_check):
     def __init__(self, formula: rif_fact):
         self.formula = formula
 
+    def _add_pattern(self, rule: durable_reasoner.rule) -> None:
+        raise NotImplementedError()
+
     def check(self,
             machine: durable_reasoner.machine,
             bindings: BINDING = {},
