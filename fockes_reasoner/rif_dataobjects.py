@@ -43,7 +43,10 @@ class _action_gen(abc.ABC):
                         ) -> Callable[..., None]:
         ...
 
-class _rif_check(abc.ABC):
+class _rif_check(pattern_generator, abc.ABC):
+    """Class that has everything to do with checking if some type of statement
+    holds true or not.
+    """
     @abc.abstractmethod
     def check(self,
             machine: durable_reasoner.machine,
@@ -51,7 +54,7 @@ class _rif_check(abc.ABC):
             ) -> bool:
         ...
 
-class rif_fact(pattern_generator, _rif_check, _action_gen, _rule_gen):
+class rif_fact(_rif_check, _action_gen, _rule_gen):
     @abc.abstractmethod
     def _create_facts(self) -> Iterable[fact]:
         ...
@@ -467,16 +470,33 @@ class rif_implies(_rule_gen):
         return "If %s Then %s" %(self.if_, self.then_)
 
 class rif_exists(_rif_check):
+    formula: rif_fact
+    _formula_generators: Mapping[IdentifiedNode, Callable[[Graph, IdentifiedNode], rif_fact]]
+    def __init__(self, formula: rif_fact):
+        self.formula = formula
+
+    def check(self,
+            machine: durable_reasoner.machine,
+            bindings: BINDING = {},
+            ) -> bool:
+        raise NotImplementedError()
+
     @classmethod
     def from_rdf(cls, infograph: rdflib.Graph,
                  rootnode: IdentifiedNode,
                  ) -> "rif_exists":
-        raise NotImplementedError()
+        vars_node, = infograph.objects(rootnode, RIF.vars)
+        var_list = rdflib.collection.Collection(infograph, vars_node)
+        formula_node, = infograph.objects(rootnode, RIF.formula)
+        assert isinstance(formula_node, IdentifiedNode)
+        formula = _generate_object(infograph, formula_node,
+                                   cls._formula_generators)
+        return cls(formula)
 
-class rif_and(pattern_generator, _rif_check):
-    formulas: Iterable[Union["rif_frame"]]
-    _formulas_generators: Mapping
-    def __init__(self, formulas: Iterable[Union["rif_frame"]]):
+class rif_and(_rif_check):
+    formulas: Iterable[_rif_check]
+    _formulas_generators: Mapping[IdentifiedNode, Callable[[Graph, IdentifiedNode], _rif_check]]
+    def __init__(self, formulas: Iterable[_rif_check]):
         self.formulas = list(formulas)
 
     def check(self,
@@ -614,13 +634,19 @@ class rif_atom(rif_fact):
     def __repr__(self) -> str:
         return "%s (%s)" % (self.op, ", ".join(str(x) for x in self.args))
 
-class rif_external(_resolvable_gen, pattern_generator):
+class rif_external(_resolvable_gen, _rif_check):
     op: URIRef
     args: Sequence[ATOM]
     _atom_args_generator: Mapping[IdentifiedNode, Callable[[Graph, IdentifiedNode], ATOM]]
     def __init__(self, op: URIRef, args: Iterable[ATOM]):
         self.op = op
         self.args = list(args)
+
+    def check(self,
+            machine: durable_reasoner.machine,
+            bindings: BINDING = {},
+            ) -> bool:
+        raise NotImplementedError()
 
     def as_machinefact(self) -> external:
         args = [x.as_machinefact() if isinstance(x, _resolvable_gen) else x for x in self.args]
@@ -1038,12 +1064,19 @@ rif_implies._then_generators = {
         RIF.Atom: rif_atom.from_rdf,
         }
 
-_formulas = {RIF.External: rif_external.from_rdf,
-             RIF.Frame: rif_frame.from_rdf,
-             RIF.Equal: rif_equal.from_rdf,
-             RIF.Atom: rif_atom.from_rdf,
-             }
+_formulas: Mapping[IdentifiedNode, Callable[[Graph, IdentifiedNode],
+                                            _rif_check]]\
+        = {RIF.External: rif_external.from_rdf,
+           RIF.Frame: rif_frame.from_rdf,
+           RIF.Equal: rif_equal.from_rdf,
+           RIF.Atom: rif_atom.from_rdf,
+           }
 rif_and._formulas_generators = dict(_formulas)
+rif_exists._formula_generators = {#RIF.External: rif_external.from_rdf,
+                                  RIF.Frame: rif_frame.from_rdf,
+                                  #RIF.Equal: rif_equal.from_rdf,
+                                  RIF.Atom: rif_atom.from_rdf,
+                                  }
 #rif_equal._side_generators = {}
 rif_group._sentence_generators = {
         RIF.Forall: rif_forall.from_rdf,
@@ -1061,6 +1094,7 @@ _term_generators: Mapping[IdentifiedNode, Callable[[Graph, IdentifiedNode], ATOM
         }
 rif_external._atom_args_generator = _term_generators
 rif_list._item_generator = _term_generators
+
 
 def _get_resolveable(x: Union[TRANSLATEABLE_TYPES, _resolvable_gen, Variable], machine: durable_reasoner.machine) -> RESOLVABLE:
     if isinstance(x, (IdentifiedNode, Literal, Variable, term_list)):
