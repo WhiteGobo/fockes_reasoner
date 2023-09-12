@@ -59,12 +59,18 @@ class rif_fact(_rif_check, _action_gen, _rule_gen):
     def _create_facts(self) -> Iterable[fact]:
         ...
 
-    @abc.abstractmethod
     def check(self,
             machine: durable_reasoner.machine,
             bindings: BINDING = {},
             ) -> bool:
-        ...
+        """Checks if all micro-facts are true for given machine.
+        Variables are treated as blanks if not given by bindings,
+        so accepts instead of a variable anything.
+        """
+        for f in self._create_facts():
+            if not f.check_for_pattern(machine, bindings):
+                return False
+        return True
 
     @dataclass
     class __assert_action(_child_action):
@@ -482,7 +488,7 @@ class rif_exists(_rif_check):
             machine: durable_reasoner.machine,
             bindings: BINDING = {},
             ) -> bool:
-        raise NotImplementedError()
+        return self.formula.check(machine, bindings)
 
     @classmethod
     def from_rdf(cls, infograph: rdflib.Graph,
@@ -765,16 +771,9 @@ class rif_frame(rif_fact):
             sk = _try_as_machinefact(slotkey)
             sv = _try_as_machinefact(slotvalue)
             yield machine_facts.frame(obj, sk, sv)
-        
 
-    def check(self,
-            machine: durable_reasoner.machine,
-            bindings: BINDING = {},
-            ) -> bool:
-        for f in self.facts:
-            if not f.check_for_pattern(machine, bindings):
-                return False
-        return True
+    def _create_facts(self) -> Iterable[fact]:
+        return self.facts
 
     @property
     def _machinefact_slots(self) -> Iterable[Tuple[Union[TRANSLATEABLE_TYPES, external, Variable], Union[TRANSLATEABLE_TYPES, external, Variable]]]:
@@ -847,9 +846,6 @@ class rif_frame(rif_fact):
         slots = ", ".join("%s->%s"%(conv(slotkey), conv(slotvalue))
                           for slotkey, slotvalue in self.slots)
         return "%s[%s]" % (conv(self.obj), slots) #type: ignore[arg-type]
-
-    def _create_facts(self) -> Iterable[fact]:
-        raise NotImplementedError()
 
     @classmethod
     def from_rdf(cls, infograph: rdflib.Graph,
