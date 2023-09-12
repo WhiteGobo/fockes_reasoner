@@ -1005,6 +1005,7 @@ rif_implies._if_generators = {
         RIF.Frame: rif_frame.from_rdf,
         RIF.Atom: rif_atom.from_rdf,
         RIF.Subclass: rif_subclass.from_rdf,
+        RIF.External: rif_external.from_rdf,
         }
 rif_implies._then_generators = {
         RIF.Frame: rif_frame.from_rdf,
