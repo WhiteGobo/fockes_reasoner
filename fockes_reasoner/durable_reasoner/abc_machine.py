@@ -74,6 +74,10 @@ class fact(abc.ABC):
     def check_for_pattern(self, c: "machine",
                           bindings: BINDING = {},
                           ) -> bool:
+        """Checks if all fact is true for given machine.
+        Variables are treated as blanks if not given by bindings,
+        so accepts anything instead of a variable.
+        """
         ...
 
     @abc.abstractmethod

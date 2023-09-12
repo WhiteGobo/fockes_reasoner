@@ -18,6 +18,9 @@ from .bridge_rdflib import *
 from .bridge_rdflib import term_list, _term_list
 from .abc_machine import fact
 
+class _NotBoundVar(KeyError):
+    ...
+
 class external(abc_external):
     op: URIRef
     args: Iterable[Union[TRANSLATEABLE_TYPES, "external", Variable]]
@@ -90,7 +93,10 @@ class fact_subclass(fact):
                 (self.SUBCLASS_SUB, self.sub_class),
                 (self.SUBCLASS_SUPER, self.super_class),
                 ]:
-            fact[label] = _node2string(x, c, bindings)
+            try:
+                fact[label] = _node2string(x, c, bindings)
+            except _NotBoundVar:
+                pass
         for _ in c.get_facts(fact):
             #triggers, when any corresponding fact is found
             return True
@@ -184,7 +190,10 @@ class frame(fact):
                 (self.FRAME_SLOTKEY, self.slotkey),
                 (self.FRAME_SLOTVALUE, self.slotvalue),
                 ]:
-            fact[label] = _node2string(x, c, bindings)
+            try:
+                fact[label] = _node2string(x, c, bindings)
+            except _NotBoundVar:
+                pass
         for _ in c.get_facts(fact):
             #triggers, when any corresponding fact is found
             return True
@@ -317,7 +326,10 @@ class atom(fact):
         fact[self.ATOM_OP] = _node2string(self.op, c, bindings)
         for i, x in enumerate(self.args):
             label = self.ATOM_ARGS % i
-            fact[label] = _node2string(x, c, bindings)
+            try:
+                fact[label] = _node2string(x, c, bindings)
+            except _NotBoundVar:
+                pass
             #fact[label] = rdflib2string(_resolve(x, bindings))
         for _ in c.get_facts(fact):
             #triggers, when any corresponding fact is found
@@ -367,8 +379,8 @@ def _node2string(x: Union[TRANSLATEABLE_TYPES, Variable, str, abc_external],
         try:
             return rdflib2string(bindings[x])
         except KeyError as err:
-            raise Exception("Tried to get not yet bind variable '%s' from %s"
-                            % (x, bindings)) from err
+            raise _NotBoundVar("Tried to get not yet bind variable '%s' "
+                               "from %s" % (x, bindings)) from err
     elif isinstance(x, (URIRef, BNode, Literal)):
         return rdflib2string(x)
     elif isinstance(x, external):
