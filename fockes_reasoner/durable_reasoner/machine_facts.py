@@ -317,8 +317,8 @@ class atom(fact):
         fact[self.ATOM_OP] = _node2string(self.op, c, bindings)
         for i, x in enumerate(self.args):
             label = self.ATOM_ARGS % i
-            #fact[label] = _node2string(x, c, bindings)
-            fact[label] = rdflib2string(_resolve(x, bindings))
+            fact[label] = _node2string(x, c, bindings)
+            #fact[label] = rdflib2string(_resolve(x, bindings))
         for _ in c.get_facts(fact):
             #triggers, when any corresponding fact is found
             return True
@@ -331,7 +331,7 @@ class atom(fact):
         fact[self.ATOM_OP] = _node2string(self.op, c, bindings)
         for i, x in enumerate(self.args):
             label = self.ATOM_ARGS % i
-            fact[label] = rdflib2string(_resolve(x, bindings))
+            fact[label] = _node2string(x, c, bindings)
         c.assert_fact(fact)
 
     def retract_fact(self, c: abc_machine.machine,

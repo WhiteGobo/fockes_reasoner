@@ -589,8 +589,7 @@ class rif_atom(rif_fact):
         """
         logger.info("op: %s\nargs: %s" % (self.op, self.args))
         binding_actions: list[Callable[[BINDING], None]] = []
-        args = [_get_resolveable(x, machine) for x in self.args]
-        #args = [_try_as_machinefact(arg) for arg in self.args]
+        args = [_try_as_machinefact(arg) for arg in self.args]
         fact = machine_facts.atom(self.op, args)
         return self.assert_action(self, fact, binding_actions, machine)
 
