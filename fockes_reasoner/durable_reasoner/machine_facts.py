@@ -285,12 +285,12 @@ class subclass(fact):
 class atom(fact):
     ID: str = "atom"
     op: typ.Union[TRANSLATEABLE_TYPES, external, Variable]
-    args: Iterable[RESOLVABLE]
+    args: Iterable[Union[TRANSLATEABLE_TYPES, external, Variable]]
     """facttype :term:`atom` are labeled with this."""
     ATOM_OP = "op"
     ATOM_ARGS = "args%d"
     def __init__(self, op: typ.Union[TRANSLATEABLE_TYPES, external, Variable],
-                 args: Iterable[RESOLVABLE],
+                 args: Iterable[Union[TRANSLATEABLE_TYPES, external, Variable]],
                  ) -> None:
         self.op = op
         self.args = tuple(args)
@@ -299,7 +299,8 @@ class atom(fact):
                 ) -> Mapping[str, Union[str, Variable, TRANSLATEABLE_TYPES]]:
         if isinstance(self.op, external):
             raise NotImplementedError()
-        pattern: Mapping[str, Union[str, Variable, TRANSLATEABLE_TYPES]]\
+        pattern: MutableMapping[str,
+                                Union[str, Variable, TRANSLATEABLE_TYPES]]\
                 = {abc_machine.FACTTYPE: self.ID,
                    self.ATOM_OP: self.op,
                    }

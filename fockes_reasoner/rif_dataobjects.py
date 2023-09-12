@@ -83,7 +83,7 @@ class rif_fact(pattern_generator, _rif_check, _action_gen, _rule_gen):
         """
         :TODO: Creation of variable is not safe
         """
-        return self.__assert_action(self, self.facts, machine)
+        return self.__assert_action(self, self._create_facts(), machine)
 
     def create_rules(self, machine: durable_reasoner.machine) -> None:
         """Is called, when frame is direct sub to a Group"""
@@ -164,6 +164,7 @@ class rif_document:
         """
         :param extraDocuments: A Manager of all importable documents
         """
+        directives_lists: Iterable[IdentifiedNode]
         kwargs = {}
         payload_nodes: list[IdentifiedNode] = list(infograph.objects(rootnode, RIF.payload)) #type: ignore[assignment, arg-type]
         if len(payload_nodes) == 1:
@@ -180,7 +181,7 @@ class rif_document:
         try:
             directives_node, = infograph.objects(rootnode, RIF.directives)
             directives_lists = rdflib.collection.Collection(infograph, directives_node)
-            typ.cast(directives_lists, Iterable[IdentifiedNode])
+            typ.cast(Iterable[IdentifiedNode], directives_lists)
         except ValueError:
             directives_lists = []
         for directive_node in directives_lists:
@@ -243,6 +244,7 @@ class rif_import:
                  extraDocuments: Mapping[IdentifiedNode, Graph] = {},
                  **kwargs: Any) -> "rif_import":
         location, = infograph.objects(rootnode, RIF.location)
+        assert isinstance(location, Literal)
         loc_as_uri = URIRef(location)
         if loc_as_uri not in extraDocuments:
             raise SyntaxError("Have the directive to import '%s' but it isnt "
@@ -251,8 +253,8 @@ class rif_import:
         profile = infograph.value(rootnode, RIF.profile)
         #assert isinstance(location, URIRef), repr(location)
         if profile:
-            return cls(extraDocuments, URIRef(location), URIRef(profile))
-        return cls(extraDocuments, URIRef(location))
+            return cls(extraDocuments, loc_as_uri, URIRef(profile))
+        return cls(extraDocuments, loc_as_uri)
 
 
 class rif_group(_rule_gen):
@@ -563,8 +565,9 @@ class rif_atom(rif_fact):
             machine: durable_reasoner.machine,
             bindings: BINDING = {},
             ) -> bool:
-        args: list[RESOLVABLE] = [_get_resolveable(x, machine) for x in self.args]
-        f = machine_facts.atom(self.op, args)
+        args_ = [_try_as_machinefact(arg) for arg in self.args]
+        #args: list[RESOLVABLE] = [_get_resolveable(x, machine) for x in args_]
+        f = machine_facts.atom(self.op, args_)
         return f.check_for_pattern(machine, bindings)
 
     @dataclass
@@ -587,6 +590,7 @@ class rif_atom(rif_fact):
         logger.info("op: %s\nargs: %s" % (self.op, self.args))
         binding_actions: list[Callable[[BINDING], None]] = []
         args = [_get_resolveable(x, machine) for x in self.args]
+        #args = [_try_as_machinefact(arg) for arg in self.args]
         fact = machine_facts.atom(self.op, args)
         return self.assert_action(self, fact, binding_actions, machine)
 

@@ -398,7 +398,7 @@ class condition_pred_is_literal_integer:
     target: RESOLVABLE
     def __call__(self, bindings: BINDING) -> Literal:
         t = _resolve(self.target, bindings)
-        logger.critical(type(t.value))
+        assert isinstance(t, Literal)
         if t.datatype == XSD.integer:
             return Literal(True)
         try:
