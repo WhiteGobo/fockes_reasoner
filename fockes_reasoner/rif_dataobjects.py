@@ -31,6 +31,11 @@ class NotPossibleAction(SyntaxError):
 class RIFSyntaxError(Exception):
     """The given RIF Document has syntaxerrors"""
 
+class _rule_gen(abc.ABC):
+    @abc.abstractmethod
+    def create_rules(self, machine: durable_reasoner.machine) -> None:
+        ...
+
 class _action_gen(abc.ABC):
     @abc.abstractmethod
     def generate_action(self,
@@ -38,7 +43,7 @@ class _action_gen(abc.ABC):
                         ) -> Callable[..., None]:
         ...
 
-class rif_fact(pattern_generator, _action_gen, abc.ABC):
+class rif_fact(pattern_generator, _action_gen, _rule_gen):
     def _create_facts(self) -> Iterable[fact]:
         ...
 
@@ -241,7 +246,7 @@ class rif_import:
         return cls(extraDocuments, URIRef(location))
 
 
-class rif_group:
+class rif_group(_rule_gen):
     sentences: tuple[Union["rif_forall", "rif_frame", "rif_group", "rif_implies"], ...]
     _sentence_generators: Mapping[IdentifiedNode, Callable[[Graph, IdentifiedNode], Any]]
     def __init__(self,
@@ -273,7 +278,7 @@ class rif_group:
         return "Group (%s)" % ", ".join(repr(x) for x in self.sentences)
 
 
-class rif_forall:
+class rif_forall(_rule_gen):
     formula: Union["rif_implies"]
     pattern: Union[None]
     def __init__(self, formula: Union["rif_implies"],
@@ -366,7 +371,7 @@ class rif_forall:
             return "Forall ? such that %s (%s)" % (self.pattern, self.formula)
 
 
-class rif_implies:
+class rif_implies(_rule_gen):
     if_: Union["rif_frame"]
     then_: Union["rif_do"]
     #is set at end of file
@@ -644,7 +649,7 @@ class rif_external(_resolvable_gen, pattern_generator):
         return "external %s (%s)" % (self.op, ", ".join(str(x) for x in self.args))
 
 
-class rif_member:
+class rif_member(rif_fact):
     @classmethod
     def from_rdf(cls, infograph: rdflib.Graph,
                  rootnode: rdflib.IdentifiedNode,
@@ -814,7 +819,7 @@ class rif_frame(rif_fact):
                 "rif_external not valid as input for frame.obj"
         return cls(obj, slotinfo, **kwargs)
 
-class rif_retract:
+class rif_retract(_action_gen):
     #fact: Optional[Union[rif_frame]]
     #atom: Optional[Union[IdentifiedNode]]
     def __init__(self, fact_or_atom: Union[rif_frame, IdentifiedNode]):
@@ -869,7 +874,7 @@ class rif_ineg:
     def __repr__(self) -> str:
         return "INeg( %s )" % self.formula
 
-class rif_modify:
+class rif_modify(_action_gen):
     fact: Union[rif_frame]
     def __init__(self, fact: Union[rif_frame]):
         self.fact = fact
@@ -895,7 +900,7 @@ class rif_modify:
         return "Modify(%s)" % self.fact
 
 
-class rif_assert:
+class rif_assert(_action_gen):
     fact: Union[rif_frame]
     def __init__(self, fact: Union[rif_frame]):
         self.fact = fact
