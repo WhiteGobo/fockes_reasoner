@@ -3,7 +3,14 @@ Document(
   Prefix(func <http://www.w3.org/2007/rif-builtin-function#>)
   
   Group  (
-    Forall ?x ( ex:a(External(func:numeric-add(?x 1))) :- ex:a(?x) )
+	  Forall ?x (
+	  	If ex:a(?x)
+	  	Then ex:b(External(func:numeric-add(?x 1)))
+	  )
+	  Forall ?x (
+	  	If ex:b(?x)
+	  	Then ex:c(External(func:numeric-add(?x 1)))
+	  )
     ex:a(1)
   ) 
 )
