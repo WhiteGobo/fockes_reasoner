@@ -690,6 +690,8 @@ class _machine_default_externals(_base_durable_machine):
 
     def __register_externals(self) -> None:
         from .default_externals import invert
+        self.register(pred["iri-string"],
+                      asassign=def_ext.pred_iri_string)
         self.register(pred["numeric-equal"],
                       asassign=def_ext.numeric_equal)
         self.register(pred["numeric-not-equal"],

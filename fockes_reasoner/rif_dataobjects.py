@@ -43,7 +43,15 @@ class _action_gen(abc.ABC):
                         ) -> Callable[..., None]:
         ...
 
-class rif_fact(pattern_generator, _action_gen, _rule_gen):
+class _rif_check(abc.ABC):
+    @abc.abstractmethod
+    def check(self,
+            machine: durable_reasoner.machine,
+            bindings: BINDING = {},
+            ) -> bool:
+        ...
+
+class rif_fact(pattern_generator, _rif_check, _action_gen, _rule_gen):
     def _create_facts(self) -> Iterable[fact]:
         ...
 
@@ -455,11 +463,24 @@ class rif_implies(_rule_gen):
     def __repr__(self) -> str:
         return "If %s Then %s" %(self.if_, self.then_)
 
-class rif_and(pattern_generator):
+class rif_exists(_rif_check):
+    @classmethod
+    def from_rdf(cls, infograph: rdflib.Graph,
+                 rootnode: IdentifiedNode,
+                 ) -> "rif_exists":
+        raise NotImplementedError()
+
+class rif_and(pattern_generator, _rif_check):
     formulas: Iterable[Union["rif_frame"]]
     _formulas_generators: Mapping
     def __init__(self, formulas: Iterable[Union["rif_frame"]]):
         self.formulas = list(formulas)
+
+    def check(self,
+            machine: durable_reasoner.machine,
+            bindings: BINDING = {},
+            ) -> bool:
+        return all(f.check(machine, bindings) for f in self.formulas)
 
     def _add_pattern(self, rule: durable_reasoner.rule) -> None:
         for form in self.formulas:

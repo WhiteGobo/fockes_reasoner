@@ -378,6 +378,21 @@ class condition_pred_is_literal_not_float:
         t = _resolve(self.target, bindings)
         return Literal(t.datatype != XSD.float)#type: ignore[union-attr]
 
+class pred_iri_string:
+    """Assigns to given variable the string as iri
+    """
+    target_var: Variable
+    source_string: RESOLVABLE
+    def __init__(self, target_var: Variable, source_string: RESOLVABLE) -> None:
+        assert isinstance(target_var, Variable)
+        self.target_var = target_var
+        self.source_string = source_string
+    def __call__(self, bindings: BINDING) -> Literal:
+        assert self.target_var not in bindings
+        s = _resolve(self.source_string, bindings)
+        bindings[self.target_var] = s
+        return Literal(True)
+
 @dataclass
 class condition_pred_is_literal_integer:
     target: RESOLVABLE
