@@ -383,7 +383,23 @@ class condition_pred_is_literal_integer:
     target: RESOLVABLE
     def __call__(self, bindings: BINDING) -> Literal:
         t = _resolve(self.target, bindings)
-        return Literal(t.datatype == XSD.integer)#type: ignore[union-attr]
+        logger.critical(type(t.value))
+        if t.datatype == XSD.integer:
+            return Literal(True)
+        try:
+            if isinstance(t.value, int):
+                return Literal(True)
+            try:
+                return Literal(t.value.is_integer())
+            except AttributeError:
+                pass #not a float
+            try:
+                return Literal(t.value.as_integer_ratio()[1] == 1)
+            except AttributeError:
+                pass #not a decimal.Decimal
+        except AttributeError:
+            pass
+        return Literal(False)
 
 @dataclass
 class condition_pred_is_literal_long:
