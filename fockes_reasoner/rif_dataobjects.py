@@ -71,6 +71,11 @@ class rif_fact(pattern_generator, _action_gen, abc.ABC):
         """
         return self.__assert_action(self, self.facts, machine)
 
+    def create_rules(self, machine: durable_reasoner.machine) -> None:
+        """Is called, when frame is direct sub to a Group"""
+        action = self.generate_assert_action(machine)
+        machine.add_init_action(action)
+
 
 class _resolvable_gen(abc.ABC):
     """Subclass can be used to retrieve a :term:`translateable object` as
@@ -765,11 +770,6 @@ class rif_frame(rif_fact):
         for slotkey, slotvalue in self._machinefact_slots:
             facts.append(machine_facts.frame(obj, slotkey, slotvalue))
         return self.__assert_action(self, facts, machine)
-
-    def create_rules(self, machine: durable_reasoner.machine) -> None:
-        """Is called, when frame is direct sub to a Group"""
-        action = self.generate_assert_action(machine)
-        machine.add_init_action(action)
 
     def __repr__(self) -> str:
         name = type(self).__name__
