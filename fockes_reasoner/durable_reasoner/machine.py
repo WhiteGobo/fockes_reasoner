@@ -3,6 +3,7 @@ import durable.engine
 import uuid
 import abc
 import logging
+logger = logging.getLogger(__name__)
 import traceback
 from typing import Union, Mapping, Iterable, Callable, Any, MutableMapping, Optional, Container, Dict, Set, get_args, Tuple, List
 from dataclasses import dataclass
@@ -11,7 +12,6 @@ import rdflib
 from rdflib import URIRef, Variable, Literal, BNode, Graph, IdentifiedNode, XSD
 from . import abc_machine
 from .abc_machine import TRANSLATEABLE_TYPES, FACTTYPE, BINDING, VARIABLE_LOCATOR, NoPossibleExternal, importProfile, RESOLVABLE, ATOM_ARGS, abc_external, RESOLVER, RuleNotComplete, pattern_generator
-ll = logging.getLogger(__name__)
 
 from .bridge_rdflib import rdflib2string, string2rdflib, term_list
 
@@ -149,6 +149,9 @@ def _transform_all_externals_to_calls(args: ATOM_ARGS,
 class _base_durable_machine(abc_machine.machine):
     _ruleset: rls.ruleset
     logger: logging.Logger
+    """Logger for specific output, expected from the machine, eg execute:print.
+    Also logs internal failures.
+    """
     errors: list
     _current_context: _context_helper
     _initialized: bool
@@ -460,6 +463,7 @@ class durable_rule(abc_machine.implication, abc_machine.rule):
             if self._parent.finalized:
                 raise SyntaxError("Cant change pattern after finalizing.")
             assert isinstance(item, (fact, abc_external))
+            logger.debug((item, index))
             self._parent._orig_pattern.insert(index, item)
 
         def __bool__(self) -> bool:
@@ -469,10 +473,10 @@ class durable_rule(abc_machine.implication, abc_machine.rule):
                    ) -> None:
             if isinstance(item, pattern_generator):
                 item._add_pattern(self._parent)
-            elif isinstance(item, abc_external):
-                self.insert(-1, item)
+            elif isinstance(item, (abc_external, fact)):
+                self.insert(len(self), item)
             else:
-                self.insert(-1, item)
+                raise NotImplementedError()
 
     @property
     def orig_pattern(self) -> _pattern_organizer:
@@ -580,6 +584,7 @@ class durable_rule(abc_machine.implication, abc_machine.rule):
         self.finalized = True
         patterns, conditions, bindings = self._generate_action_prerequisites()
         action = self._generate_action(conditions)
+        logger.debug("Create rule %s" % self)
         self.machine._make_rule(patterns, action, bindings)
 
     def _process_external(
@@ -666,7 +671,7 @@ class _value_locator:
         try:
             val = getattr(fact, self.in_fact_label)
         except Exception:
-            ll.critical("In facts(%s) value locator failed: %s" % (c._m, self))
+            logger.critical("In facts(%s) value locator failed: %s" % (c._m, self))
             raise
         if isinstance(val, str):
             return string2rdflib(val)
