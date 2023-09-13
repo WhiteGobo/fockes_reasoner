@@ -43,7 +43,8 @@ class external(abc_external):
         return self.__resolver(self, self.op, args, machine)
 
     def __repr__(self) -> str:
-        return "external %s(%s)" % (self.op, ", ".join(str(x) for x in self.args))
+        return "external %s(%s)" % (self.op,
+                                    ", ".join(_pretty(x) for x in self.args))
 
 
 class machine_list(external):
@@ -214,7 +215,9 @@ class frame(fact):
         c.retract_fact(fact)
 
     def __repr__(self) -> str:
-        return "%s[%s->%s]" % (self.obj, self.slotkey, self.slotvalue)
+        return "%s[%s->%s]" % (_pretty(self.obj),
+                               _pretty(self.slotkey),
+                               _pretty(self.slotvalue))
 
     def modify_fact(self, c: abc_machine.machine,
                bindings: BINDING = {},
@@ -405,4 +408,17 @@ class retract_object_function:
 
     def __repr__(self) -> str:
         return "Retract(%s)" % self.atom
+
+def _pretty(t: Union[TRANSLATEABLE_TYPES, external, Variable]) -> str:
+    """Prints a representation of given input for representation of facts"""
+    if isinstance(t, Literal):
+        return repr(t)
+    elif isinstance(t, Variable):
+        return "?%s" % t
+    elif isinstance(t, URIRef):
+        return "<%s>" % t
+    elif isinstance(t, BNode):
+        return "_:%s" % t
+    else:
+        return repr(t)
 
