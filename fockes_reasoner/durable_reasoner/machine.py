@@ -543,10 +543,13 @@ class durable_rule(abc_machine.implication, abc_machine.rule):
         patterns: list[rls.value] = []
         for q in self.orig_pattern:
             if isinstance(q, fact):
+                logger.debug("appends %s as pattern." % q)
                 patterns.append(self._generate_pattern(q.as_dict(),
                                                        bindings))
             elif isinstance(q, abc_external):
                 tmp_p, tmp_c = self._process_external(q.op, q.args)
+                logger.debug("uses %s to append:\npattern: %s\ncondition: %s"
+                             %(q, tmp_p, tmp_c))
                 patterns.extend(tmp_p)
                 conditions.extend(tmp_c)
             else:
@@ -565,15 +568,12 @@ class durable_rule(abc_machine.implication, abc_machine.rule):
     def _generate_action(
             self,
             conditions: Iterable[Callable[[BINDING], Literal]],
+            action: Callable[[BINDING], None],
             ) -> Callable[[BINDING], None]:
-        assert self.action is not None
         if conditions:
-            return self._conditional_action(self.action, self.machine.logger,
+            return self._conditional_action(action, self.machine.logger,
                                             conditions)
         else:
-            self.machine.logger.debug(
-                    "Create Rule. Condition: %s\nAction %s\nBindings%s"
-                    % (self._orig_pattern, self.action, self.bindings))
             return self._simple_action(self.action, self.machine.logger)
 
     def finalize(self) -> None:
@@ -582,9 +582,9 @@ class durable_rule(abc_machine.implication, abc_machine.rule):
         if self.action is None:
             raise Exception()
         self.finalized = True
-        patterns, conditions, bindings = self._generate_action_prerequisites()
-        action = self._generate_action(conditions)
         logger.debug("Create rule %s" % self)
+        patterns, conditions, bindings = self._generate_action_prerequisites()
+        action = self._generate_action(conditions, self.action)
         self.machine._make_rule(patterns, action, bindings)
 
     def _process_external(

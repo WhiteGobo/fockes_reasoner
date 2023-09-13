@@ -378,6 +378,7 @@ class condition_pred_is_literal_not_float:
         t = _resolve(self.target, bindings)
         return Literal(t.datatype != XSD.float)#type: ignore[union-attr]
 
+@dataclass
 class pred_iri_string:
     """Assigns to given variable the string as iri
     """
