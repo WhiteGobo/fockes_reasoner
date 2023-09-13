@@ -100,7 +100,7 @@ def test_simpletestrun():
 
     q = fockes_reasoner.simpleLogicMachine.from_rdf(g)
     myfacts = q.run()
-    logger.info("Expected conclusions in ttl:\n%s" % conc_graph.serialize())
+    #logger.info("Expected conclusions in ttl:\n%s" % conc_graph.serialize())
     logger.info("All facts after machine has run:\n%s" % list(q.machine.get_facts()))
     rif_facts = [f for f in rdfmodel().import_graph(conc_graph) if not isinstance(f, rdflib.term.Node)]
     assert rif_facts, "couldnt load conclusion rif_facts directly"
@@ -186,7 +186,7 @@ def test_PositiveEntailmentTests(testinfo):
     q = fockes_reasoner.simpleLogicMachine.from_rdf(g, extra_documents)
     logger.debug("Running Machine ... ")
     myfacts = q.run()
-    logger.debug("Expected conclusions in ttl:\n%s" % conc_graph.serialize())
+    #logger.debug("Expected conclusions in ttl:\n%s" % conc_graph.serialize())
     rif_facts = []
     for typeref, generator in _rif_type_to_constructor.items():
         for node in conc_graph.subjects(RDF.type, typeref):
