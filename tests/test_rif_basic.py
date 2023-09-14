@@ -179,7 +179,7 @@ def test_PositiveEntailmentTests(testinfo):
         conc_graph = rdflib.Graph().parse(conclusionfile, format="rif")
     except rdflib.plugin.PluginException:
         pytest.skip("Need rdflib parser plugin to load RIF-file")
-    logger.debug("premise in ttl:\n%s" % g.serialize())
+    #logger.debug("premise in ttl:\n%s" % g.serialize())
 
     extra_documents = {uri: _import_graph(filepath)
                        for uri, filepath in testinfo.importedDocuments.items()}
@@ -221,7 +221,7 @@ def test_NegativeEntailmentTests(testinfo):
         nonconc_graph = rdflib.Graph().parse(testinfo.nonconclusion, format="rif")
     except rdflib.plugin.PluginException:
         pytest.skip("Need rdflib parser plugin to load RIF-file")
-    logger.info("premise in ttl:\n%s" % g.serialize())
+    #logger.info("premise in ttl:\n%s" % g.serialize())
 
     #filepath.suffix is eg ".rif" so filepath.suffix[1:]=="rif"
     extra_documents = {uri: rdflib.Graph().parse(str(filepath),
