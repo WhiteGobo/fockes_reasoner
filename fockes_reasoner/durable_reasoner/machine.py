@@ -39,6 +39,59 @@ LIST_MEMBERS = "member"
 class FailedInternalAction(Exception):
     ...
 
+class _pattern:
+    pattern: Mapping[str, Union[Variable, str, TRANSLATEABLE_TYPES]]
+    factname: str
+
+    def generate_rls(self,
+                     bindings: MutableMapping[Variable, VARIABLE_LOCATOR],
+                     ) -> rls.value:
+        next_constraint: rls.value
+        constraint: Union[rls.value, None] = None
+        for key, value in self.pattern.items():
+            next_constraint = None
+            if type(value) == str:
+                next_constraint = getattr(rls.m, key) == value
+            elif isinstance(value, rdflib.Variable):
+                if value in bindings:
+                    loc = bindings[value]
+                    newpattern = getattr(rls.m, key) == loc(rls.c)
+                    #log.append(f"rls.m.{fact_label} == {loc}")
+                else:
+                    loc = _value_locator(self.factname, key)
+                    bindings[value] = loc
+                    next_constraint = None
+                    #logger.debug("bind: %r-> %r" % (value, loc))
+            elif isinstance(value, (URIRef, BNode, Literal)):
+                next_constraint = getattr(rls.m, key) == rdflib2string(value)
+            elif isinstance(value, external):
+                raise NotImplementedError()
+                #newnode = value.serialize(c, bindings, external_resolution)
+                #next_constraint = getattr(rls.m, key) == newnode
+            else:
+                raise NotImplementedError(value, type(value))
+            if next_constraint is not None:
+                if constraint is None:
+                    constraint = next_constraint
+                else:
+                    constraint = constraint & next_constraint
+        if constraint is None:
+            raise Exception("Cant handle %s" % self.pattern)
+        pattern_part = getattr(rls.c, self.factname) << constraint
+        return pattern_part
+
+    def __init__(
+            self,
+            pattern: Mapping[str, Union[Variable, str, TRANSLATEABLE_TYPES]],
+            factname: Optional[str] = None,
+            ) -> None:
+        self.pattern = pattern
+        if factname is None:
+            _as_string = repr(sorted(pattern.items()))
+            self.factname = "f%s" % sha1(_as_string.encode("utf8")).hexdigest()
+        else:
+            self.factname = factname
+
 class _context_helper(abc.ABC):
     """helper class to decide how to assert and retract facts"""
     machine: "_base_durable_machine"
@@ -236,10 +289,14 @@ class _base_durable_machine(abc_machine.machine):
 
     def _make_rule(self, patterns: Iterable[rls.value],
                   action: Callable,
-                  variable_locators: Mapping[Variable, VARIABLE_LOCATOR],
+                   #variable_locators: Mapping[Variable, VARIABLE_LOCATOR],
                   error_message: str = "") -> None:
+        pats = []
+        variable_locators = {}
+        for p in patterns:
+            pats.append(p.generate_rls(variable_locators))
         with self._ruleset:
-            @rls.when_all(*patterns)
+            @rls.when_all(*pats)
             def myfoo(c: durable.engine.Closure) -> None:
                 bindings = {}
                 try:
@@ -531,21 +588,18 @@ class durable_rule(abc_machine.implication, abc_machine.rule):
     def _generate_action_prerequisites(
             self,
             ) -> Tuple[Iterable[rls.value],
-                       Iterable[Callable[[BINDING], Literal]],
-                       Mapping[Variable, VARIABLE_LOCATOR]]:
+                       Iterable[Callable[[BINDING], Literal]]]:
         """
         :TODO: If a rule has nopattern but a condition a trigger, a special
             pattern for the rule should be generated. I have non yet. Maybe
             it should just result in an error.
         """
         conditions: List[Callable[[BINDING], Literal]] = []
-        bindings: MutableMapping[Variable, VARIABLE_LOCATOR] = {}
         patterns: list[rls.value] = []
         for q in self.orig_pattern:
             if isinstance(q, fact):
                 logger.debug("appends %s as pattern." % q)
-                patterns.append(self._generate_pattern(q.as_dict(),
-                                                       bindings))
+                patterns.append(_pattern(q.as_dict()))
             elif isinstance(q, abc_external):
                 tmp_p, tmp_c = self._process_external(q.op, q.args)
                 logger.debug("uses %s to append:\npattern: %s\ncondition: %s"
@@ -556,14 +610,14 @@ class durable_rule(abc_machine.implication, abc_machine.rule):
                 raise Exception(type(q))
         if len(patterns) == 0 and len(conditions) == 0:
             #create rule as initialisation rule
-            patterns.insert(0, getattr(rls.m, MACHINESTATE) == INIT_STATE)
+            patterns.insert(0, _pattern({MACHINESTATE: INIT_STATE}))
         elif len(patterns) > 0:
-            patterns.insert(0, getattr(rls.m, MACHINESTATE) == RUNNING_STATE)
+            patterns.insert(0, _pattern({MACHINESTATE: RUNNING_STATE}))
         else:
             #TODO : This rule lacks any trigger. 
-            patterns.insert(0, getattr(rls.m, MACHINESTATE) == RUNNING_STATE)
+            patterns.insert(0, _pattern({MACHINESTATE: RUNNING_STATE}))
 
-        return patterns, conditions, bindings
+        return patterns, conditions
 
     def _generate_action(
             self,
@@ -583,9 +637,9 @@ class durable_rule(abc_machine.implication, abc_machine.rule):
             raise Exception()
         self.finalized = True
         logger.debug("Create rule %s" % self)
-        patterns, conditions, bindings = self._generate_action_prerequisites()
+        patterns, conditions = self._generate_action_prerequisites()
         action = self._generate_action(conditions, self.action)
-        self.machine._make_rule(patterns, action, bindings)
+        self.machine._make_rule(patterns, action)
 
     def _process_external(
             self,
