@@ -8,7 +8,7 @@ import rdflib
 from rdflib import IdentifiedNode, Graph, Variable, Literal, URIRef
 import typing as typ
 from typing import Union, Iterable, Any, Callable, MutableMapping, List, Tuple, Optional, Mapping
-from .shared import RIF, pred
+from .shared import RIF, pred, XSD
 from rdflib import RDF
 from . import durable_reasoner
 from .durable_reasoner import machine
@@ -141,7 +141,12 @@ def slot2node(infograph: Graph, x: IdentifiedNode) -> ATOM:
     elif t == RIF.Const and RIF.constIRI in val_info:
         return rdflib.URIRef(str(val_info[RIF.constIRI]))
     elif t == RIF.Const and RIF.value in val_info:
-        val: Literal = val_info[RIF.value]#type: ignore[assignment]
+        val = val_info[RIF.value]
+        assert isinstance(val, Literal)
+        #if val.datatype is None and val.language is None:
+        #    val = Literal(val, datatype=XSD.string)
+        #elif val.datatype is None:
+        #    val = Literal(val, datatype=XSD.string, language=val.language)
         return val
     elif t == RIF.External:
         return rif_external.from_rdf(infograph, x)

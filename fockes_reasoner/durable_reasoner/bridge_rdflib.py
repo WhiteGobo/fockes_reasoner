@@ -4,6 +4,7 @@ unified translator from rdflib nodes to these string and back
 """
 import abc
 import rdflib
+from rdflib import XSD
 from typing import Iterable, Union, Iterator, List
 from collections.abc import Sequence
 from dataclasses import dataclass
@@ -65,6 +66,7 @@ def _compile_RDFLiteral(parser_result: pp.results.ParseResults,
                         ) -> rdflib.Literal:
     l = parser_result[0]
     kwargs = dict(l)
+    print(kwargs)
     v = kwargs.pop("string")
     return rdflib.Literal(v, **kwargs)
 myRDFLiteral = RDFLiteral.copy()
@@ -81,7 +83,9 @@ def rdflib2string(identifier: TRANSLATEABLE_TYPES) -> str:
         return f"_:{identifier}"
     elif isinstance(identifier, rdflib.Literal):
         parts = ["'%s'"%identifier.value]
-        if identifier.datatype:
+        if identifier.datatype is None or identifier.datatype == XSD.string:
+            pass
+        else:
             parts.append("^^<%s>" % identifier.datatype)
         try:
             if identifier.language:
