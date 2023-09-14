@@ -384,14 +384,18 @@ class pred_iri_string:
     """
     target_var: Variable
     source_string: RESOLVABLE
-    def __init__(self, target_var: Variable, source_string: RESOLVABLE) -> None:
+    def __init__(self,
+                 target_var: Variable,
+                 source_string: RESOLVABLE,
+                 ) -> None:
         assert isinstance(target_var, Variable)
         self.target_var = target_var
         self.source_string = source_string
+
     def __call__(self, bindings: BINDING) -> Literal:
         assert self.target_var not in bindings
         s = _resolve(self.source_string, bindings)
-        bindings[self.target_var] = s
+        bindings[self.target_var] = URIRef(s)
         return Literal(True)
 
 @dataclass
