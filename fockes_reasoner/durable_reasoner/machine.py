@@ -289,10 +289,9 @@ class _base_durable_machine(abc_machine.machine):
 
     def _make_rule(self, patterns: Iterable[rls.value],
                   action: Callable,
-                   #variable_locators: Mapping[Variable, VARIABLE_LOCATOR],
                   error_message: str = "") -> None:
         pats = []
-        variable_locators = {}
+        variable_locators: MutableMapping[Variable, VARIABLE_LOCATOR] = {}
         for p in patterns:
             pats.append(p.generate_rls(variable_locators))
         with self._ruleset:
@@ -628,7 +627,7 @@ class durable_rule(abc_machine.implication, abc_machine.rule):
             return self._conditional_action(action, self.machine.logger,
                                             conditions)
         else:
-            return self._simple_action(self.action, self.machine.logger)
+            return self._simple_action(action, self.machine.logger)
 
     def finalize(self) -> None:
         if self.finalized:
