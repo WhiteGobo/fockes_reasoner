@@ -25,7 +25,7 @@ class NegativeEntailmentTest:
         yield self.nonconclusion
         yield self.importedDocuments
 
-from .Core.PositiveEntailmentTest import Modeling_Brain_Anatomy, IRI_from_RDF_Literal
+from .Core.PositiveEntailmentTest import Modeling_Brain_Anatomy, IRI_from_RDF_Literal, RDF_Combination_Blank_Node, RDF_Combination_Constant_Equivalence_1, RDF_Combination_Constant_Equivalence_2, RDF_Combination_Constant_Equivalence_3, RDF_Combination_Constant_Equivalence_4, RDF_Combination_Constant_Equivalence_Graph_Entailment, RDF_Combination_SubClass_2
 PET_Assert = PositiveEntailmentTest(
         _PRD.joinpath("PositiveEntailmentTest/Assert/Assert-premise.rif"),
         _PRD.joinpath("PositiveEntailmentTest/Assert/Assert-conclusion.rif"),
@@ -156,30 +156,48 @@ PET_Positional_Arguments = PositiveEntailmentTest(
         _Core.joinpath("PositiveEntailmentTest/Positional_Arguments/Positional_Arguments-premise.rif"),
         _Core.joinpath("PositiveEntailmentTest/Positional_Arguments/Positional_Arguments-conclusion.rif"),
         )
+
+tmp = files(RDF_Combination_Blank_Node)
 PET_RDF_Combination_Blank_Node = PositiveEntailmentTest(
         _Core.joinpath("PositiveEntailmentTest/RDF_Combination_Blank_Node/RDF_Combination_Blank_Node-premise.rif"),
         _Core.joinpath("PositiveEntailmentTest/RDF_Combination_Blank_Node/RDF_Combination_Blank_Node-conclusion.rif"),
+        {"http://www.w3.org/2005/rules/test/repository/tc/RDF_Combination_Blank_Node/RDF_Combination_Blank_Node-import001":
+         tmp.joinpath("RDF_Combination_Blank_Node-import001.ttl")}
         )
+tmp = files(RDF_Combination_Constant_Equivalence_1)
 PET_RDF_Combination_Constant_Equivalence_1 = PositiveEntailmentTest(
         _Core.joinpath("PositiveEntailmentTest/RDF_Combination_Constant_Equivalence_1/RDF_Combination_Constant_Equivalence_1-premise.rif"),
         _Core.joinpath("PositiveEntailmentTest/RDF_Combination_Constant_Equivalence_1/RDF_Combination_Constant_Equivalence_1-conclusion.rif"),
+        {"http://www.w3.org/2005/rules/test/repository/tc/RDF_Combination_Constant_Equivalence_1/RDF_Combination_Constant_Equivalence_1-import001":
+         tmp.joinpath("RDF_Combination_Constant_Equivalence_1-import001.ttl")}
         )
+tmp = files(RDF_Combination_Constant_Equivalence_2)
 PET_RDF_Combination_Constant_Equivalence_2 = PositiveEntailmentTest(
         _Core.joinpath("PositiveEntailmentTest/RDF_Combination_Constant_Equivalence_2/RDF_Combination_Constant_Equivalence_2-premise.rif"),
         _Core.joinpath("PositiveEntailmentTest/RDF_Combination_Constant_Equivalence_2/RDF_Combination_Constant_Equivalence_2-conclusion.rif"),
+        {"http://www.w3.org/2005/rules/test/repository/tc/RDF_Combination_Constant_Equivalence_2/RDF_Combination_Constant_Equivalence_2-import001":
+         tmp.joinpath("RDF_Combination_Constant_Equivalence_2-import001.ttl")}
         )
+tmp = files(RDF_Combination_Constant_Equivalence_3)
 PET_RDF_Combination_Constant_Equivalence_3 = PositiveEntailmentTest(
         _Core.joinpath("PositiveEntailmentTest/RDF_Combination_Constant_Equivalence_3/RDF_Combination_Constant_Equivalence_3-premise.rif"),
         _Core.joinpath("PositiveEntailmentTest/RDF_Combination_Constant_Equivalence_3/RDF_Combination_Constant_Equivalence_3-conclusion.rif"),
+        {"http://www.w3.org/2005/rules/test/repository/tc/RDF_Combination_Constant_Equivalence_3/RDF_Combination_Constant_Equivalence_3-import001":
+         tmp.joinpath("RDF_Combination_Constant_Equivalence_3-import001.ttl")}
         )
+tmp = files(RDF_Combination_Constant_Equivalence_4)
 PET_RDF_Combination_Constant_Equivalence_4 = PositiveEntailmentTest(
         _Core.joinpath("PositiveEntailmentTest/RDF_Combination_Constant_Equivalence_4/RDF_Combination_Constant_Equivalence_4-premise.rif"),
         _Core.joinpath("PositiveEntailmentTest/RDF_Combination_Constant_Equivalence_4/RDF_Combination_Constant_Equivalence_4-conclusion.rif"),
+        {"http://www.w3.org/2005/rules/test/repository/tc/RDF_Combination_Constant_Equivalence_4/RDF_Combination_Constant_Equivalence_4-import001":
+         tmp.joinpath("RDF_Combination_Constant_Equivalence_4-import001.ttl")}
         )
+tmp = files(RDF_Combination_Constant_Equivalence_Graph_Entailment)
 PET_RDF_Combination_Constant_Equivalence_Graph_Entailment = PositiveEntailmentTest(
         _Core.joinpath("PositiveEntailmentTest/RDF_Combination_Constant_Equivalence_Graph_Entailment/RDF_Combination_Constant_Equivalence_Graph_Entailment-premise.rif"),
         _Core.joinpath("PositiveEntailmentTest/RDF_Combination_Constant_Equivalence_Graph_Entailment/RDF_Combination_Constant_Equivalence_Graph_Entailment-conclusion.rif"),
         )
+tmp = files(RDF_Combination_SubClass_2)
 PET_RDF_Combination_SubClass_2 = PositiveEntailmentTest(
         _Core.joinpath("PositiveEntailmentTest/RDF_Combination_SubClass_2/RDF_Combination_SubClass_2-premise.rif"),
         _Core.joinpath("PositiveEntailmentTest/RDF_Combination_SubClass_2/RDF_Combination_SubClass_2-conclusion.rif"),
