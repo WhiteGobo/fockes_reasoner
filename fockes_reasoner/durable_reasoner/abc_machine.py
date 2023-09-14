@@ -113,6 +113,11 @@ class machine(abc.ABC):
     errors: list
 
     @abc.abstractmethod
+    def load_external_resource(self, location: Union[str, IdentifiedNode],
+                               ) -> rdflib.Graph:
+        ...
+
+    @abc.abstractmethod
     def check_statement(self, statement: fact) -> bool:
         """Checks if given proposition is true.
         :TODO: currently facts are only simple facts like a frame. But check

@@ -43,6 +43,9 @@ class _pattern:
     pattern: Mapping[str, Union[Variable, str, TRANSLATEABLE_TYPES]]
     factname: str
 
+    def __repr__(self) -> str:
+        return "f(%s): %s" % (self.factname, self.pattern)
+
     def generate_rls(self,
                      bindings: MutableMapping[Variable, VARIABLE_LOCATOR],
                      ) -> rls.value:
@@ -218,6 +221,7 @@ class _base_durable_machine(abc_machine.machine):
     _registered_assignment_generator: Dict[IdentifiedNode,
                                            Callable[..., RESOLVABLE]]
     _imported_locations: Set[Optional[IdentifiedNode]]
+    _knownLocations: MutableMapping[IdentifiedNode, rdflib.Graph]
 
     def __init__(self, loggername: str = __name__) -> None:
         rulesetname = str(uuid.uuid4())
@@ -234,18 +238,33 @@ class _base_durable_machine(abc_machine.machine):
 
         self._imported_locations = set()
         self.available_import_profiles = {}
+        self._knownLocations = {}
 
     def import_data(self,
                     infograph: Graph,
-                    location: Optional[IdentifiedNode] = None,
+                    location: IdentifiedNode,
                     profile: Union[IdentifiedNode, None] = None,
                     extraDocuments: Mapping[IdentifiedNode, Graph] = {},
                     ) -> None:
         if location in self._imported_locations:
+            logger.debug("Already import %s" % location)
             return
         usedImportProfile = self.available_import_profiles[profile]
-        usedImportProfile.create_rules(self, infograph)
+        logger.debug("import data %s" % profile)
+        usedImportProfile.create_rules(self, location)
         self._imported_locations.add(location)
+        for key, g in extraDocuments.items():
+            if isinstance(key, str):
+                self._knownLocations[URIRef(key)] = g
+            else:
+                self._knownLocations[key] = g
+
+    def load_external_resource(self, location: Union[str, IdentifiedNode],
+                               ) -> rdflib.Graph:
+        if isinstance(location, str):
+            return self._knownLocations[URIRef(location)]
+        else:
+            return self._knownLocations[location]
 
     def get_replacement_node(self,
                              op: IdentifiedNode,
@@ -287,10 +306,10 @@ class _base_durable_machine(abc_machine.machine):
             fact_id = f[FACTTYPE]
             yield q[fact_id].from_fact(f)
 
-    def _make_rule(self, patterns: Iterable[rls.value],
+    def _make_rule(self, patterns: Iterable[_pattern],
                   action: Callable,
                   error_message: str = "") -> None:
-        pats = []
+        pats: List[rls.value] = []
         variable_locators: MutableMapping[Variable, VARIABLE_LOCATOR] = {}
         for p in patterns:
             pats.append(p.generate_rls(variable_locators))
@@ -358,7 +377,11 @@ class _base_durable_machine(abc_machine.machine):
 
     def add_init_action(self, action: Callable[[BINDING], None]) -> None:
         q = durable_rule(self)
-        q.action = action
+        def act(bindings: BINDING) -> None:
+            logger.debug("execute init: %s" % action)
+            action(bindings)
+        q.action = act
+        #q.action = action
         q.finalize()
 
     def create_rule_builder(self) -> "durable_rule":
@@ -586,7 +609,7 @@ class durable_rule(abc_machine.implication, abc_machine.rule):
 
     def _generate_action_prerequisites(
             self,
-            ) -> Tuple[Iterable[rls.value],
+            ) -> Tuple[Iterable[_pattern],
                        Iterable[Callable[[BINDING], Literal]]]:
         """
         :TODO: If a rule has nopattern but a condition a trigger, a special
@@ -594,7 +617,7 @@ class durable_rule(abc_machine.implication, abc_machine.rule):
             it should just result in an error.
         """
         conditions: List[Callable[[BINDING], Literal]] = []
-        patterns: list[rls.value] = []
+        patterns: list[_pattern] = []
         for q in self.orig_pattern:
             if isinstance(q, fact):
                 logger.debug("appends %s as pattern." % q)
