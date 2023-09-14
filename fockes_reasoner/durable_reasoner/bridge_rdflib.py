@@ -82,7 +82,10 @@ def rdflib2string(identifier: TRANSLATEABLE_TYPES) -> str:
     elif isinstance(identifier, rdflib.BNode):
         return f"_:{identifier}"
     elif isinstance(identifier, rdflib.Literal):
-        parts = ["'%s'"%identifier.value]
+        if identifier.value is not None:
+            parts = ["'%s'" % identifier.value]
+        else:
+            parts = ["'%s'" % identifier]
         if identifier.datatype is None or identifier.datatype == XSD.string:
             pass
         else:
