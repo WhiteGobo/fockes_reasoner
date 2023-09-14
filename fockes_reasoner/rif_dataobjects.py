@@ -481,6 +481,9 @@ class rif_exists(_rif_check):
     def __init__(self, formula: rif_fact):
         self.formula = formula
 
+    def __repr__(self) -> str:
+        return "exists(%s)" % self.formula
+
     def _add_pattern(self, rule: durable_reasoner.rule) -> None:
         raise NotImplementedError()
 
