@@ -128,6 +128,8 @@ class _no_closure(_context_helper):
         if fact_filter is None:
             return rls.get_facts(self.machine._rulename)#type: ignore[no-any-return]
         else:
+            print(fact_filter)
+            print(list(rls.get_facts(self.machine._rulename)))
             return (f #type: ignore[no-any-return]
                     for f in rls.get_facts(self.machine._rulename)
                     if all(f[key] == val for key, val in fact_filter.items()))

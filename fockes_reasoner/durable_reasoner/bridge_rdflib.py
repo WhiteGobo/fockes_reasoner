@@ -65,8 +65,8 @@ from rdflib.plugins.sparql.parser import iri, RDFLiteral
 def _compile_RDFLiteral(parser_result: pp.results.ParseResults,
                         ) -> rdflib.Literal:
     l = parser_result[0]
+    v = l["string"]
     kwargs = dict(l)
-    print(kwargs)
     v = kwargs.pop("string")
     return rdflib.Literal(v, **kwargs)
 myRDFLiteral = RDFLiteral.copy()

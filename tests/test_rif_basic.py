@@ -158,13 +158,10 @@ def test_simpletestrun():
     pytest.param(PET_RDF_Combination_Constant_Equivalence_1,
                  id="RDF_Combination_Constant_Equivalence_1"),
     pytest.param(PET_RDF_Combination_Constant_Equivalence_2,
-                 marks=mark.skip("asdf"),
                  id="RDF_Combination_Constant_Equivalence_2"),
     pytest.param(PET_RDF_Combination_Constant_Equivalence_3,
-                 marks=mark.skip("asdf"),
                  id="RDF_Combination_Constant_Equivalence_3"),
     pytest.param(PET_RDF_Combination_Constant_Equivalence_4,
-                 marks=mark.skip("asdf"),
                  id="RDF_Combination_Constant_Equivalence_4"),
     pytest.param(PET_RDF_Combination_Constant_Equivalence_Graph_Entailment,
                  marks=mark.skip("not yet implemented")),
@@ -187,7 +184,7 @@ def test_PositiveEntailmentTests(testinfo):
     q = fockes_reasoner.simpleLogicMachine.from_rdf(g, extra_documents)
     logger.debug("Running Machine ... ")
     myfacts = q.run()
-    #logger.debug("Expected conclusions in ttl:\n%s" % conc_graph.serialize())
+    logger.debug("Expected conclusions in ttl:\n%s" % conc_graph.serialize())
     rif_facts = []
     for typeref, generator in _rif_type_to_constructor.items():
         for node in conc_graph.subjects(RDF.type, typeref):
