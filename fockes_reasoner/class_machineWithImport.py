@@ -13,3 +13,5 @@ class machineWithImport(machine):
         self.available_import_profiles[None] = rifImportProfile()
         self.available_import_profiles[RIF_ENTAILMENT.Simple]\
                 = profileSimpleEntailment()
+        self.available_import_profiles[RIF_ENTAILMENT.RDF]\
+                = profileSimpleEntailment()
