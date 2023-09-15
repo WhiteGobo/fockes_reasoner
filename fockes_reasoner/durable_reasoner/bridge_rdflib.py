@@ -70,7 +70,7 @@ class _term_list(term_list):
     #@_term_parser.add_parse_action
     @classmethod
     def _from_machinestring(cls, parser_result: pp.results.ParseResults) -> "_term_list":
-        raise NotImplementedError()
+        return cls(list(parser_result))
 
     def __len__(self) -> int:
         return len(self.items)
