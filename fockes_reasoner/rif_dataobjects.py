@@ -733,8 +733,10 @@ class rif_member(rif_fact):
     def _add_pattern(self, rule: durable_reasoner.rule) -> None:
         raise NotImplementedError()
 
-    def _create_facts(self) -> Iterable[fact]:
-        raise NotImplementedError()
+    def _create_facts(self) -> Iterable[machine_facts.member]:
+        cls = _try_as_machinefact(self.cls)
+        instance = _try_as_machinefact(self.instance)
+        yield machine_facts.member(instance, cls)
 
     @classmethod
     def from_rdf(cls, infograph: rdflib.Graph,
