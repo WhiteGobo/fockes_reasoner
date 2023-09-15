@@ -195,12 +195,16 @@ PET_RDF_Combination_Constant_Equivalence_4 = PositiveEntailmentTest(
 tmp = files(RDF_Combination_Constant_Equivalence_Graph_Entailment)
 PET_RDF_Combination_Constant_Equivalence_Graph_Entailment = PositiveEntailmentTest(
         _Core.joinpath("PositiveEntailmentTest/RDF_Combination_Constant_Equivalence_Graph_Entailment/RDF_Combination_Constant_Equivalence_Graph_Entailment-premise.rif"),
-        _Core.joinpath("PositiveEntailmentTest/RDF_Combination_Constant_Equivalence_Graph_Entailment/RDF_Combination_Constant_Equivalence_Graph_Entailment-conclusion.rif"),
+        _Core.joinpath("PositiveEntailmentTest/RDF_Combination_Constant_Equivalence_Graph_Entailment/RDF_Combination_Constant_Equivalence_Graph_Entailment-conclusion.rdf"),
+        {"http://www.w3.org/2005/rules/test/repository/tc/RDF_Combination_Constant_Equivalence_Graph_Entailment/RDF_Combination_Constant_Equivalence_Graph_Entailment-import001":
+         tmp.joinpath("RDF_Combination_Constant_Equivalence_Graph_Entailment-import001.rdf")},
         )
 tmp = files(RDF_Combination_SubClass_2)
 PET_RDF_Combination_SubClass_2 = PositiveEntailmentTest(
         _Core.joinpath("PositiveEntailmentTest/RDF_Combination_SubClass_2/RDF_Combination_SubClass_2-premise.rif"),
         _Core.joinpath("PositiveEntailmentTest/RDF_Combination_SubClass_2/RDF_Combination_SubClass_2-conclusion.rif"),
+        {"http://www.w3.org/2005/rules/test/repository/tc/RDF_Combination_SubClass_2/RDF_Combination_SubClass_2-import001":
+         tmp.joinpath("RDF_Combination_SubClass_2-import001.ttl")},
         )
 
 

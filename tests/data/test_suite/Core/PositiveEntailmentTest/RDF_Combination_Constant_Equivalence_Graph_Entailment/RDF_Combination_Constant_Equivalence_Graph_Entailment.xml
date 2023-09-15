@@ -41,8 +41,8 @@ Document(
 ]]></Presentation>
     </PremiseDocument>
     <ConclusionDocument>
-        <Normative syntax="RIF/XML">
-            <name>RDF_Combination_Constant_Equivalence_Graph_Entailment-conclusion.rif</name>
+        <Normative syntax="RDF/XML">
+            <name>RDF_Combination_Constant_Equivalence_Graph_Entailment-conclusion.rdf</name>
         </Normative>
         <Presentation syntax="Turtle"><![CDATA[
 @prefix ex: <http://example.org/example#> . 
