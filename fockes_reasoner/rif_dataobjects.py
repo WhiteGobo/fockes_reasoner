@@ -955,19 +955,28 @@ class rif_retract(_action_gen):
         return cls(target)
 
 
-class rif_ineg:
-    formula: Union[rif_frame]
+class rif_ineg(rif_external):
+    op: URIRef = pred["boolean-equal"]
+    _formula_generator: Mapping[IdentifiedNode, Callable[[Graph, IdentifiedNode], ATOM]]
     def __init__(self, formula: Union[rif_frame]):
-        self.formula = formula
+        self.args = [formula, Literal(False)]
+
+    @property
+    def formula(self) -> Union[rif_frame]:
+        return self.args[0]
+
+    @property
+    def left(self) -> ATOM:
+        return self.formula
 
     @classmethod
     def from_rdf(cls, infograph: rdflib.Graph,
                  rootnode: rdflib.IdentifiedNode,
                  **kwargs: typ.Any) -> "rif_ineg":
-        from .class_rdfmodel import rdfmodel
-        model = rdfmodel()
-        target_node: rdflib.IdentifiedNode = infograph.value(rootnode, RIF.formula) #type: ignore[assignment]
-        target = model.generate_object(infograph, target_node)
+        target_node = infograph.value(rootnode, RIF.formula)
+        assert isinstance(target_node, IdentifiedNode)
+        target = _generate_object(infograph, target_node,
+                                  cls._formula_generator)
         return cls(target)
 
     def __repr__(self) -> str:
@@ -1148,6 +1157,10 @@ rif_list._item_generator = _term_generators
 
 rif_member._instance_generators = _term_generators
 rif_member._class_generators = _term_generators
+
+rif_ineg._formula_generator = {
+        RIF.Frame: rif_frame.from_rdf,
+        }
 
 
 def _get_resolveable(x: Union[TRANSLATEABLE_TYPES, _resolvable_gen, Variable], machine: durable_reasoner.machine) -> RESOLVABLE:

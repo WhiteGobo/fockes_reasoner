@@ -6,6 +6,11 @@ rif2internal = Namespace("http://example.com/builtin#")
 class pred(DefinedNamespace):
     _fail = True
     _extras = [
+            "is-literal-boolean",
+            "is-literal-not-boolean",
+            "boolean-equal",
+            "boolean-less-than",
+            "boolean-greater-than",
             "iri-string",
             "numeric-greater-than",
             "numeric-greater-than-or-equal",
