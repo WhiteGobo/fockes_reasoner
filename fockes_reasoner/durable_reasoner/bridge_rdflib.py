@@ -67,11 +67,7 @@ class _term_list(term_list):
     def __iter__(self) -> Iterator[TRANSLATEABLE_TYPES]:
         return iter(self.items)
 
-    _term_parser = pp.Combine(pp.Suppress("[")\
-            + pp.ZeroOrMore(myparser)\
-            + pp.Suppress("]"))
-
-    @_term_parser.add_parse_action
+    #@_term_parser.add_parse_action
     @classmethod
     def _from_machinestring(cls, parser_result: pp.results.ParseResults) -> "_term_list":
         raise NotImplementedError()
@@ -86,7 +82,12 @@ class _term_list(term_list):
             return self.items[index]
 
 
-myparser <<= rdf_identifier | _term_list._term_parser
+_term_parser = pp.Suppress("[")\
+            + pp.ZeroOrMore(myparser)\
+            + pp.Suppress("]")
+_term_parser.add_parse_action(_term_list._from_machinestring)
+
+myparser <<= pp.MatchFirst((rdf_identifier, _term_parser))
 
 def rdflib2string(identifier: TRANSLATEABLE_TYPES) -> str:
     """Translates from rdflib to strings.
@@ -121,7 +122,7 @@ def string2rdflib(string: str) -> TRANSLATEABLE_TYPES:
     """Translates from rdflib to strings. Inverse to rdflib2string
     """
     try:
-        return rdf_identifier.parse_string(string)[0]# type: ignore[no-any-return]
-    except Exception as err:
+        return myparser.parse_string(string)[0]# type: ignore[no-any-return]
+    except pp.exceptions.ParseException as err:
         raise ValueError("Given string is not a valid translation produced"
                          "by rdflib2string", string) from err
