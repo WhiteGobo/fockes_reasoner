@@ -199,11 +199,10 @@ def test_PositiveEntailmentTests(testinfo):
 
 
 @pytest.mark.parametrize("testinfo",[
-    pytest.param(data.test_suite.NET_Retract,
-                 id="NET_Retract"),
-    pytest.param(data.test_suite.NET_RDF_Combination_SubClass_5,
-                 marks=pytest.mark.skip("version of rdflib_rif is too old"),
-                 id="NET_RDF_Combination_SubClass_5"),
+    param(data.test_suite.NET_Retract,
+          id="NET_Retract"),
+    param(data.test_suite.NET_RDF_Combination_SubClass_5,
+          id="NET_RDF_Combination_SubClass_5"),
     param(NET_Local_Constant,
           marks=pytest.mark.skip("No local variables supported yet"),
           id="NET_Local_Constant"),
