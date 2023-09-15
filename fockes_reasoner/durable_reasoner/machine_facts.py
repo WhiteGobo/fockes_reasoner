@@ -238,11 +238,24 @@ class frame(fact):
 class member(fact):
     ID: str = "member"
     """facttype :term:`member` are labeled with this."""
+    INSTANCE: str = "instance"
+    CLASS: str = "class"
     instance: typ.Union[TRANSLATEABLE_TYPES, external, Variable]
     cls: typ.Union[TRANSLATEABLE_TYPES, external, Variable]
     def __init__(self, instance: Union[TRANSLATEABLE_TYPES, external, Variable], cls: Union[TRANSLATEABLE_TYPES, external, Variable]) -> None:
         self.instance = instance
         self.cls = cls
+
+    def as_dict(self, bindings: Optional[BINDING] = None,
+                ) -> Mapping[str, Union[str, Variable, TRANSLATEABLE_TYPES]]:
+        if isinstance(self.instance, external) or isinstance(self.cls, external):
+            raise NotImplementedError()
+        pattern: Mapping[str, Union[str, Variable, TRANSLATEABLE_TYPES]]\
+                = {abc_machine.FACTTYPE: self.ID,
+                   self.INSTANCE: self.instance,
+                   self.CLASS: self.cls,
+                   }
+        return pattern
 
     def check_for_pattern(self, c: abc_machine.machine,
                           bindings: BINDING = {},
