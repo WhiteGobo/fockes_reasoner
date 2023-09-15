@@ -395,7 +395,7 @@ class pred_iri_string:
     def __call__(self, bindings: BINDING) -> Literal:
         assert self.target_var not in bindings
         s = _resolve(self.source_string, bindings)
-        bindings[self.target_var] = URIRef(s)
+        bindings[self.target_var] = URIRef(str(s))
         return Literal(True)
 
 @dataclass

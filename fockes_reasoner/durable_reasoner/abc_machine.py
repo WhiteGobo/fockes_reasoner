@@ -145,7 +145,7 @@ class machine(abc.ABC):
     @abc.abstractmethod
     def import_data(self,
                     infograph: Graph,
-                    location: Optional[IdentifiedNode] = None,
+                    location: IdentifiedNode,
                     profile: Optional[IdentifiedNode] = None,
                     extraDocuments: Mapping[IdentifiedNode, Graph] = {},
                     ) -> None:
@@ -245,5 +245,5 @@ class implication(rule, abc.ABC):
 
 class importProfile(abc.ABC):
     @abc.abstractmethod
-    def create_rules(self, machine: machine, infograph: Graph) -> None:
+    def create_rules(self, machine: machine, location: str) -> None:
         ...

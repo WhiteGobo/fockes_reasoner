@@ -238,6 +238,12 @@ class frame(fact):
 class member(fact):
     ID: str = "member"
     """facttype :term:`member` are labeled with this."""
+    instance: typ.Union[TRANSLATEABLE_TYPES, external, Variable]
+    cls: typ.Union[TRANSLATEABLE_TYPES, external, Variable]
+    def __init__(self, instance: Union[TRANSLATEABLE_TYPES, external, Variable], cls: Union[TRANSLATEABLE_TYPES, external, Variable]) -> None:
+        self.instance = instance
+        self.cls = cls
+
     def check_for_pattern(self, c: abc_machine.machine,
                           bindings: BINDING = {},
                           ) -> bool:

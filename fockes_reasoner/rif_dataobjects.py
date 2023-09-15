@@ -745,6 +745,8 @@ class rif_member(rif_fact):
         q = dict(infograph.predicate_objects(rootnode))
         instance_node, = infograph.objects(rootnode, RIF.instance)
         class_node, = infograph.objects(rootnode, RIF["class"])
+        assert isinstance(instance_node, IdentifiedNode)
+        assert isinstance(class_node, IdentifiedNode)
         instance = _generate_object(infograph, instance_node,
                                     cls._instance_generators)
         class_ = _generate_object(infograph, class_node,
