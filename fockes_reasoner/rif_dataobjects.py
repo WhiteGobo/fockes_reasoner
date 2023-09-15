@@ -769,6 +769,9 @@ class rif_subclass(rif_fact):
         self.sub_class = sub_class
         self.super_class = super_class
 
+    def _add_pattern(self, rule: durable_reasoner.rule) -> None:
+        raise NotImplementedError()
+
     def _create_facts(self) -> Iterable[fact]:
         raise NotImplementedError()
 
