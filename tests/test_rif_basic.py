@@ -167,7 +167,7 @@ def test_simpletestrun():
                  marks=mark.skip("The test uses conclusion format ttl"),
                  id="RDF Combination Constant Equivalence Graph Entailment"),
     pytest.param(PET_RDF_Combination_SubClass_2,
-                 marks=mark.skip("No import profile. No rules to get type from subtypes")
+                 marks=mark.skip("No import profile. No rules to get type from subtypes"),
                  id="RDF Combination SubClass 2"),
     ])
 def test_PositiveEntailmentTests(testinfo):
