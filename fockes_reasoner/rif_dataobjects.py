@@ -586,6 +586,8 @@ class rif_do(_action_gen):
 class rif_atom(rif_fact):
     op: IdentifiedNode
     args: Iterable[RIF_ATOM]
+    _atom_op_generator: Mapping[IdentifiedNode, Callable[[Graph, IdentifiedNode], ATOM]]
+    _atom_args_generator: Mapping[IdentifiedNode, Callable[[Graph, IdentifiedNode], ATOM]]
     def __init__(self, op: IdentifiedNode, args: Iterable[RIF_ATOM]):
         self.op = op
         self.args = list(args)
@@ -634,18 +636,17 @@ class rif_atom(rif_fact):
     def from_rdf(cls, infograph: rdflib.Graph,
                  rootnode: rdflib.IdentifiedNode,
                  **kwargs: typ.Any) -> "rif_atom":
-        from .class_rdfmodel import rdfmodel
-        model = rdfmodel()
         op_node = infograph.value(rootnode, RIF.op)
         assert isinstance(op_node, IdentifiedNode)
-        op = model.generate_object(infograph, op_node)
+        op = _generate_object(infograph, op_node, cls._atom_op_generator)
         args = []
         arg_list_node = infograph.value(rootnode, RIF.args)
         if arg_list_node is not None:
             arg_list = rdflib.collection.Collection(infograph, arg_list_node)
             for x in arg_list:
                 assert isinstance(x, IdentifiedNode)
-                args.append(model.generate_object(infograph, x))
+                args.append(_generate_object(infograph, x,
+                                             cls._atom_args_generator))
         return cls(op, args)
 
     def __repr__(self) -> str:
@@ -1100,6 +1101,8 @@ _term_generators: Mapping[IdentifiedNode, Callable[[Graph, IdentifiedNode], ATOM
         RIF.External: rif_external.from_rdf,
         }
 rif_external._atom_args_generator = _term_generators
+rif_atom._atom_op_generator = _term_generators
+rif_atom._atom_args_generator = _term_generators
 rif_list._item_generator = _term_generators
 
 
