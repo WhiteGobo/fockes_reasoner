@@ -206,11 +206,12 @@ def test_PositiveEntailmentTests(testinfo):
                  id="NET_RDF_Combination_SubClass_5"),
     param(NET_Local_Constant, marks=mark.skip("not yet implemented")),
     param(NET_Local_Predicate, marks=mark.skip("not yet implemented")),
-    param(NET_NestedListsAreNotFlatLists),
+    param(NET_NestedListsAreNotFlatLists, id="NET NestedListsAreNotFlatLists"),
     param(NET_Non_Annotation_Entailment,
-          marks=mark.skip("not yet implemented")),
+          marks=mark.skip("Owl not yet implemented"),
+          id="NET_Non_Annotation_Entailment"),
     param(NET_RDF_Combination_SubClass,
-          marks=mark.skip("not yet implemented")),
+          id="NET_RDF_Combination_SubClass"),
     ])
 def test_NegativeEntailmentTests(testinfo):
     logger.info("premise located: %s\nnonconclusion located: %s"
