@@ -20,6 +20,14 @@ ATOM = Union[TRANSLATEABLE_TYPES, Variable, "rif_external", "rif_list"]
 SATOM = Union[TRANSLATEABLE_TYPES, external, Variable, "rif_list"]
 SLOT = Tuple[ATOM, ATOM]
 RIF_ATOM = Union[TRANSLATEABLE_TYPES, "rif_external"]
+FORMULA = Union["rif_frame",
+                "rif_atom",
+                "rif_member",
+                "rif_subclass",
+                "rif_and",
+                "rif_or",
+                "rif_ineg",
+                "rif_exists"]
 
 class _child_action:
     """Shared parent for all action classes for callables for the machine"""
@@ -956,19 +964,11 @@ class rif_retract(_action_gen):
         return cls(target)
 
 
-class rif_ineg(rif_external):
-    op: URIRef = pred["boolean-equal"]
-    _formula_generator: Mapping[IdentifiedNode, Callable[[Graph, IdentifiedNode], ATOM]]
-    def __init__(self, formula: Union[rif_frame]):
-        self.args = [formula, Literal(False)]
-
-    @property
-    def formula(self) -> Union[rif_frame]:
-        return self.args[0]
-
-    @property
-    def left(self) -> ATOM:
-        return self.formula
+class rif_ineg(_rif_check):
+    formula: FORMULA
+    _formula_generator: Mapping[IdentifiedNode, Callable[[Graph, IdentifiedNode], FORMULA]]
+    def __init__(self, formula: FORMULA):
+        self.formula = formula
 
     @classmethod
     def from_rdf(cls, infograph: rdflib.Graph,
@@ -980,8 +980,17 @@ class rif_ineg(rif_external):
                                   cls._formula_generator)
         return cls(target)
 
+    def _add_pattern(self, rule: durable_reasoner.rule) -> None:
+        raise NotImplementedError()
+
+    def check(self,
+            machine: durable_reasoner.machine,
+            bindings: BINDING = {},
+            ) -> bool:
+        raise NotImplementedError()
+
     def __repr__(self) -> str:
-        return "INeg( %s )" % self.formula
+        return "INeg(%s)" % self.formula
 
 class rif_modify(_action_gen):
     fact: Union[rif_frame]
@@ -1136,6 +1145,9 @@ rif_exists._formula_generators = {#RIF.External: rif_external.from_rdf,
                                   #RIF.Equal: rif_equal.from_rdf,
                                   RIF.Atom: rif_atom.from_rdf,
                                   }
+rif_ineg._formula_generator = {RIF.Frame: rif_frame.from_rdf,
+                               RIF.Atom: rif_atom.from_rdf,
+                               }
 #rif_equal._side_generators = {}
 rif_group._sentence_generators = {
         RIF.Forall: rif_forall.from_rdf,
@@ -1159,9 +1171,6 @@ rif_list._item_generator = _term_generators
 rif_member._instance_generators = _term_generators
 rif_member._class_generators = _term_generators
 
-rif_ineg._formula_generator = {
-        RIF.Frame: rif_frame.from_rdf,
-        }
 
 
 def _get_resolveable(x: Union[TRANSLATEABLE_TYPES, _resolvable_gen, Variable], machine: durable_reasoner.machine) -> RESOLVABLE:
