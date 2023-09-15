@@ -555,7 +555,7 @@ class durable_rule(abc_machine.implication, abc_machine.rule):
             elif isinstance(item, (abc_external, fact)):
                 self.insert(len(self), item)
             else:
-                raise NotImplementedError()
+                raise NotImplementedError(item, type(item))
 
     @property
     def orig_pattern(self) -> _pattern_organizer:

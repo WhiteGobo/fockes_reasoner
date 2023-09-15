@@ -1105,6 +1105,7 @@ rif_implies._if_generators = {
         RIF.Atom: rif_atom.from_rdf,
         RIF.Subclass: rif_subclass.from_rdf,
         RIF.External: rif_external.from_rdf,
+        RIF.INeg: rif_ineg.from_rdf,
         }
 rif_implies._then_generators = {
         RIF.Frame: rif_frame.from_rdf,
