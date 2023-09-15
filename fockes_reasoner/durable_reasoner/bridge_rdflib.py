@@ -24,7 +24,7 @@ class term_list(Sequence):
         ...
 
     def _as_machinestring(self) -> str:
-        raise NotImplementedError()
+        return "[%s]" % " ".join(rdflib2string(x) for x in self)
 
     @abc.abstractmethod
     def __len__(self) -> int:
@@ -124,4 +124,4 @@ def string2rdflib(string: str) -> TRANSLATEABLE_TYPES:
         return rdf_identifier.parse_string(string)[0]# type: ignore[no-any-return]
     except Exception as err:
         raise ValueError("Given string is not a valid translation produced"
-                         "by rdflib2string") from err
+                         "by rdflib2string", string) from err
