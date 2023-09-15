@@ -719,11 +719,35 @@ class rif_external(_resolvable_gen, _rif_check):
 
 
 class rif_member(rif_fact):
+    cls: ATOM
+    instance: ATOM
+    _instance_generators: Mapping[IdentifiedNode,
+                                  Callable[[Graph, IdentifiedNode], ATOM]]
+    _class_generators: Mapping[IdentifiedNode,
+                               Callable[[Graph, IdentifiedNode], ATOM]]
+
+    def __init__(self, instance: ATOM, cls: ATOM) -> None:
+        self.instance = instance
+        self.cls = cls
+
+    def _add_pattern(self, rule: durable_reasoner.rule) -> None:
+        raise NotImplementedError()
+
+    def _create_facts(self) -> Iterable[fact]:
+        raise NotImplementedError()
+
     @classmethod
     def from_rdf(cls, infograph: rdflib.Graph,
                  rootnode: rdflib.IdentifiedNode,
                  **kwargs: typ.Any) -> "rif_member":
-        raise NotImplementedError()
+        q = dict(infograph.predicate_objects(rootnode))
+        instance_node, = infograph.objects(rootnode, RIF.instance)
+        class_node, = infograph.objects(rootnode, RIF["class"])
+        instance = _generate_object(infograph, instance_node,
+                                    cls._instance_generators)
+        class_ = _generate_object(infograph, class_node,
+                                  cls._class_generators)
+        return cls(instance, class_)
 
 class rif_subclass(rif_fact):
     sub_class: ATOM
@@ -1104,6 +1128,9 @@ rif_external._atom_args_generator = _term_generators
 rif_atom._atom_op_generator = _term_generators
 rif_atom._atom_args_generator = _term_generators
 rif_list._item_generator = _term_generators
+
+rif_member._instance_generators = _term_generators
+rif_member._class_generators = _term_generators
 
 
 def _get_resolveable(x: Union[TRANSLATEABLE_TYPES, _resolvable_gen, Variable], machine: durable_reasoner.machine) -> RESOLVABLE:
