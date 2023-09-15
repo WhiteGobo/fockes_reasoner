@@ -450,11 +450,12 @@ class rif_implies(_rule_gen):
         else:
             newrule.orig_pattern.append(self.if_)
         if isinstance(self.then_, rif_do):
-            raise NotImplementedError()
-        if len(conditions) == 0:
-            newrule.action = self.then_.generate_assert_action(machine)
+            action = self.then_.generate_action(machine)
         else:
             action = self.then_.generate_assert_action(machine)
+        if len(conditions) == 0:
+            newrule.action = action
+        else:
             newrule.action = self.conditional(self, conditions, action, machine)
         logger.info("create implication %r" % newrule)
         newrule.finalize()
