@@ -21,6 +21,21 @@ from .abc_machine import fact
 class _NotBoundVar(KeyError):
     ...
 
+class _dict_facts(fact):
+    def check_for_pattern(self, c: abc_machine.machine,
+                          bindings: BINDING = {},
+                          ) -> bool:
+        fact_ = self.as_dict(bindings)
+        fact = {}
+        for key, value in fact_.items():
+            try:
+                fact[key] = _node2string(value, c, bindings)
+            except _NotBoundVar:
+                pass
+        for _ in c.get_facts(fact):
+            return True
+        return False
+
 class external(abc_external):
     op: URIRef
     args: Iterable[Union[TRANSLATEABLE_TYPES, "external", Variable]]
@@ -235,7 +250,7 @@ class frame(fact):
         c.assert_fact(fact)
 
 
-class member(fact):
+class member(_dict_facts):
     ID: str = "member"
     """facttype :term:`member` are labeled with this."""
     INSTANCE: str = "instance"
@@ -256,11 +271,6 @@ class member(fact):
                    self.CLASS: self.cls,
                    }
         return pattern
-
-    def check_for_pattern(self, c: abc_machine.machine,
-                          bindings: BINDING = {},
-                          ) -> bool:
-        raise NotImplementedError()
 
     def assert_fact(self, c: abc_machine.machine,
                bindings: BINDING = {},
@@ -409,7 +419,7 @@ def _node2string(x: Union[TRANSLATEABLE_TYPES, Variable, str, abc_external],
         newnode = _resolve(x.as_resolvable(machine), bindings)
         return rdflib2string(newnode)
     elif isinstance(x, str):
-        raise NotImplementedError()
+        return x
     else:
         raise NotImplementedError(type(x))
 
