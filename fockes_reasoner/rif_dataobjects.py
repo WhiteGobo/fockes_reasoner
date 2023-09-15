@@ -133,6 +133,8 @@ def _generate_object(infograph: Graph, target: IdentifiedNode,
 
 def slot2node(infograph: Graph, x: IdentifiedNode) -> ATOM:
     """Transform
+    :TODO: Local variables are not correctly transformed but instead
+        just Literals are used.
     """
     val_info = dict(infograph.predicate_objects(x))
     t = val_info[RDF.type]
@@ -148,6 +150,13 @@ def slot2node(infograph: Graph, x: IdentifiedNode) -> ATOM:
         #elif val.datatype is None:
         #    val = Literal(val, datatype=XSD.string, language=val.language)
         return val
+    elif t == RIF.Const and RIF.constname in val_info:
+        val = val_info[RIF.constname]
+        assert isinstance(val, Literal)
+        #return local(val, graph.identifier)
+        return val
+    elif t == RIF.Const:
+        raise NotImplementedError(val_info)
     elif t == RIF.External:
         return rif_external.from_rdf(infograph, x)
     elif t == RIF.List:
