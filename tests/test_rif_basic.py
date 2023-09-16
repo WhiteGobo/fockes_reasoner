@@ -74,22 +74,22 @@ from data.test_suite import \
          PET_Equality_in_conclusion_1,
          PET_Equality_in_conclusion_2,
          PET_Equality_in_conclusion_3,
+         PET_IRI_from_IRI,
+         PET_Inconsistent_Entailment,
+         PET_IndividualData_Separation_Inconsistency,
+         PET_ListConstantEquality,
+         PET_ListEqualityFromElementEquality,
+         PET_ListLiteralEquality,
+         PET_Multiple_IRIs_from_String,
+         PET_Multiple_Strings_from_IRI,
+         PET_Named_Arguments,
+         PET_RDF_Combination_Member_1,
+         PET_RDF_Combination_SubClass_4,
+         PET_RDF_Combination_SubClass_6,
+         PET_YoungParentDiscount_1,
          PET_Equality_in_condition,
-                 PET_Factorial_Functional,
-                 PET_Factorial_Relational,
-                 PET_IRI_from_IRI,
-                 PET_Inconsistent_Entailment,
-                 PET_IndividualData_Separation_Inconsistency,
-                 PET_ListConstantEquality,
-                 PET_ListEqualityFromElementEquality,
-                 PET_ListLiteralEquality,
-                 PET_Multiple_IRIs_from_String,
-                 PET_Multiple_Strings_from_IRI,
-                 PET_Named_Arguments,
-                 PET_RDF_Combination_Member_1,
-                 PET_RDF_Combination_SubClass_4,
-                 PET_RDF_Combination_SubClass_6,
-                 PET_YoungParentDiscount_1,
+         PET_Factorial_Functional,
+         PET_Factorial_Relational,
          )
 import data.test_suite
 
@@ -127,8 +127,10 @@ def test_simpletestrun():
     q = fockes_reasoner.simpleLogicMachine.from_rdf(g)
     myfacts = q.run()
     #logger.info("Expected conclusions in ttl:\n%s" % conc_graph.serialize())
-    logger.info("All facts after machine has run:\n%s" % list(q.machine.get_facts()))
-    rif_facts = [f for f in rdfmodel().import_graph(conc_graph) if not isinstance(f, rdflib.term.Node)]
+    logger.info("All facts after machine has run:\n%s"
+                % list(q.machine.get_facts()))
+    rif_facts = [f for f in rdfmodel().import_graph(conc_graph)
+                 if not isinstance(f, rdflib.term.Node)]
     assert rif_facts, "couldnt load conclusion rif_facts directly"
     assert q.check(rif_facts), "Missing expected conclusions"
 
@@ -198,7 +200,6 @@ def test_simpletestrun():
                  marks=mark.skip("The test uses conclusion format ttl"),
                  id="RDF Combination Constant Equivalence Graph Entailment"),
     pytest.param(PET_RDF_Combination_SubClass_2,
-                 marks=mark.skip("No import profile. No rules to get type from subtypes"),
                  id="RDF Combination SubClass 2"),
     param(PET_Arbitrary_Entailment,
           marks=mark.skip("not yet implemented")),
@@ -305,7 +306,8 @@ def test_NegativeEntailmentTests(testinfo):
                 %(testinfo.premise, testinfo.nonconclusion))
     try:
         g = rdflib.Graph().parse(testinfo.premise, format="rif")
-        nonconc_graph = rdflib.Graph().parse(testinfo.nonconclusion, format="rif")
+        nonconc_graph = rdflib.Graph().parse(testinfo.nonconclusion,
+                                             format="rif")
     except rdflib.plugin.PluginException:
         pytest.skip("Need rdflib parser plugin to load RIF-file")
     #logger.info("premise in ttl:\n%s" % g.serialize())
