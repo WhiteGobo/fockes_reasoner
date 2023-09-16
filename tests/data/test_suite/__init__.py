@@ -345,8 +345,8 @@ PET_Class_Membership = PositiveEntailmentTest(
         )
 tmp = files(Classificationinheritance)
 PET_Classificationinheritance = PositiveEntailmentTest(
-        tmp.joinpath("Classificationinheritance-premise.rif"),
-        tmp.joinpath("Classificationinheritance-conclusion.rif"),
+        tmp.joinpath("Classification-inheritance-premise.rif"),
+        tmp.joinpath("Classification-inheritance-conclusion.rif"),
         )
 tmp = files(ElementEqualityFromListEquality)
 PET_ElementEqualityFromListEquality = PositiveEntailmentTest(

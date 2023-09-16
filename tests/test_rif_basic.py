@@ -210,7 +210,7 @@ def test_simpletestrun():
     param(PET_Class_Membership,
           marks=mark.skip("not yet implemented")),
     param(PET_Classificationinheritance,
-          marks=mark.skip("not yet implemented")),
+          id="PET_Classificationinheritance"),
     param(PET_ElementEqualityFromListEquality,
           marks=mark.skip("not yet implemented")),
     param(PET_EntailEverything,
