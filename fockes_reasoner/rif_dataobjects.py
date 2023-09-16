@@ -744,6 +744,9 @@ class rif_member(rif_fact):
     _class_generators: Mapping[IdentifiedNode,
                                Callable[[Graph, IdentifiedNode], ATOM]]
 
+    def __repr__(self) -> str:
+        return "rif(%s # %s)" % (self.instance, self.cls)
+
     def __init__(self, instance: ATOM, cls: ATOM) -> None:
         self.instance = instance
         self.cls = cls
