@@ -21,7 +21,15 @@ from .abc_machine import fact
 class _NotBoundVar(KeyError):
     ...
 
-class _dict_facts(fact):
+class _dict_fact(fact):
+    def assert_fact(self, c: abc_machine.machine,
+                    bindings: BINDING = {}):
+        fact_ = self.as_dict(bindings)
+        fact = {}
+        for key, value in fact_.items():
+            fact[key] = _node2string(value, c, bindings)
+        c.assert_fact(fact)
+
     def check_for_pattern(self, c: abc_machine.machine,
                           bindings: BINDING = {},
                           ) -> bool:
@@ -84,7 +92,7 @@ class machine_list(external):
         return "m[%s]" % ", ".join(str(x) for x in self.items)
 
 
-class subclass(fact):
+class subclass(_dict_fact):
     sub_class: typ.Union[TRANSLATEABLE_TYPES, abc_external, Variable, ]
     super_class: typ.Union[TRANSLATEABLE_TYPES, abc_external, Variable]
     ID: str = "subclass"
@@ -99,7 +107,14 @@ class subclass(fact):
 
     def as_dict(self, bindings: Optional[BINDING] = None,
                 ) -> Mapping[str, Union[str, Variable, TRANSLATEABLE_TYPES]]:
-        raise NotImplementedError()
+        if isinstance(self.sub_class, external) or isinstance(self.super_class, external):
+            raise NotImplementedError()
+        pattern: Mapping[str, Union[str, Variable, TRANSLATEABLE_TYPES]]\
+                = {abc_machine.FACTTYPE: self.ID,
+                   self.SUBCLASS_SUB: self.sub_class,
+                   self.SUBCLASS_SUPER: self.super_class,
+                   }
+        return pattern
 
     def check_for_pattern(self, c: abc_machine.machine,
                           bindings: BINDING = {},
@@ -118,11 +133,6 @@ class subclass(fact):
             return True
         return False
 
-    def assert_fact(self, c: abc_machine.machine,
-               bindings: BINDING = {},
-               ) -> None:
-        raise NotImplementedError()
-
     def retract_fact(self, c: abc_machine.machine,
                 bindings: BINDING = {},
                 ) -> None:
@@ -135,7 +145,9 @@ class subclass(fact):
 
     @classmethod
     def from_fact(cls, fact: Mapping[str, str]) -> "fact_subclass":
-        raise NotImplementedError()
+        sub_class = string2rdflib(fact[cls.SUBCLASS_SUB])
+        super_class = string2rdflib(fact[cls.SUBCLASS_SUPER])
+        return cls(sub_class, super_class)
 
 class frame(fact):
     obj: typ.Union[TRANSLATEABLE_TYPES, external, Variable]
@@ -250,7 +262,7 @@ class frame(fact):
         c.assert_fact(fact)
 
 
-class member(_dict_facts):
+class member(_dict_fact):
     ID: str = "member"
     """facttype :term:`member` are labeled with this."""
     INSTANCE: str = "instance"
@@ -272,11 +284,6 @@ class member(_dict_facts):
                    }
         return pattern
 
-    def assert_fact(self, c: abc_machine.machine,
-               bindings: BINDING = {},
-               ) -> None:
-        raise NotImplementedError()
-
     def retract_fact(self, c: abc_machine.machine,
                 bindings: BINDING = {},
                 ) -> None:
@@ -289,8 +296,9 @@ class member(_dict_facts):
 
     @classmethod
     def from_fact(cls, fact: Mapping[str, str]) -> "member":
-        raise NotImplementedError()
-
+        instance = string2rdflib(fact[cls.INSTANCE])
+        cls_ = string2rdflib(fact[cls.CLASS])
+        return cls(instance, cls_)
 
 
 class atom(fact):
