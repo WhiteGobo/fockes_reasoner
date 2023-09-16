@@ -430,9 +430,9 @@ class RDFSmachine(_base_durable_machine):
     """
     def __init__(self, loggername: str = __name__) -> None:
         super().__init__(loggername)
-        self.__RDFS_rules()
+        self.__subclass_rule()
 
-    def __RDFS_rules(self):
+    def __subclass_rule(self):
         sub_type = Variable("sub")
         super_type = Variable("super")
         inst = Variable("inst")
@@ -446,9 +446,13 @@ class RDFSmachine(_base_durable_machine):
             member.INSTANCE: inst,
             member.CLASS: sub_type,
             }, "ObjMember")
-        def qq(bindings: BINDING) -> None:
-            raise NotImplementedError()
-        self._make_rule([desc_subclass, desc_objMember], qq)
+        newObjMember = member(inst, super_type)
+        def assert_membership(bindings: BINDING) -> None:
+            try:
+                newObjMember.assert_fact(self, bindings)
+            except durable.engine.MessageObservedException:
+                pass
+        self._make_rule([desc_subclass, desc_objMember], assert_membership)
 
 
 
