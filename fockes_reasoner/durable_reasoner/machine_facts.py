@@ -105,6 +105,10 @@ class subclass(_dict_fact):
         self.sub_class = sub_class
         self.super_class = super_class
 
+    def __repr__(self) -> str:
+        return "%s ## %s" % (_pretty(self.sub_class),
+                             _pretty(self.super_class))
+
     def as_dict(self, bindings: Optional[BINDING] = None,
                 ) -> Mapping[str, Union[str, Variable, TRANSLATEABLE_TYPES]]:
         if isinstance(self.sub_class, external) or isinstance(self.super_class, external):
@@ -272,6 +276,9 @@ class member(_dict_fact):
     def __init__(self, instance: Union[TRANSLATEABLE_TYPES, external, Variable], cls: Union[TRANSLATEABLE_TYPES, external, Variable]) -> None:
         self.instance = instance
         self.cls = cls
+
+    def __repr__(self) -> str:
+        return "%s # %s" % (_pretty(self.instance), _pretty(self.cls))
 
     def as_dict(self, bindings: Optional[BINDING] = None,
                 ) -> Mapping[str, Union[str, Variable, TRANSLATEABLE_TYPES]]:
