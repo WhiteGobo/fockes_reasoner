@@ -8,7 +8,7 @@ default: test
 
 .PHONY: test
 test:
-	$(PYTHON_TEST) $(PYTEST_OPT) tests -k rif_basic
+	$(PYTHON_TEST) $(PYTEST_OPT) tests
 
 opendoc:
 	xdg-open docs-build/html/index.html
