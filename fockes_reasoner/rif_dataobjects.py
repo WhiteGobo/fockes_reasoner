@@ -1141,6 +1141,7 @@ _formulas: Mapping[IdentifiedNode, Callable[[Graph, IdentifiedNode],
            RIF.Frame: rif_frame.from_rdf,
            RIF.Equal: rif_equal.from_rdf,
            RIF.Atom: rif_atom.from_rdf,
+           RIF.Member: rif_member.from_rdf,
            }
 rif_and._formulas_generators = dict(_formulas)
 rif_exists._formula_generators = {#RIF.External: rif_external.from_rdf,
@@ -1158,6 +1159,7 @@ rif_group._sentence_generators = {
         RIF.Implies: rif_implies.from_rdf,
         RIF.Frame: rif_frame.from_rdf,
         RIF.Atom: rif_atom.from_rdf,
+        RIF.Member: rif_member.from_rdf,
         }
 
 _term_generators: Mapping[IdentifiedNode, Callable[[Graph, IdentifiedNode], ATOM]] = {
