@@ -752,7 +752,10 @@ class rif_member(rif_fact):
         self.cls = cls
 
     def _add_pattern(self, rule: durable_reasoner.rule) -> None:
-        raise NotImplementedError()
+        instance = _try_as_machinefact(self.instance)
+        cls = _try_as_machinefact(self.cls)
+        f = machine_facts.member(instance, cls)
+        rule.orig_pattern.append(f)
 
     def _create_facts(self) -> Iterable[machine_facts.member]:
         cls = _try_as_machinefact(self.cls)

@@ -147,7 +147,10 @@ class _closure_helper(_context_helper):
         self.c = c
 
     def assert_fact(self, fact: Mapping[str, str]) -> None:
-        self.c.assert_fact(fact)
+        try:
+            self.c.assert_fact(fact)
+        except durable.engine.MessageObservedException:
+            pass
 
     def get_facts(self, fact_filter: Optional[Mapping[str, str]] = None,
                   ) -> Iterable[Mapping[str, str]]:
