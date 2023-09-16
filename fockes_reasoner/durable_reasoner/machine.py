@@ -42,6 +42,17 @@ class FailedInternalAction(Exception):
 class _pattern:
     pattern: Mapping[str, Union[Variable, str, TRANSLATEABLE_TYPES]]
     factname: str
+    def __init__(
+            self,
+            pattern: Mapping[str, Union[Variable, str, TRANSLATEABLE_TYPES]],
+            factname: Optional[str] = None,
+            ) -> None:
+        self.pattern = pattern
+        if factname is None:
+            _as_string = repr(sorted(pattern.items()))
+            self.factname = "f%s" % sha1(_as_string.encode("utf8")).hexdigest()
+        else:
+            self.factname = factname
 
     def __repr__(self) -> str:
         return "f(%s): %s" % (self.factname, self.pattern)
@@ -83,17 +94,6 @@ class _pattern:
         pattern_part = getattr(rls.c, self.factname) << constraint
         return pattern_part
 
-    def __init__(
-            self,
-            pattern: Mapping[str, Union[Variable, str, TRANSLATEABLE_TYPES]],
-            factname: Optional[str] = None,
-            ) -> None:
-        self.pattern = pattern
-        if factname is None:
-            _as_string = repr(sorted(pattern.items()))
-            self.factname = "f%s" % sha1(_as_string.encode("utf8")).hexdigest()
-        else:
-            self.factname = factname
 
 class _context_helper(abc.ABC):
     """helper class to decide how to assert and retract facts"""
@@ -433,7 +433,22 @@ class RDFSmachine(_base_durable_machine):
         self.__RDFS_rules()
 
     def __RDFS_rules(self):
-        pass
+        sub_type = Variable("sub")
+        super_type = Variable("super")
+        inst = Variable("inst")
+        desc_subclass = _pattern({
+            FACTTYPE: subclass.ID,
+            subclass.SUBCLASS_SUB: sub_type,
+            subclass.SUBCLASS_SUPER: super_type,
+            }, "DescriptionSubclass")
+        desc_objMember = _pattern({
+            FACTTYPE: member.ID,
+            member.INSTANCE: inst,
+            member.CLASS: sub_type,
+            }, "ObjMember")
+        def qq(bindings: BINDING) -> None:
+            raise NotImplementedError()
+        self._make_rule([desc_subclass, desc_objMember], qq)
 
 
 
