@@ -1,5 +1,5 @@
 import pytest
-from pytest import param, mark
+from pytest import param, mark, skip
 import rdflib
 import traceback
 import logging
@@ -23,12 +23,15 @@ from fockes_reasoner.rif_dataobjects import (rif_forall,
 import fockes_reasoner
 from fockes_reasoner.class_rdfmodel import rdfmodel
 
-from data.test_suite import \
+
+from .data.test_suite import \
         (PET_Assert,
          PET_AssertRetract,
          PET_Modify,
          PET_Modify_loop,
          PET_AssertRetract2,
+         NET_Retract,
+         NET_RDF_Combination_SubClass_5,
          PET_Builtin_literal_not_identical,
          PET_Builtins_Binary,
          PET_Builtins_List,
@@ -91,7 +94,7 @@ from data.test_suite import \
          PET_Factorial_Functional,
          PET_Factorial_Relational,
          )
-import data.test_suite
+from .data import test_suite
 
 def _import_graph(filepath) -> rdflib.Graph:
     fp = str(filepath)
@@ -136,14 +139,14 @@ def test_simpletestrun():
 
 
 @pytest.mark.parametrize("testinfo",[
-    pytest.param(data.test_suite.PET_Assert),
-    pytest.param(data.test_suite.PET_AssertRetract,
+    pytest.param(PET_Assert),
+    pytest.param(PET_AssertRetract,
                  marks=mark.skip("implies not frame is not implemented."),
                  id="PET AssertRetract"),
-    pytest.param(data.test_suite.PET_AssertRetract2,
+    pytest.param(PET_AssertRetract2,
                  id="PET_AssertRetract2"),
-    pytest.param(data.test_suite.PET_Modify, id="modify"),
-    pytest.param(data.test_suite.PET_Modify_loop,
+    pytest.param(PET_Modify, id="modify"),
+    pytest.param(PET_Modify_loop,
                  id="modify loop"),
     pytest.param(PET_Builtin_literal_not_identical,
                  id="builtin literal not identical"),
@@ -222,7 +225,8 @@ def test_simpletestrun():
     param(PET_Equality_in_conclusion_3,
           marks=mark.skip("not yet implemented")),
     param(PET_Equality_in_condition,
-          marks=mark.skip("not yet implemented")),
+          marks=mark.skip("Doesnt work with"),
+          id="PET_Equality_in_condition"),
     param(PET_Factorial_Functional,
           marks=mark.skip("not yet implemented")),
     param(PET_Factorial_Relational,
@@ -283,9 +287,9 @@ def test_PositiveEntailmentTests(testinfo):
 
 
 @pytest.mark.parametrize("testinfo",[
-    param(data.test_suite.NET_Retract,
+    param(NET_Retract,
           id="NET_Retract"),
-    param(data.test_suite.NET_RDF_Combination_SubClass_5,
+    param(NET_RDF_Combination_SubClass_5,
           id="NET_RDF_Combination_SubClass_5"),
     param(NET_Local_Constant,
           marks=pytest.mark.skip("No local variables supported yet"),
@@ -331,3 +335,4 @@ def test_NegativeEntailmentTests(testinfo):
     assert rif_facts, "couldnt load conclusion rif_facts directly"
     for f in rif_facts:
         assert not q.check([f]), "Not expected conclusion %s found" % f
+
