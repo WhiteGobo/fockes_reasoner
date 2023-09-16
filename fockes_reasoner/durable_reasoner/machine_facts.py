@@ -84,7 +84,7 @@ class machine_list(external):
         return "m[%s]" % ", ".join(str(x) for x in self.items)
 
 
-class fact_subclass(fact):
+class subclass(fact):
     sub_class: typ.Union[TRANSLATEABLE_TYPES, abc_external, Variable, ]
     super_class: typ.Union[TRANSLATEABLE_TYPES, abc_external, Variable]
     ID: str = "subclass"
@@ -292,36 +292,6 @@ class member(_dict_facts):
         raise NotImplementedError()
 
 
-class subclass(fact):
-    ID: str = "subclass"
-    """facttype :term:`subclass` are labeled with this."""
-    def check_for_pattern(self, c: abc_machine.machine,
-                          bindings: BINDING = {},
-                          ) -> bool:
-        raise NotImplementedError()
-
-    def assert_fact(self, c: abc_machine.machine,
-               bindings: BINDING = {},
-               ) -> None:
-        raise NotImplementedError()
-
-    def as_dict(self, bindings: Optional[BINDING] = None,
-                ) -> Mapping[str, Union[str, Variable, TRANSLATEABLE_TYPES]]:
-        raise NotImplementedError()
-
-    def retract_fact(self, c: abc_machine.machine,
-                bindings: BINDING = {},
-                ) -> None:
-        raise NotImplementedError()
-
-    def modify_fact(self, c: abc_machine.machine,
-               bindings: BINDING = {},
-               ) -> None:
-        raise NotImplementedError()
-
-    @classmethod
-    def from_fact(cls, fact: Mapping[str, str]) -> "subclass":
-        raise NotImplementedError()
 
 class atom(fact):
     ID: str = "atom"

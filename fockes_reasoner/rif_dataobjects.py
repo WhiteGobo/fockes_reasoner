@@ -805,7 +805,7 @@ class rif_subclass(rif_fact):
             ) -> bool:
         sub_class = self.sub_class.as_machinefact() if isinstance(self.sub_class, _resolvable_gen) else self.sub_class
         super_class = self.super_class.as_machinefact() if isinstance(self.super_class, _resolvable_gen) else self.super_class
-        f = machine_facts.fact_subclass(sub_class, super_class)
+        f = machine_facts.subclass(sub_class, super_class)
         return f.check_for_pattern(machine, bindings)
 
     def __repr__(self) -> str:
