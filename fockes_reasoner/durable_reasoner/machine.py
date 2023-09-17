@@ -583,9 +583,10 @@ class durable_rule(abc_machine.implication, abc_machine.rule):
                 patterns.append(_pattern(q.as_dict()))
                 bound_variables.update(q.used_variables)
             elif isinstance(q, abc_external):
-                tmp_p, tmp_c = self._process_external(q.op, q.args)
+                tmp_p, tmp_c, tmp_v = self._process_external(q.op, q.args, bound_variables)
                 logger.debug("uses %s to append:\npattern: %s\ncondition: %s"
                              %(q, tmp_p, tmp_c))
+                bound_variables.update(tmp_v)
                 patterns.extend(tmp_p)
                 conditions.extend(tmp_c)
             else:
@@ -627,8 +628,11 @@ class durable_rule(abc_machine.implication, abc_machine.rule):
             self,
             op: IdentifiedNode,
             args: ATOM_ARGS,
+            bound_variables: Container[Variable] = {},
             ) -> Tuple[Iterable[rls.value],
-                       Iterable[Callable[[BINDING], Literal]]]:
+                       Iterable[Callable[[BINDING], Literal]],
+                       Iterable[Variable]]:
+        new_bound_vars = []
         try:
             raise NoPossibleExternal()
             patterns, conditions\
@@ -638,7 +642,7 @@ class durable_rule(abc_machine.implication, abc_machine.rule):
             cond = self.machine._create_assignment_from_external(op, args)
         assert not isinstance(cond, (Variable, IdentifiedNode, Literal,\
                 term_list)), "Im not yet sure what i should do here"
-        return [], [cond]#type: ignore[list-item]
+        return [], [cond], new_bound_vars#type: ignore[list-item]
 
     @property
     def logger(self) -> logging.Logger:
