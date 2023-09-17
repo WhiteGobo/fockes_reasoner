@@ -5,7 +5,7 @@ from .shared import RIF
 from collections.abc import Mapping
 import logging
 logger = logging.getLogger(__name__)
-from .abc_logicMachine import PRD_logicMachine, AlgorithmRejection, ImportReject
+from .abc_logicMachine import PRD_logicMachine, SyntaxReject, AlgorithmRejection, ImportReject
 
 from .rif_dataobjects import rif_document, rif_fact
 from .class_machineWithImport import machineWithImport as machine
@@ -53,7 +53,7 @@ class simpleLogicMachine(PRD_logicMachine):
         try:
             self.document.create_rules(self.machine)
         except VariableNotBoundError as err:
-            raise AlgorithmRejection() from err
+            raise SyntaxReject() from err
 
     def check(self, rif_facts: Iterable[rif_fact]) -> bool:
         checks = {f: f.check(self.machine) for f in rif_facts}

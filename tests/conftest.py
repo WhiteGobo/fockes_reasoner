@@ -38,7 +38,7 @@ def logicmachine_after_NET(NET_testdata, logic_machine, valid_exceptions):
 def logicmachine_after_NST(NST_testdata, logic_machine, valid_exceptions):
     try:
         return logicmachine_after_run(NST_testdata, logic_machine,
-                                  (fockes_reasoner.AlgorithmRejection, *valid_exceptions))
+                                  (fockes_reasoner.SyntaxReject, *valid_exceptions))
     except ExpectedFailure as err:
         return err
 

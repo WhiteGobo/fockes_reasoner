@@ -4,15 +4,16 @@ import rdflib
 from .rif_dataobjects import rif_fact
 
 class AlgorithmRejection(Exception):
-    """If given algorithm cant be run by this logicMachine.
+    """If given algorithm is valid but cant be run by this logicMachine.
     """
-    ...
+
+class SyntaxReject(Exception):
+    """If given RIF data has Syntax errors"""
 
 class ImportReject(Exception):
     """
     :TODO: This must be placed somewhere else
     """
-    ...
 
 class logicMachine(abc.ABC):
     @abc.abstractmethod
