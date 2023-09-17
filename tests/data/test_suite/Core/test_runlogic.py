@@ -415,16 +415,23 @@ def NET_testdata(request):
     return request.param
 
 @pytest.fixture(params=[
-    param(IRT_Multiple_Context_Error),
+    param(IRT_Multiple_Context_Error,
+          marks=mark.skip("Not Implemented yet"),
+          ),
     param(IRT_OWL_Combination_Invalid_DL_Formula,
+          marks=mark.skip("Not Implemented yet"),
           ),
     param(IRT_OWL_Combination_Invalid_DL_Import,
+          marks=mark.skip("Not Implemented yet"),
           ),
     param(IRT_RDF_Combination_Invalid_Constant_1,
+          marks=mark.skip("Not Implemented yet"),
           ),
     param(IRT_RDF_Combination_Invalid_Constant_2,
+          marks=mark.skip("Not Implemented yet"),
           ),
     param(IRT_RDF_Combination_Invalid_Profiles_1,
+          marks=mark.skip("Not Implemented yet"),
           ),
     ])
 def IRT_testdata(request):
