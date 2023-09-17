@@ -5,10 +5,11 @@ from .shared import RIF
 from collections.abc import Mapping
 import logging
 logger = logging.getLogger(__name__)
-from .abc_logicMachine import PRD_logicMachine, AlgorithmRejection
+from .abc_logicMachine import PRD_logicMachine, AlgorithmRejection, ImportReject
 
 from .rif_dataobjects import rif_document, rif_fact
 from .class_machineWithImport import machineWithImport as machine
+from .durable_reasoner import VariableNotBoundError
 
 class importManager(Mapping[IdentifiedNode, Graph]):
     documents: Mapping[IdentifiedNode, Graph]
@@ -49,7 +50,10 @@ class simpleLogicMachine(PRD_logicMachine):
         self.document = document
         #reset machine
         self.machine = machine()
-        self.document.create_rules(self.machine)
+        try:
+            self.document.create_rules(self.machine)
+        except VariableNotBoundError as err:
+            raise AlgorithmRejection() from err
 
     def check(self, rif_facts: Iterable[rif_fact]) -> bool:
         checks = {f: f.check(self.machine) for f in rif_facts}

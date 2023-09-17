@@ -625,7 +625,7 @@ class durable_rule(abc_machine.implication, abc_machine.rule):
                 = self._generate_action_prerequisites()
         if not all(x in bound_variables for x in self.needed_variables):
             notbound = [x for x in self.needed_variables
-                        if x not in self.bound_variables]
+                        if x not in bound_variables]
             raise VariableNotBoundError(notbound)
         action = self._generate_action(conditions, self.action)
         self.machine._make_rule(patterns, action)

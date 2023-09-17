@@ -2,6 +2,7 @@ import abc
 import logging
 logger = logging.getLogger(__name__)
 import uuid
+import itertools as it
 from .durable_reasoner import machine_facts, fact, NoPossibleExternal, _resolve, ATOM_ARGS, term_list, machine_list, pattern_generator
 from .durable_reasoner.machine_facts import external, TRANSLATEABLE_TYPES
 import rdflib
@@ -48,7 +49,7 @@ class _action_gen(abc.ABC):
     @abc.abstractmethod
     def generate_action(self,
                         machine: durable_reasoner.machine,
-                        ) -> Callable[..., None]:
+                        ) -> Tuple[Callable[..., None], Iterable[Variable]]:
         ...
 
 class _rif_check(pattern_generator, abc.ABC):
@@ -65,6 +66,11 @@ class _rif_check(pattern_generator, abc.ABC):
 class rif_fact(_rif_check, _action_gen, _rule_gen):
     @abc.abstractmethod
     def _create_facts(self) -> Iterable[fact]:
+        ...
+
+    @property
+    @abc.abstractmethod
+    def used_variables(self) -> Iterable[Variable]:
         ...
 
     def check(self,
@@ -91,8 +97,8 @@ class rif_fact(_rif_check, _action_gen, _rule_gen):
 
     def generate_action(self,
                         machine: durable_reasoner.machine,
-                        ) -> Callable[..., None]:
-        return self.generate_assert_action(machine)
+                        ) -> Tuple[Callable[..., None], Iterable[Variable]]:
+        return self.generate_assert_action(machine), self.used_variables
 
     def generate_assert_action(self,
                                machine: durable_reasoner.machine,
@@ -344,10 +350,10 @@ class rif_forall(_rule_gen):
         else:
             newrule.orig_pattern.append(self.formula.if_)
         if len(conditions) == 0:
-            action = self.formula.then_.generate_action(machine)
+            action, used_variables = self.formula.then_.generate_action(machine)
         else:
             raise NotImplementedError()
-        newrule.set_action(action, [])
+        newrule.set_action(action, used_variables)
         logger.info("create rule %r" % newrule)
         newrule.finalize()
 
@@ -458,26 +464,28 @@ class rif_implies(_rule_gen):
         else:
             newrule.orig_pattern.append(self.if_)
         if isinstance(self.then_, rif_do):
-            action = self.then_.generate_action(machine)
+            action, used_variables = self.then_.generate_action(machine)
         else:
             action = self.then_.generate_assert_action(machine)
+            used_variables = self.then_.used_variables
         if len(conditions) == 0:
-            newrule.set_action(action, [])
+            newrule.set_action(action, used_variables)
         else:
             act = self.conditional(self, conditions, action, machine)
-            newrule.set_action(act)
+            newrule.set_action(act, used_variables)
         logger.info("create implication %r" % newrule)
         newrule.finalize()
 
     def generate_action(self,
                         machine: durable_reasoner.machine,
-                        ) -> Callable[[BINDING], None]:
+                        ) -> Tuple[Callable[[BINDING], None], Iterable[Variable]]:
         condition = self.if_.generate_condition(machine)
         implicated_action = self.then_.generate_action(machine)
         def act(bindings: BINDING) -> None:
             if condition(bindings):
                 implicated_action(bindings)
-        return act
+        used_variable = []
+        return act, used_variable
 
     @classmethod
     def from_rdf(cls, infograph: rdflib.Graph,
@@ -569,9 +577,14 @@ class rif_do(_action_gen):
 
     def generate_action(self,
                         machine: durable_reasoner.machine,
-                        ) -> Callable[[BINDING], None]:
-        self._all_actions = [act.generate_action(machine) for act in self.actions]
-        return self._act
+                        ) -> Tuple[Callable[[BINDING], None], Iterable[Variable]]:
+        self._all_actions = []
+        used_variables = set()
+        for act in self.actions:
+            tmp_act, tmp_vars = act.generate_action(machine)
+            self._all_actions.append(tmp_act)
+            used_variables.update(tmp_vars)
+        return self._act, used_variables
 
     def _act(self, bindings: BINDING) -> None:
         for act in self._all_actions:
@@ -615,6 +628,17 @@ class rif_atom(rif_fact):
         args = [_try_as_machinefact(arg) for arg in self.args]
         f = machine_facts.atom(self.op, args)
         rule.orig_pattern.append(f)
+
+    @property
+    def used_variables(self) -> Iterable[Variable]:
+        for x in (self.op, *self.args):
+            if isinstance(x, Variable):
+                yield x
+            elif isinstance(x, (IdentifiedNode, Literal)):
+                pass
+            else:
+                for y in x.used_variables:
+                    yield y
 
     def _create_facts(self) -> Iterable[fact]:
         raise NotImplementedError()
@@ -685,6 +709,17 @@ class rif_external(_resolvable_gen, _rif_check):
             ) -> bool:
         raise NotImplementedError()
 
+    @property
+    def used_variables(self) -> Iterable[Variable]:
+        for x in (self.op, *self.args):
+            if isinstance(x, Variable):
+                yield x
+            elif isinstance(x, (IdentifiedNode, Literal)):
+                pass
+            else:
+                for y in x.used_variables:
+                    yield y
+
     def as_machinefact(self) -> external:
         args = [x.as_machinefact() if isinstance(x, _resolvable_gen) else x for x in self.args]
         return external(self.op, args)
@@ -745,6 +780,17 @@ class rif_member(rif_fact):
     _class_generators: Mapping[IdentifiedNode,
                                Callable[[Graph, IdentifiedNode], ATOM]]
 
+    @property
+    def used_variables(self) -> Iterable[Variable]:
+        for x in (self.cls, self.instance):
+            if isinstance(x, Variable):
+                yield x
+            elif isinstance(x, (IdentifiedNode, Literal)):
+                pass
+            else:
+                for y in x.used_variables:
+                    yield y
+
     def __repr__(self) -> str:
         return "rif(%s # %s)" % (self.instance, self.cls)
 
@@ -784,6 +830,17 @@ class rif_subclass(rif_fact):
     def __init__(self, sub_class: ATOM, super_class: ATOM) -> None:
         self.sub_class = sub_class
         self.super_class = super_class
+
+    @property
+    def used_variables(self) -> Iterable[Variable]:
+        for x in (self.sub_class, self.super_class):
+            if isinstance(x, Variable):
+                yield x
+            elif isinstance(x, (IdentifiedNode, Literal)):
+                pass
+            else:
+                for y in x.used_variables:
+                    yield y
 
     def _add_pattern(self, rule: durable_reasoner.rule) -> None:
         raise NotImplementedError()
@@ -828,6 +885,17 @@ class rif_frame(rif_fact):
                  ) -> None:
         self.obj = obj
         self.slots = [(x,y) for x,y in slots]
+
+    @property
+    def used_variables(self) -> Iterable[Variable]:
+        for x in it.chain((self.obj,), it.chain(*self.slots)):
+            if isinstance(x, Variable):
+                yield x
+            elif isinstance(x, (IdentifiedNode, Literal)):
+                pass
+            else:
+                for y in x.used_variables:
+                    yield y
 
     @property
     def facts(self) -> Iterable[machine_facts.frame]:
@@ -949,16 +1017,27 @@ class rif_retract(_action_gen):
     def fact_or_atom(self) -> Union["rif_frame", IdentifiedNode]:
         try:
             return self.fact
-        except KeyError:
+        except AttributeError:
             return self.atom
+
+    @property
+    def used_variables(self) -> Iterable[Variable]:
+        for x in (self.fact_or_atom,):
+            if isinstance(x, Variable):
+                yield x
+            elif isinstance(x, (IdentifiedNode, Literal)):
+                pass
+            else:
+                for y in x.used_variables:
+                    yield y
 
     def generate_action(self,
                         machine: durable_reasoner.machine,
-                        ) -> Callable[[BINDING], None]:
+                        ) -> Tuple[Callable[[BINDING], None], Iterable[Variable]]:
         if getattr(self, "fact", None) is not None:
-            return self.fact.generate_retract_action(machine)
+            return self.fact.generate_retract_action(machine), self.used_variables
         else:
-            return machine_facts.retract_object_function(machine, self.atom)
+            return machine_facts.retract_object_function(machine, self.atom), self.used_variables
 
     @classmethod
     def from_rdf(cls, infograph: rdflib.Graph,
@@ -1006,8 +1085,8 @@ class rif_modify(_action_gen):
 
     def generate_action(self,
                         machine: durable_reasoner.machine,
-                        ) -> Callable[[BINDING], None]:
-        return self.fact.generate_assert_action(machine)
+                        ) -> Tuple[Callable[[BINDING], None], Iterable[Variable]]:
+        return self.fact.generate_assert_action(machine), self.fact.used_variables
 
     @classmethod
     def from_rdf(cls, infograph: rdflib.Graph,
@@ -1032,8 +1111,9 @@ class rif_assert(_action_gen):
 
     def generate_action(self,
                         machine: durable_reasoner.machine,
-                        ) -> Callable[[BINDING], None]:
-        return self.fact.generate_assert_action(machine)
+                        ) -> Tuple[Callable[[BINDING], None], Iterable[Variable]]:
+        return self.fact.generate_assert_action(machine),\
+                self.fact.used_variables
 
     @classmethod
     def from_rdf(cls, infograph: rdflib.Graph,

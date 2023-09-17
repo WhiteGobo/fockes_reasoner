@@ -346,10 +346,9 @@ class atom(fact):
 
     @property
     def used_variables(self) -> Iterable[Variable]:
-        if isinstance(self.op, Variable):
-            yield self.op
-        if isinstance(self.args, Variable):
-            yield self.args
+        for x in (self.op, *self.args):
+            if isinstance(x, Variable):
+                yield x
 
     def as_dict(self, bindings: Optional[BINDING] = None,
                 ) -> Mapping[str, Union[str, Variable, TRANSLATEABLE_TYPES]]:
