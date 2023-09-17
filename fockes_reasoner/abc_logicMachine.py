@@ -3,6 +3,11 @@ from typing import Iterable, Optional, Mapping
 import rdflib
 from .rif_dataobjects import rif_fact
 
+class AlgorithmRejection(Exception):
+    """If given algorithm cant be run by this logicMachine.
+    """
+    ...
+
 class logicMachine(abc.ABC):
     @abc.abstractmethod
     def check(self, rif_facts: Iterable[rif_fact]) -> bool:
@@ -13,6 +18,9 @@ class logicMachine(abc.ABC):
     def from_rdf(cls, infograph: rdflib.Graph,
                  extraDocuments: Optional[Mapping[str, rdflib.Graph]] = None,
                  ) -> "logicMachine":
+        """
+        :raises AlgorithmRejection:
+        """
         ...
 
     @abc.abstractmethod
