@@ -478,7 +478,6 @@ def IRT_testdata(request):
 
 @pytest.fixture(params=[
     param(NST_Core_NonSafeness,
-          marks=mark.skip("not implemented yet"),
           id=NST_Core_NonSafeness.name),
     param(NST_Core_NonSafeness_2,
           marks=mark.skip("not implemented yet"),
@@ -492,7 +491,7 @@ def NST_testdata(request):
 
 @pytest.fixture(params=[
     param(PST_Core_Safeness,
-          marks=mark.skip("test needs long time"),
+          marks=mark.skip("Implement Steplimit first"),
           id=PST_Core_Safeness.name),
     param(PST_Core_Safeness_2,
           id=PST_Core_Safeness_2.name),
