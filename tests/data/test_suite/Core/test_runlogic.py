@@ -2,8 +2,9 @@ import pytest
 from pytest import param, mark, skip, raises
 from importlib.resources import files
 
+from rdflib import Namespace
 from ...blueprints_tests import blueprint_test_logicmachine
-from ..mydata import PositiveEntailmentTest, NegativeEntailmentTest
+from ..mydata import PositiveEntailmentTest, NegativeEntailmentTest, ImportRejectionTest, PositiveSyntaxTest, NegativeSyntaxTest
 
 from .PositiveEntailmentTest import \
         Builtin_literalnotidentical,\
@@ -270,6 +271,70 @@ NET_RDF_Combination_SubClass = NegativeEntailmentTest(
         tmp.joinpath("RDF_Combination_SubClass-import001.ttl")},
         )
 
+from .ImportRejectionTest import\
+        Multiple_Context_Error,\
+        OWL_Combination_Invalid_DL_Formula,\
+        OWL_Combination_Invalid_DL_Import,\
+        RDF_Combination_Invalid_Constant_1,\
+        RDF_Combination_Invalid_Constant_2,\
+        RDF_Combination_Invalid_Profiles_1
+
+tc = Namespace("http://www.w3.org/2005/rules/test/repository/tc/")
+tmp = files(Multiple_Context_Error)
+IRT_Multiple_Context_Error = ImportRejectionTest(
+        tmp.joinpath("Multiple_Context_Error-input.rif"),
+        {tc["Multiple_Context_Error/Multiple_Context_Error-import001.rif"]:
+         tmp.joinpath("Multiple_Context_Error-import001.rif")}
+        )
+
+tmp = files(OWL_Combination_Invalid_DL_Formula)
+IRT_OWL_Combination_Invalid_DL_Formula = ImportRejectionTest(
+        tmp.joinpath("OWL_Combination_Invalid_DL_Formula-input.rif"),
+        {tc["OWL_Combination_Invalid_DL_Formula/OWL_Combination_Invalid_DL_Formula-import001"]:
+         tmp.joinpath("OWL_Combination_Invalid_DL_Formula-import001.ttl")},
+        )
+
+tmp = files(OWL_Combination_Invalid_DL_Import)
+IRT_OWL_Combination_Invalid_DL_Import = ImportRejectionTest(
+        tmp.joinpath("OWL_Combination_Invalid_DL_Import-input.rif"),
+        {tc["OWL_Combination_Invalid_DL_Import/OWL_Combination_Invalid_DL_Import-import001"]:
+         tmp.joinpath("OWL_Combination_Invalid_DL_Import-import001.ttl")}
+        )
+
+tmp = files(RDF_Combination_Invalid_Constant_1)
+IRT_RDF_Combination_Invalid_Constant_1 = ImportRejectionTest(
+        tmp.joinpath("RDF_Combination_Invalid_Constant_1-input.rif"),
+        {tc["RDF_Combination_Invalid_Constant_1/RDF_Combination_Invalid_Constant_1-import001"]:
+         tmp.joinpath("RDF_Combination_Invalid_Constant_1-import001.ttl")}
+        )
+
+tmp = files(RDF_Combination_Invalid_Constant_2)
+IRT_RDF_Combination_Invalid_Constant_2 = ImportRejectionTest(
+        tmp.joinpath("RDF_Combination_Invalid_Constant_2-input.rif"),
+        {tc["RDF_Combination_Invalid_Constant_2/RDF_Combination_Invalid_Constant_2-import001"]:
+         tmp.joinpath("RDF_Combination_Invalid_Constant_2-import001.ttl")}
+        )
+
+tmp = files(RDF_Combination_Invalid_Profiles_1)
+IRT_RDF_Combination_Invalid_Profiles_1 = ImportRejectionTest(
+        tmp.joinpath("RDF_Combination_Invalid_Profiles_1-input.rif"),
+        {tc["RDF_Combination_Invalid_Profiles_1/RDF_Combination_Invalid_Profiles_1-import001"]:
+         tmp.joinpath("RDF_Combination_Invalid_Profiles_1-import001.ttl"),
+         tc["RDF_Combination_Invalid_Profiles_1/RDF_Combination_Invalid_Profiles_1-import002"]:
+         tmp.joinpath("RDF_Combination_Invalid_Profiles_1-import002.ttl"),
+         }
+        )
+
+from .NegativeSyntaxTest import\
+        Core_NonSafeness,\
+        Core_NonSafeness_2,\
+        No_free_variables
+        
+from .PositiveSyntaxTest import\
+        Core_Safeness,\
+        Core_Safeness_2,\
+        Core_Safeness_3
+
 @pytest.fixture(params=[
     pytest.param(PET_Builtin_literal_not_identical,
                  id="builtin literal not identical"),
@@ -349,7 +414,19 @@ def PET_testdata(request):
 def NET_testdata(request):
     return request.param
 
-@pytest.fixture(params=[])
+@pytest.fixture(params=[
+    param(IRT_Multiple_Context_Error),
+    param(IRT_OWL_Combination_Invalid_DL_Formula,
+          ),
+    param(IRT_OWL_Combination_Invalid_DL_Import,
+          ),
+    param(IRT_RDF_Combination_Invalid_Constant_1,
+          ),
+    param(IRT_RDF_Combination_Invalid_Constant_2,
+          ),
+    param(IRT_RDF_Combination_Invalid_Profiles_1,
+          ),
+    ])
 def IRT_testdata(request):
     return request.param
 

@@ -26,6 +26,22 @@ class NegativeEntailmentTest:
         yield self.nonconclusion
         yield self.importedDocuments
 
+
+class ImportRejectionTest:
+    def __init__(self, premise, importedDocuments={}):
+        self.premise = str(premise)
+        self.importedDocuments = {x: y for x, y in dict(importedDocuments).items()}
+
+class PositiveSyntaxTest:
+    def __init__(self, premise, importedDocuments={}):
+        self.premise = str(premise)
+        self.importedDocuments = {x: y for x, y in dict(importedDocuments).items()}
+
+class NegativeSyntaxTest:
+    def __init__(self, premise, importedDocuments={}):
+        self.premise = str(premise)
+        self.importedDocuments = {x: y for x, y in dict(importedDocuments).items()}
+
 from .Core.PositiveEntailmentTest import\
         Modeling_Brain_Anatomy,\
         IRI_from_RDF_Literal,\
