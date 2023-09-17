@@ -4,7 +4,7 @@ from importlib.resources import files
 
 from rdflib import Namespace
 from ...blueprints_tests import blueprint_test_logicmachine
-from ..mydata import PositiveEntailmentTest, NegativeEntailmentTest, ImportRejectionTest, PositiveSyntaxTest, NegativeSyntaxTest
+from ....class_officialTestCases import PositiveEntailmentTest, NegativeEntailmentTest, ImportRejectionTest, PositiveSyntaxTest, NegativeSyntaxTest
 
 from .PositiveEntailmentTest import \
         Builtin_literalnotidentical,\

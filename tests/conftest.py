@@ -6,6 +6,7 @@ logger = logging.getLogger(__name__)
 from pytest import param, mark, skip, raises
 import fockes_reasoner
 from .test_rif_basic import _rif_type_to_constructor, _import_graph
+from .class_officialTestCases import PositiveEntailmentTest, NegativeEntailmentTest, ImportRejectionTest, PositiveSyntaxTest, NegativeSyntaxTest
 
 class ExpectedFailure(Exception):
     ...

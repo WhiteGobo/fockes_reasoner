@@ -3,7 +3,7 @@ from pytest import param, mark, skip, raises
 from importlib.resources import files
 
 from ...blueprints_tests import blueprint_test_logicmachine
-from ..mydata import PositiveEntailmentTest, NegativeEntailmentTest
+from ....class_officialTestCases import PositiveEntailmentTest, NegativeEntailmentTest, ImportRejectionTest, PositiveSyntaxTest, NegativeSyntaxTest
 from fockes_reasoner import BLD_logicMachine, AlgorithmRejection
 
 from .PositiveEntailmentTest import \
