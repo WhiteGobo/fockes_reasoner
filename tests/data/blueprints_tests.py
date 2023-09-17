@@ -18,10 +18,12 @@ class blueprint_test_logicmachine:
                     "Not expected conclusion %s found" % f
 
     def test_importFailed(self, logicmachine_after_IRT):
-        assert isinstance(logicmachine_after_IRT, ExpectedFailure)
+        assert isinstance(logicmachine_after_IRT, ExpectedFailure),\
+                "Unexpected successful import"
 
     def test_checkSyntaxFailed(self, logicmachine_after_NST):
-        assert isinstance(logicmachine_after_NST, ExpectedFailure)
+        assert isinstance(logicmachine_after_NST, ExpectedFailure),\
+                "Unexpected accepted Syntax"
 
     def test_checkSyntaxAccepted(self, logicmachine_after_PST):
         if isinstance(logicmachine_after_PST, ExpectedFailure):
