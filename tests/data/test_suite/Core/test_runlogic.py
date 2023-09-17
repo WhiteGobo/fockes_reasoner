@@ -329,11 +329,44 @@ from .NegativeSyntaxTest import\
         Core_NonSafeness,\
         Core_NonSafeness_2,\
         No_free_variables
+
+tmp = files(Core_NonSafeness)
+NST_Core_NonSafeness = NegativeSyntaxTest(
+        tmp.joinpath("Core_NonSafeness-input.rif"),
+        )
+
+tmp = files(Core_NonSafeness_2)
+NST_Core_NonSafeness_2 = NegativeSyntaxTest(
+        tmp.joinpath("Core_NonSafeness_2-input.rif"),
+        )
+tmp = files(No_free_variables)
+NST_No_free_variables = NegativeSyntaxTest(
+        tmp.joinpath("No_free_variables-input.rif")
+        )
         
 from .PositiveSyntaxTest import\
         Core_Safeness,\
         Core_Safeness_2,\
         Core_Safeness_3
+
+tmp = files(Core_Safeness)
+PST_Core_Safeness = PositiveSyntaxTest(
+        tmp.joinpath("Core_Safeness-input.rif"),
+        )
+
+tmp = files(Core_Safeness_2)
+PST_Core_Safeness_2 = PositiveSyntaxTest(
+        tmp.joinpath("Core_Safeness_2-input.rif"),
+        )
+
+tmp = files(Core_Safeness_3)
+PST_Core_Safeness_3 = PositiveSyntaxTest(
+        tmp.joinpath("Core_Safeness_3-input.rif"),
+        )
+
+tmp = files(Core_Safeness)
+tmp = files(Core_Safeness_2)
+tmp = files(Core_Safeness_3)
 
 @pytest.fixture(params=[
     pytest.param(PET_Builtin_literal_not_identical,
@@ -417,31 +450,46 @@ def NET_testdata(request):
 @pytest.fixture(params=[
     param(IRT_Multiple_Context_Error,
           marks=mark.skip("Not Implemented yet"),
+          id=IRT_Multiple_Context_Error.name,
           ),
     param(IRT_OWL_Combination_Invalid_DL_Formula,
           marks=mark.skip("Not Implemented yet"),
+          id=IRT_OWL_Combination_Invalid_DL_Formula.name,
           ),
     param(IRT_OWL_Combination_Invalid_DL_Import,
           marks=mark.skip("Not Implemented yet"),
+          id=IRT_OWL_Combination_Invalid_DL_Import.name,
           ),
     param(IRT_RDF_Combination_Invalid_Constant_1,
           marks=mark.skip("Not Implemented yet"),
+          id=IRT_RDF_Combination_Invalid_Constant_1.name,
           ),
     param(IRT_RDF_Combination_Invalid_Constant_2,
           marks=mark.skip("Not Implemented yet"),
+          id=IRT_RDF_Combination_Invalid_Constant_2.name,
           ),
     param(IRT_RDF_Combination_Invalid_Profiles_1,
           marks=mark.skip("Not Implemented yet"),
+          id=IRT_RDF_Combination_Invalid_Profiles_1.name,
           ),
     ])
 def IRT_testdata(request):
     return request.param
 
-@pytest.fixture(params=[])
+@pytest.fixture(params=[
+    ])
 def NST_testdata(request):
     return request.param
 
-@pytest.fixture(params=[])
+@pytest.fixture(params=[
+    param(PST_Core_Safeness,
+          marks=mark.skip("test needs long time"),
+          id=PST_Core_Safeness.name),
+    param(PST_Core_Safeness_2,
+          id=PST_Core_Safeness_2.name),
+    param(PST_Core_Safeness_3,
+          id=PST_Core_Safeness_3.name),
+    ])
 def PST_testdata(request):
     return request.param
 
