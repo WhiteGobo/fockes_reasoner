@@ -18,3 +18,11 @@ class logicMachine(abc.ABC):
     @abc.abstractmethod
     def run(self) -> None:
         ...
+
+
+class PRD_logicMachine(logicMachine):
+    ...
+
+
+class BLD_logicMachine(logicMachine):
+    ...
