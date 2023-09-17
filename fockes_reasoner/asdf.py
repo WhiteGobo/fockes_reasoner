@@ -5,7 +5,7 @@ from .shared import RIF
 from collections.abc import Mapping
 import logging
 logger = logging.getLogger(__name__)
-from .abc_logicMachine import logicMachine
+from .abc_logicMachine import PRD_logicMachine, AlgorithmRejection
 
 from .rif_dataobjects import rif_document, rif_fact
 from .class_machineWithImport import machineWithImport as machine
@@ -43,7 +43,7 @@ class importManager(Mapping[IdentifiedNode, Graph]):
         return iter(self.documents)
 
 
-class simpleLogicMachine(logicMachine):
+class simpleLogicMachine(PRD_logicMachine):
     document: rif_document
     def __init__(self, document: rif_document):
         self.document = document
