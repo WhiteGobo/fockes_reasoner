@@ -11,7 +11,7 @@ from hashlib import sha1
 import rdflib
 from rdflib import URIRef, Variable, Literal, BNode, Graph, IdentifiedNode, XSD
 from . import abc_machine
-from .abc_machine import TRANSLATEABLE_TYPES, FACTTYPE, BINDING, VARIABLE_LOCATOR, NoPossibleExternal, importProfile, RESOLVABLE, ATOM_ARGS, abc_external, RESOLVER, RuleNotComplete, pattern_generator
+from .abc_machine import TRANSLATEABLE_TYPES, FACTTYPE, BINDING, VARIABLE_LOCATOR, NoPossibleExternal, importProfile, RESOLVABLE, ATOM_ARGS, abc_external, RESOLVER, RuleNotComplete, pattern_generator, VariableNotBoundError
 
 from .bridge_rdflib import rdflib2string, string2rdflib, term_list
 
@@ -384,7 +384,7 @@ class _base_durable_machine(abc_machine.machine):
         def act(bindings: BINDING) -> None:
             logger.debug("execute init: %s" % action)
             action(bindings)
-        q.action = act
+        q.set_action(act, [])
         #q.action = action
         q.finalize()
 
@@ -465,6 +465,7 @@ class durable_rule(abc_machine.implication, abc_machine.rule):
     machine: _base_durable_machine
     conditions: list[Callable[[BINDING], Literal]]
     action: Optional[Callable[[BINDING], None]] = None
+    needed_variables: Iterable[Variable]
     finalized: bool = False
     _orig_pattern: list[Any]
     __tmp_pattern_organizer: "_pattern_organizer"
@@ -600,7 +601,7 @@ class durable_rule(abc_machine.implication, abc_machine.rule):
             #TODO : This rule lacks any trigger. 
             patterns.insert(0, _pattern({MACHINESTATE: RUNNING_STATE}))
 
-        return patterns, conditions
+        return patterns, conditions, bound_variables
 
     def _generate_action(
             self,
@@ -620,9 +621,19 @@ class durable_rule(abc_machine.implication, abc_machine.rule):
             raise Exception()
         self.finalized = True
         logger.debug("Create rule %s" % self)
-        patterns, conditions = self._generate_action_prerequisites()
+        patterns, conditions, bound_variables\
+                = self._generate_action_prerequisites()
+        if not all(x in bound_variables for x in self.needed_variables):
+            notbound = [x for x in self.needed_variables
+                        if x not in self.bound_variables]
+            raise VariableNotBoundError(notbound)
         action = self._generate_action(conditions, self.action)
         self.machine._make_rule(patterns, action)
+
+    def set_action(self, action: Callable[[BINDING], None],
+                   needed_variables: Iterable[Variable]) -> None:
+        self.action = action
+        self.needed_variables = list(needed_variables)
 
     def _process_external(
             self,

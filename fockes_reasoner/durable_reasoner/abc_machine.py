@@ -25,6 +25,8 @@ class RuleNotComplete(Exception):
     There may not be all needed information. Raise this error in that case
     """
 
+class VariableNotBoundError(Exception):
+    """If a rules doesnt bound Variables as expected by the action."""
 
 class abc_external(abc.ABC):
     op: IdentifiedNode
@@ -212,6 +214,7 @@ class rule(abc.ABC):
     def finalize(self) -> None:
         """
         :raises: RuleNotComplete
+        :raises: VariableNotBoundError
         """
         ...
 

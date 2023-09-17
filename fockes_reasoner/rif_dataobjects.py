@@ -347,7 +347,7 @@ class rif_forall(_rule_gen):
             action = self.formula.then_.generate_action(machine)
         else:
             raise NotImplementedError()
-        newrule.action = action
+        newrule.set_action(action, [])
         logger.info("create rule %r" % newrule)
         newrule.finalize()
 
@@ -370,7 +370,7 @@ class rif_forall(_rule_gen):
             action = implicated_fact.generate_assert_action(machine)
         else:
             raise NotImplementedError()
-        newrule.action = action
+        newrule.set_action(action, [])
         logger.info("create rule %r" % newrule)
         newrule.finalize()
 
@@ -462,9 +462,10 @@ class rif_implies(_rule_gen):
         else:
             action = self.then_.generate_assert_action(machine)
         if len(conditions) == 0:
-            newrule.action = action
+            newrule.set_action(action, [])
         else:
-            newrule.action = self.conditional(self, conditions, action, machine)
+            act = self.conditional(self, conditions, action, machine)
+            newrule.set_action(act)
         logger.info("create implication %r" % newrule)
         newrule.finalize()
 
