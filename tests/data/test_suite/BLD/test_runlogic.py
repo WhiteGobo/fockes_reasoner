@@ -247,16 +247,24 @@ def PET_testdata(request):
 def NET_testdata(request):
     return request.param
 
+@pytest.fixture(params=[])
+def IRT_testdata(request):
+    return request.param
+
+@pytest.fixture(params=[])
+def NST_testdata(request):
+    return request.param
+
+@pytest.fixture(params=[])
+def PST_testdata(request):
+    return request.param
+
 @pytest.fixture
-def valid_exceptions_PET(PET_testdata, logic_machine):
+def valid_exceptions(logic_machine):
     if isinstance(logic_machine, BLD_logicMachine):
         return Tuple()
     else:
         return (AlgorithmRejection,)
-
-@pytest.fixture
-def valid_exceptions_NET(NET_testdata, logic_machine):
-    return tuple()
 
 
 class TestPRD(blueprint_test_logicmachine):

@@ -11,3 +11,12 @@ class blueprint_test_logicmachine:
         for f in rif_facts_NET:
             assert not logicmachine_after_NET.check([f]),\
                     "Not expected conclusion %s found" % f
+
+    def test_importFailed(self, logicmachine_after_IRT):
+        pass
+
+    def test_checkSyntaxFailed(self, logicmachine_after_NST):
+        pass
+
+    def test_checkSyntaxAccepted(self, logicmachine_after_PST):
+        pass

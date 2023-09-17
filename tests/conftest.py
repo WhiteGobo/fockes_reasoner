@@ -15,14 +15,29 @@ def logic_machine(request):
 
 
 @pytest.fixture
-def logicmachine_after_PET(PET_testdata, logic_machine, valid_exceptions_PET):
+def logicmachine_after_PET(PET_testdata, logic_machine, valid_exceptions):
     return logicmachine_after_run(PET_testdata, logic_machine,
-                                  valid_exceptions_PET)
+                                  valid_exceptions)
 
 @pytest.fixture
-def logicmachine_after_NET(NET_testdata, logic_machine, valid_exceptions_NET):
+def logicmachine_after_NET(NET_testdata, logic_machine, valid_exceptions):
     return logicmachine_after_run(NET_testdata, logic_machine,
-                                  valid_exceptions_NET)
+                                  valid_exceptions)
+
+@pytest.fixture
+def logicmachine_after_NST(NST_testdata, logic_machine, valid_exceptions):
+    return logicmachine_after_run(NST_testdata, logic_machine,
+                                  valid_exceptions)
+
+@pytest.fixture
+def logicmachine_after_PST(PST_testdata, logic_machine, valid_exceptions):
+    return logicmachine_after_run(PST_testdata, logic_machine,
+                                  valid_exceptions)
+
+@pytest.fixture
+def logicmachine_after_IRT(IRT_testdata, logic_machine, valid_exceptions):
+    return logicmachine_after_run(IRT_testdata, logic_machine,
+                                  valid_exceptions)
 
 def logicmachine_after_run(testdata, logic_machine, valid_exceptions):
     testfile = str(testdata.premise)
