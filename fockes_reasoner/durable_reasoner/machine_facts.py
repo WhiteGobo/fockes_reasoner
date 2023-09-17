@@ -105,6 +105,13 @@ class subclass(_dict_fact):
         self.sub_class = sub_class
         self.super_class = super_class
 
+    @property
+    def used_variables(self) -> Iterable[Variable]:
+        if isinstance(self.sub_class, Variable):
+            yield self.sub_class
+        if isinstance(self.super_class, Variable):
+            yield self.super_class
+
     def __repr__(self) -> str:
         return "%s ## %s" % (_pretty(self.sub_class),
                              _pretty(self.super_class))
@@ -170,6 +177,15 @@ class frame(fact):
         self.slotkey = slotkey
         self.slotvalue = slotvalue
         self._used_variables = None
+
+    @property
+    def used_variables(self) -> Iterable[Variable]:
+        if isinstance(self.obj, Variable):
+            yield self.obj
+        if isinstance(self.slotkey, Variable):
+            yield self.slotkey
+        if isinstance(self.slotvalue, Variable):
+            yield self.slotvalue
 
     @classmethod
     def from_fact(cls, fact: Mapping[str, str]) -> "frame":
@@ -277,6 +293,13 @@ class member(_dict_fact):
         self.instance = instance
         self.cls = cls
 
+    @property
+    def used_variables(self) -> Iterable[Variable]:
+        if isinstance(self.instance, Variable):
+            yield self.instance
+        if isinstance(self.cls, Variable):
+            yield self.cls
+
     def __repr__(self) -> str:
         return "%s # %s" % (_pretty(self.instance), _pretty(self.cls))
 
@@ -320,6 +343,13 @@ class atom(fact):
                  ) -> None:
         self.op = op
         self.args = tuple(args)
+
+    @property
+    def used_variables(self) -> Iterable[Variable]:
+        if isinstance(self.op, Variable):
+            yield self.op
+        if isinstance(self.args, Variable):
+            yield self.args
 
     def as_dict(self, bindings: Optional[BINDING] = None,
                 ) -> Mapping[str, Union[str, Variable, TRANSLATEABLE_TYPES]]:

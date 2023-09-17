@@ -576,10 +576,12 @@ class durable_rule(abc_machine.implication, abc_machine.rule):
         """
         conditions: List[Callable[[BINDING], Literal]] = []
         patterns: list[_pattern] = []
+        bound_variables = set()
         for q in self.orig_pattern:
             if isinstance(q, fact):
                 logger.debug("appends %s as pattern." % q)
                 patterns.append(_pattern(q.as_dict()))
+                bound_variables.update(q.used_variables)
             elif isinstance(q, abc_external):
                 tmp_p, tmp_c = self._process_external(q.op, q.args)
                 logger.debug("uses %s to append:\npattern: %s\ncondition: %s"

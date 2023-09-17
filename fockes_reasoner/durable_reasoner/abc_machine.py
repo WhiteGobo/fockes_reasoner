@@ -80,6 +80,11 @@ class fact(abc.ABC):
         """
         ...
 
+    @property
+    @abc.abstractmethod
+    def used_variables(self) -> Iterable[Variable]:
+        ...
+
     @abc.abstractmethod
     def assert_fact(self, c: "machine",
                bindings: BINDING = {},
