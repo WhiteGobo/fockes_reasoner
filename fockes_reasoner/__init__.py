@@ -2,3 +2,8 @@
 #from .shared import rif2internal
 from .asdf import simpleLogicMachine
 from .abc_logicMachine import logicMachine, AlgorithmRejection, PRD_logicMachine, BLD_logicMachine
+class ImportReject(Exception):
+    """
+    :TODO: This must be placed somewhere else
+    """
+    ...

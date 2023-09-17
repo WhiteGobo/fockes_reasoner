@@ -7,6 +7,9 @@ from pytest import param, mark, skip, raises
 import fockes_reasoner
 from .test_rif_basic import _rif_type_to_constructor, _import_graph
 
+class ExpectedFailure(Exception):
+    ...
+
 @pytest.fixture(params=[
     param(fockes_reasoner.simpleLogicMachine),
     ])
@@ -16,28 +19,43 @@ def logic_machine(request):
 
 @pytest.fixture
 def logicmachine_after_PET(PET_testdata, logic_machine, valid_exceptions):
-    return logicmachine_after_run(PET_testdata, logic_machine,
+    try:
+        return logicmachine_after_run(PET_testdata, logic_machine,
                                   valid_exceptions)
+    except ExpectedFailure as err:
+        return err
 
 @pytest.fixture
 def logicmachine_after_NET(NET_testdata, logic_machine, valid_exceptions):
-    return logicmachine_after_run(NET_testdata, logic_machine,
+    try:
+        return logicmachine_after_run(NET_testdata, logic_machine,
                                   valid_exceptions)
+    except ExpectedFailure as err:
+        return err
 
 @pytest.fixture
 def logicmachine_after_NST(NST_testdata, logic_machine, valid_exceptions):
-    return logicmachine_after_run(NST_testdata, logic_machine,
+    try:
+        return logicmachine_after_run(NST_testdata, logic_machine,
                                   valid_exceptions)
+    except ExpectedFailure as err:
+        return err
 
 @pytest.fixture
 def logicmachine_after_PST(PST_testdata, logic_machine, valid_exceptions):
-    return logicmachine_after_run(PST_testdata, logic_machine,
+    try:
+        return logicmachine_after_run(PST_testdata, logic_machine,
                                   valid_exceptions)
+    except ExpectedFailure as err:
+        return err
 
 @pytest.fixture
 def logicmachine_after_IRT(IRT_testdata, logic_machine, valid_exceptions):
-    return logicmachine_after_run(IRT_testdata, logic_machine,
-                                  valid_exceptions)
+    try:
+        return logicmachine_after_run(IRT_testdata, logic_machine,
+                                  (fockes_reasoner.ImportReject, *valid_exceptions))
+    except ExpectedFailure as err:
+        return err
 
 def logicmachine_after_run(testdata, logic_machine, valid_exceptions):
     testfile = str(testdata.premise)
@@ -53,10 +71,10 @@ def logicmachine_after_run(testdata, logic_machine, valid_exceptions):
                        in testdata.importedDocuments.items()}
     try:
         q = logic_machine.from_rdf(g, extra_documents)
-    except valid_exceptions:
-        return
-    logger.debug("Running Machine ... ")
-    myfacts = q.run()
+        logger.debug("Running Machine ... ")
+        myfacts = q.run()
+    except valid_exceptions as err:
+        raise ExpectedFailure() from err
     logger.info("All facts after machine has run:\n%s"
                 % list(q.machine.get_facts()))
     return q
