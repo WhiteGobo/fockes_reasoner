@@ -352,7 +352,6 @@ def NET_testdata(request):
 @pytest.fixture
 def valid_exceptions_PET(PET_testdata, logic_machine):
     return tuple()
-    #return (TypeError,)
 
 @pytest.fixture
 def valid_exceptions_NET(NET_testdata, logic_machine):

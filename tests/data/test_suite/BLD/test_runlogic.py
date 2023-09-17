@@ -4,6 +4,7 @@ from importlib.resources import files
 
 from ...blueprints_tests import blueprint_test_logicmachine
 from ..mydata import PositiveEntailmentTest, NegativeEntailmentTest
+from fockes_reasoner import BLD_logicMachine, AlgorithmRejection
 
 from .PositiveEntailmentTest import \
         Arbitrary_Entailment,\
@@ -248,8 +249,10 @@ def NET_testdata(request):
 
 @pytest.fixture
 def valid_exceptions_PET(PET_testdata, logic_machine):
-    return tuple()
-    #return (TypeError,)
+    if isinstance(logic_machine, BLD_logicMachine):
+        return Tuple()
+    else:
+        return (AlgorithmRejection,)
 
 @pytest.fixture
 def valid_exceptions_NET(NET_testdata, logic_machine):
