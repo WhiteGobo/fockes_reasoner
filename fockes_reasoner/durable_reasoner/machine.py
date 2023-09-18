@@ -458,6 +458,25 @@ class RDFSmachine(_base_durable_machine):
         self._make_rule([desc_subclass, desc_objMember], assert_membership)
 
 
+class _pattern_combinator:
+    _queue: List[Iterable[Tuple[Iterable[_pattern],
+                                Iterable[Callable[[BINDING], Literal]],
+                                Iterable[Variable]]]]
+    def __init__(self) -> None:
+        self._queue = []
+
+    def add(self, inner: Iterable[Tuple[Iterable[_pattern],
+                                        Iterable[Callable[[BINDING], Literal]],
+                                        Iterable[Variable]]]
+            ) -> None:
+        self._queue.append(inner)
+
+    def __iter__(self) -> Iterable[Tuple[Iterable[_pattern],
+                                         Iterable[Callable[[BINDING], Literal]],
+                                         Iterable[Variable]]]:
+        for x in it.product(self._queue):
+            yield x
+
 
 class durable_rule(abc_machine.implication, abc_machine.rule):
     patterns: list[rls.value]
@@ -568,8 +587,9 @@ class durable_rule(abc_machine.implication, abc_machine.rule):
 
     def _generate_action_prerequisites(
             self,
-            ) -> Tuple[Iterable[_pattern],
-                       Iterable[Callable[[BINDING], Literal]]]:
+            ) -> Iterable[Tuple[Iterable[_pattern],
+                                Iterable[Callable[[BINDING], Literal]],
+                                Iterable[Variable]]]:
         """
         :TODO: If a rule has nopattern but a condition a trigger, a special
             pattern for the rule should be generated. I have non yet. Maybe
@@ -578,13 +598,16 @@ class durable_rule(abc_machine.implication, abc_machine.rule):
         conditions: List[Callable[[BINDING], Literal]] = []
         patterns: list[_pattern] = []
         bound_variables = set()
+        #queue = _pattern_combinator()
         for q in self.orig_pattern:
             if isinstance(q, fact):
                 logger.debug("appends %s as pattern." % q)
+                #queue.append((_pattern(q.as_dict()), [], q.used_variables))
                 patterns.append(_pattern(q.as_dict()))
                 bound_variables.update(q.used_variables)
             elif isinstance(q, abc_external):
                 tmp_p, tmp_c, tmp_v = self._process_external(q.op, q.args, bound_variables)
+                #queue.append((tmp_p, tmp_c, tmp_v))
                 logger.debug("uses %s to append:\npattern: %s\ncondition: %s"
                              %(q, tmp_p, tmp_c))
                 bound_variables.update(tmp_v)
@@ -592,6 +615,7 @@ class durable_rule(abc_machine.implication, abc_machine.rule):
                 conditions.extend(tmp_c)
             else:
                 raise Exception(type(q))
+        #for patterns, conditions, bound_variables in queue:
         if len(patterns) == 0 and len(conditions) == 0:
             #create rule as initialisation rule
             patterns.insert(0, _pattern({MACHINESTATE: INIT_STATE}))
@@ -601,7 +625,7 @@ class durable_rule(abc_machine.implication, abc_machine.rule):
             #TODO : This rule lacks any trigger. 
             patterns.insert(0, _pattern({MACHINESTATE: RUNNING_STATE}))
 
-        return patterns, conditions, bound_variables
+        yield patterns, conditions, bound_variables
 
     def _generate_action(
             self,
@@ -621,14 +645,14 @@ class durable_rule(abc_machine.implication, abc_machine.rule):
             raise Exception()
         self.finalized = True
         logger.debug("Create rule %s" % self)
-        patterns, conditions, bound_variables\
-                = self._generate_action_prerequisites()
-        if not all(x in bound_variables for x in self.needed_variables):
-            notbound = [x for x in self.needed_variables
-                        if x not in bound_variables]
-            raise VariableNotBoundError(notbound)
-        action = self._generate_action(conditions, self.action)
-        self.machine._make_rule(patterns, action)
+        for patterns, conditions, bound_variables\
+                in self._generate_action_prerequisites():
+            if not all(x in bound_variables for x in self.needed_variables):
+                notbound = [x for x in self.needed_variables
+                            if x not in bound_variables]
+                raise VariableNotBoundError(notbound)
+            action = self._generate_action(conditions, self.action)
+            self.machine._make_rule(patterns, action)
 
     def set_action(self, action: Callable[[BINDING], None],
                    needed_variables: Iterable[Variable]) -> None:
