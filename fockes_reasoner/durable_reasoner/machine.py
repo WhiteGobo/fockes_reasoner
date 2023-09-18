@@ -16,7 +16,7 @@ from .abc_machine import TRANSLATEABLE_TYPES, FACTTYPE, BINDING, VARIABLE_LOCATO
 
 from .bridge_rdflib import rdflib2string, string2rdflib, term_list
 
-from ..shared import RDF, pred, func, entailment
+from ..shared import RDF, pred, func, entailment, RIF
 from . import machine_facts
 from .machine_facts import frame, member, subclass, fact, external, atom, rdflib2string
 #from .machine_facts import frame, member, subclass, fact
@@ -395,7 +395,7 @@ class _base_durable_machine(abc_machine.machine):
     def create_implication_builder(self) -> "durable_rule":
         return durable_rule(self)
 
-    def _create_pattern_for_external(self,
+    def _create_pattern_from_external(self,
                                      op: IdentifiedNode,
                                      args: ATOM_ARGS,
                                      ) -> None:
@@ -766,6 +766,7 @@ class _machine_default_externals(_base_durable_machine):
 
     def __register_externals(self) -> None:
         from .default_externals import invert
+        self.register(RIF.Or, asassign=def_ext.rif_or)
         self.register(pred["iri-string"],
                       asassign=def_ext.pred_iri_string)
         self.register(pred["numeric-equal"],

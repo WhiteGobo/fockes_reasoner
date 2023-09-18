@@ -11,6 +11,16 @@ from .bridge_rdflib import term_list, _term_list, TRANSLATEABLE_TYPES
 from .abc_machine import BINDING, RESOLVABLE, _resolve, RESOLVER
 from ..shared import pred, func
 
+@dataclass
+class rif_or:
+    args: RESOLVABLE
+    def __call__(self, bindings: BINDING) -> Literal:
+        for x in self.args:
+            y = _resolve(x, bindings)
+            if y:
+                return y
+        return Literal(False)
+
 
 @dataclass
 class invert:
