@@ -5,7 +5,7 @@ import abc
 import logging
 logger = logging.getLogger(__name__)
 import traceback
-from typing import Union, Mapping, Iterable, Callable, Any, MutableMapping, Optional, Container, Dict, Set, get_args, Tuple, List
+from typing import Union, Mapping, Iterable, Callable, Any, MutableMapping, Optional, Container, Dict, Set, get_args, Tuple, List, Iterator
 from dataclasses import dataclass
 from hashlib import sha1
 import itertools as it
@@ -466,17 +466,45 @@ class _pattern_combinator:
     def __init__(self) -> None:
         self._queue = []
 
+    def add_single(self, pattern: Iterable[_pattern],
+                   conditions: Iterable[Callable[[BINDING], Literal]],
+                   bound_variables: Iterable[Variable],
+                   ) -> None:
+        q: Iterable[Tuple[Iterable[_pattern],
+                          Iterable[Callable[[BINDING], Literal]],
+                          Iterable[Variable]]]
+        if len(self._queue) == 0:
+            q = ((pattern, conditions, bound_variables),)
+            self._queue.append(q)
+            return
+        if isinstance(self._queue[-1], List):
+            raise NotImplementedError()
+            if all( isinstance(x, List) for x in self._queue[-1]):
+                self._queue[-1][0].extend(pattern)
+                self._queue[-1][1].extend(conditions)
+                self._queue[-1][2].extend(bound_variables)
+                return
+        q = ((pattern, conditions, bound_variables),)
+        self._queue.append(q)
+
     def add(self, inner: Iterable[Tuple[Iterable[_pattern],
                                         Iterable[Callable[[BINDING], Literal]],
                                         Iterable[Variable]]]
             ) -> None:
         self._queue.append(inner)
 
-    def __iter__(self) -> Iterable[Tuple[Iterable[_pattern],
-                                         Iterable[Callable[[BINDING], Literal]],
-                                         Iterable[Variable]]]:
-        for x in it.product(self._queue):
-            yield x
+    def __iter__(self) -> Iterator[Tuple[List[_pattern],
+                                         List[Callable[[BINDING], Literal]],
+                                         Set[Variable]]]:
+        for x in it.product(*self._queue):
+            patterns: List[_pattern] = []
+            conditions: List[Callable[[BINDING], Literal]] = []
+            bound_variables: Set[Variable] = set()
+            for p, c, bv in x:
+                patterns.extend(p)
+                conditions.extend(c)
+                bound_variables.update(bv)
+            yield patterns, conditions, bound_variables
 
 
 class durable_rule(abc_machine.implication, abc_machine.rule):
@@ -599,16 +627,16 @@ class durable_rule(abc_machine.implication, abc_machine.rule):
         conditions: List[Callable[[BINDING], Literal]] = []
         patterns: list[_pattern] = []
         bound_variables: Set[Variable] = set()
-        #queue = _pattern_combinator()
+        queue = _pattern_combinator()
         for q in self.orig_pattern:
             if isinstance(q, fact):
                 logger.debug("appends %s as pattern." % q)
-                #queue.append((_pattern(q.as_dict()), [], q.used_variables))
+                queue.add_single([_pattern(q.as_dict())], [], q.used_variables)
                 patterns.append(_pattern(q.as_dict()))
                 bound_variables.update(q.used_variables)
             elif isinstance(q, abc_external):
                 tmp_p, tmp_c, tmp_v = self._process_external(q.op, q.args, bound_variables)
-                #queue.append((tmp_p, tmp_c, tmp_v))
+                queue.add_single(tmp_p, tmp_c, tmp_v)
                 logger.debug("uses %s to append:\npattern: %s\ncondition: %s"
                              %(q, tmp_p, tmp_c))
                 bound_variables.update(tmp_v)
@@ -616,17 +644,17 @@ class durable_rule(abc_machine.implication, abc_machine.rule):
                 conditions.extend(tmp_c)
             else:
                 raise Exception(type(q))
-        #for patterns, conditions, bound_variables in queue:
-        if len(patterns) == 0 and len(conditions) == 0:
-            #create rule as initialisation rule
-            patterns.insert(0, _pattern({MACHINESTATE: INIT_STATE}))
-        elif len(patterns) > 0:
-            patterns.insert(0, _pattern({MACHINESTATE: RUNNING_STATE}))
-        else:
-            #TODO : This rule lacks any trigger. 
-            patterns.insert(0, _pattern({MACHINESTATE: RUNNING_STATE}))
+        for patterns, conditions, bound_variables in queue:
+            if len(patterns) == 0 and len(conditions) == 0:
+                #create rule as initialisation rule
+                patterns.insert(0, _pattern({MACHINESTATE: INIT_STATE}))
+            elif len(patterns) > 0:
+                patterns.insert(0, _pattern({MACHINESTATE: RUNNING_STATE}))
+            else:
+                #TODO : This rule lacks any trigger. 
+                patterns.insert(0, _pattern({MACHINESTATE: RUNNING_STATE}))
 
-        yield patterns, conditions, bound_variables
+            yield patterns, conditions, bound_variables
 
     def _generate_action(
             self,
