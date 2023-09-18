@@ -13,8 +13,8 @@ from ..shared import pred, func
 
 @dataclass
 class rif_or:
-    args: RESOLVABLE
-    def __call__(self, bindings: BINDING) -> Literal:
+    args: Iterable[RESOLVABLE]
+    def __call__(self, bindings: BINDING) -> Union[IdentifiedNode, Literal, term_list]:
         for x in self.args:
             y = _resolve(x, bindings)
             if y:
