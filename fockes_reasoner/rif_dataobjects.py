@@ -557,8 +557,38 @@ class rif_and(_rif_check):
     def from_rdf(cls, infograph: rdflib.Graph,
                  rootnode: IdentifiedNode,
                  ) -> "rif_and":
-        from .class_rdfmodel import rdfmodel
-        model = rdfmodel()
+        try:
+            formula_list_node, = infograph.objects(rootnode, RIF.formulas)
+        except ValueError as err:
+            raise Exception("Syntaxerror of RIF document") from err
+        formula_list: Iterable[IdentifiedNode] = rdflib.collection.Collection(infograph, formula_list_node) #type: ignore[assignment]
+        formulas: list[Union["rif_frame"]] = []
+        for formula_node in formula_list:
+            next_formula = _generate_object(infograph, formula_node, cls._formulas_generators)
+            formulas.append(next_formula)
+        return cls(formulas)
+
+class rif_or(_rif_check):
+    formulas: Iterable[_rif_check]
+    _formulas_generators: Mapping[IdentifiedNode, Callable[[Graph, IdentifiedNode], _rif_check]]
+    def __init__(self, formulas: Iterable[_rif_check]):
+        self.formulas = list(formulas)
+
+    def check(self,
+            machine: durable_reasoner.machine,
+            bindings: BINDING = {},
+            ) -> bool:
+        return any(f.check(machine, bindings) for f in self.formulas)
+
+    def _add_pattern(self, rule: durable_reasoner.rule) -> None:
+        raise NotImplementedError()
+        for form in self.formulas:
+            rule.orig_pattern.append(form)
+
+    @classmethod
+    def from_rdf(cls, infograph: rdflib.Graph,
+                 rootnode: IdentifiedNode,
+                 ) -> "rif_and":
         try:
             formula_list_node, = infograph.objects(rootnode, RIF.formulas)
         except ValueError as err:
@@ -1207,6 +1237,7 @@ class rif_list(_resolvable_gen):
 
 rif_implies._if_generators = {
         RIF.And: rif_and.from_rdf,
+        RIF.Or: rif_or.from_rdf,
         RIF.Frame: rif_frame.from_rdf,
         RIF.Atom: rif_atom.from_rdf,
         RIF.Subclass: rif_subclass.from_rdf,
@@ -1226,8 +1257,11 @@ _formulas: Mapping[IdentifiedNode, Callable[[Graph, IdentifiedNode],
            RIF.Equal: rif_equal.from_rdf,
            RIF.Atom: rif_atom.from_rdf,
            RIF.Member: rif_member.from_rdf,
+           RIF.And: rif_and.from_rdf,
+           RIF.Or: rif_or.from_rdf,
            }
 rif_and._formulas_generators = dict(_formulas)
+rif_or._formulas_generators = dict(rif_and._formulas_generators)
 rif_exists._formula_generators = {#RIF.External: rif_external.from_rdf,
                                   RIF.Frame: rif_frame.from_rdf,
                                   #RIF.Equal: rif_equal.from_rdf,
