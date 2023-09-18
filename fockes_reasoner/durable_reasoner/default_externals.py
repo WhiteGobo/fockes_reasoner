@@ -1,4 +1,4 @@
-from typing import Callable, Union, TypeVar, Iterable
+from typing import Callable, Union, TypeVar, Iterable, Container
 import rdflib
 import itertools as it
 from rdflib import Literal, Variable, XSD, IdentifiedNode, Literal, URIRef
@@ -395,12 +395,19 @@ class pred_iri_string:
     target_var: Variable
     source_string: RESOLVABLE
     def __init__(self,
+                 bound_variables: Container[Variable],
                  target_var: Variable,
                  source_string: RESOLVABLE,
                  ) -> None:
-        assert isinstance(target_var, Variable)
         self.target_var = target_var
         self.source_string = source_string
+        if isinstance(target_var, Variable):
+            if target_var in bound_variables:
+                pass
+            else:
+                raise NotImplementedError()
+        else:
+            raise NotImplementedError()
 
     def __call__(self, bindings: BINDING) -> Literal:
         assert self.target_var not in bindings
