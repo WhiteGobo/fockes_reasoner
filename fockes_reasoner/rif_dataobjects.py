@@ -513,6 +513,9 @@ class rif_and(_rif_check):
     def __init__(self, formulas: Iterable[_rif_check]):
         self.formulas = list(formulas)
 
+    def __repr__(self) -> str:
+        return "(%s)" % " & ".join(repr(x) for x in self.formulas)
+
     def check(self,
             machine: durable_reasoner.machine,
             bindings: BINDING = {},

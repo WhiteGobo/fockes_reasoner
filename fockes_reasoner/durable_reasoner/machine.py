@@ -23,6 +23,9 @@ from .machine_facts import frame, member, subclass, fact, external, atom, rdflib
 
 from . import default_externals as def_ext
 
+PATTERNGENERATOR\
+        = Callable[[Iterable[RESOLVABLE], Container[Variable]],
+                   Tuple[Iterable["_pattern"], Iterable[Callable[[BINDING], None]], Iterable[Variable]]]
 
 MACHINESTATE = "machinestate"
 RUNNING_STATE = "running"
@@ -407,8 +410,11 @@ class _base_durable_machine(abc_machine.machine):
         :raises NoPossibleExternal: If given external is not defined
             or cant be used to directly produce a pattern raise this error.
         """
-        raise NoPossibleExternal()
-        mygen = self._registered_pattern_generator[op]
+        try:
+            mygen = self._registered_pattern_generator[op]
+        except KeyError:
+            raise NoPossibleExternal()
+        return mygen(args, bound_variables)
 
     def _create_assignment_from_external(self,
                                          op: IdentifiedNode,
@@ -424,7 +430,7 @@ class _base_durable_machine(abc_machine.machine):
     def register(self, op: rdflib.URIRef,
                  asaction: Optional[Callable] = None,
                  asassign: Optional[Callable] = None,
-                 aspattern: Optional[Callable] = None,
+                 aspattern: Optional[PATTERNGENERATOR] = None,
                  ) -> None:
         if asaction is not None:
             self._registered_action_generator[op] = asaction
@@ -611,7 +617,9 @@ class durable_rule(abc_machine.implication, abc_machine.rule):
                 patterns.append(_pattern(q.as_dict()))
                 bound_variables.update(q.used_variables)
             elif isinstance(q, abc_external):
-                tmp_p, tmp_c, tmp_v = self._process_external(q.op, q.args, bound_variables)
+                tmp_p, tmp_c, tmp_v\
+                        = self._process_external_as_pattern(q.op, q.args,
+                                                            bound_variables)
                 logger.debug("uses %s to append:\npattern: %s\ncondition: %s"
                              %(q, tmp_p, tmp_c))
                 next_gen = self._generate_action_prerequisites_inner(
@@ -659,7 +667,7 @@ class durable_rule(abc_machine.implication, abc_machine.rule):
         self.action = action
         self.needed_variables = list(needed_variables)
 
-    def _process_external(
+    def _process_external_as_pattern(
             self,
             op: IdentifiedNode,
             args: ATOM_ARGS,
@@ -777,7 +785,7 @@ class _machine_default_externals(_base_durable_machine):
         from .default_externals import invert
         self.register(RIF.Or, asassign=def_ext.rif_or)
         self.register(pred["iri-string"],
-                      aspattern=def_ext.pred_iri_string)
+                      aspattern=def_ext.pred_iri_string.pattern_generator)
         self.register(pred["numeric-equal"],
                       asassign=def_ext.numeric_equal)
         self.register(pred["numeric-not-equal"],

@@ -1,4 +1,4 @@
-from typing import Callable, Union, TypeVar, Iterable, Container
+from typing import Callable, Union, TypeVar, Iterable, Container, Tuple
 import rdflib
 import itertools as it
 from rdflib import Literal, Variable, XSD, IdentifiedNode, Literal, URIRef
@@ -394,20 +394,17 @@ class pred_iri_string:
     """
     target_var: Variable
     source_string: RESOLVABLE
-    def __init__(self,
-                 bound_variables: Container[Variable],
-                 target_var: Variable,
-                 source_string: RESOLVABLE,
-                 ) -> None:
-        self.target_var = target_var
-        self.source_string = source_string
-        if isinstance(target_var, Variable):
-            if target_var in bound_variables:
-                pass
-            else:
-                raise NotImplementedError()
-        else:
-            raise NotImplementedError()
+
+    @classmethod
+    def pattern_generator(
+            cls, args: Iterable[RESOLVABLE], bound_variables,
+            ) -> Tuple[Iterable["_pattern"],
+                       Tuple["pred_iri_string"],
+                       Iterable[Variable]]:
+        target_var, source_string = args
+        assert isinstance(target_var, Variable)
+        assert target_var not in bound_variables
+        return tuple(), (cls(target_var, source_string),), [target_var]
 
     def __call__(self, bindings: BINDING) -> Literal:
         assert self.target_var not in bindings
