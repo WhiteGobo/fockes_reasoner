@@ -395,15 +395,20 @@ class _base_durable_machine(abc_machine.machine):
     def create_implication_builder(self) -> "durable_rule":
         return durable_rule(self)
 
-    def _create_pattern_from_external(self,
-                                     op: IdentifiedNode,
-                                     args: ATOM_ARGS,
-                                     ) -> None:
+    def _create_pattern_from_external(
+            self,
+            op: IdentifiedNode,
+            args: ATOM_ARGS,
+            bound_variables: Container[Variable],
+            ) -> Tuple[Iterable[_pattern],
+                       Iterable[Callable[[BINDING], Literal]],
+                       Iterable[Variable]]:
         """Try to create a complete pattern for given external statement.
         :raises NoPossibleExternal: If given external is not defined
             or cant be used to directly produce a pattern raise this error.
         """
         raise NoPossibleExternal()
+        mygen = self._registered_pattern_generator[op]
 
     def _create_assignment_from_external(self,
                                          op: IdentifiedNode,
@@ -662,12 +667,15 @@ class durable_rule(abc_machine.implication, abc_machine.rule):
             ) -> Tuple[Iterable[_pattern],
                        Iterable[Callable[[BINDING], Literal]],
                        Iterable[Variable]]:
+        """
+        :TODO: resolve this method into surrounding. Seems overkill
+        """
         new_bound_vars: List[Variable] = []
         try:
-            raise NoPossibleExternal()
-            patterns, conditions\
-                    = self.machine._create_pattern_from_external(op, args)
-            return patterns, conditions
+            patterns, conditions, new_vars\
+                    = self.machine._create_pattern_from_external(
+                            op, args, bound_variables)
+            return patterns, conditions, new_vars
         except NoPossibleExternal:
             cond = self.machine._create_assignment_from_external(op, args)
         if isinstance(cond, (Variable, IdentifiedNode, Literal, term_list)):
