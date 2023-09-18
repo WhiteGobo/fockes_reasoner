@@ -360,7 +360,7 @@ class rif_forall(_rule_gen):
             action, used_variables = self.formula.then_.generate_action(machine)
             newrule.set_action(action, used_variables)
             newrule.finalize()
-            return newrule
+            return
         elif self.pattern is not None:
             raise NotImplementedError()
         else:
@@ -423,13 +423,8 @@ class rif_implies(_rule_gen):
     def _add_condition_as_pattern(self, newrule: rule) -> None:
         if isinstance(self.if_, rif_and):
             for pat in self.if_.formulas:
-                try:
-                    newrule.orig_pattern.append(pat)
-                    logger.debug("added pat %s" % pat)
-                except NotPossibleAction:
-                    tmp_cond = pat.generate_condition(machine)
-                    conditions.append(tmp_cond)
-                    logger.debug("added with %s cond %s" % (pat, tmp_cond))
+                newrule.orig_pattern.append(pat)
+                logger.debug("added pat %s" % pat)
         else:
             newrule.orig_pattern.append(self.if_)
 
@@ -438,7 +433,6 @@ class rif_implies(_rule_gen):
 
         """
         newrule = machine.create_implication_builder()
-        conditions: list[Callable[[BINDING], Union[Literal, bool]]] = []
         self._add_condition_as_pattern(newrule)
         action, used_variables = self.then_.generate_action(machine)
         newrule.set_action(action, used_variables)
