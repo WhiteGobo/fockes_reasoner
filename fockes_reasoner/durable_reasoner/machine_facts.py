@@ -23,7 +23,7 @@ class _NotBoundVar(KeyError):
 
 class _dict_fact(fact):
     def assert_fact(self, c: abc_machine.machine,
-                    bindings: BINDING = {}):
+                    bindings: BINDING = {}) -> None:
         fact_ = self.as_dict(bindings)
         fact = {}
         for key, value in fact_.items():
@@ -93,7 +93,7 @@ class machine_list(external):
 
 
 class subclass(_dict_fact):
-    sub_class: typ.Union[TRANSLATEABLE_TYPES, abc_external, Variable, ]
+    sub_class: typ.Union[TRANSLATEABLE_TYPES, abc_external, Variable]
     super_class: typ.Union[TRANSLATEABLE_TYPES, abc_external, Variable]
     ID: str = "subclass"
     SUBCLASS_SUB: str = "sub"
@@ -118,7 +118,7 @@ class subclass(_dict_fact):
 
     def as_dict(self, bindings: Optional[BINDING] = None,
                 ) -> Mapping[str, Union[str, Variable, TRANSLATEABLE_TYPES]]:
-        if isinstance(self.sub_class, external) or isinstance(self.super_class, external):
+        if isinstance(self.sub_class, abc_external) or isinstance(self.super_class, abc_external):
             raise NotImplementedError()
         pattern: Mapping[str, Union[str, Variable, TRANSLATEABLE_TYPES]]\
                 = {abc_machine.FACTTYPE: self.ID,
@@ -155,7 +155,7 @@ class subclass(_dict_fact):
         raise NotImplementedError()
 
     @classmethod
-    def from_fact(cls, fact: Mapping[str, str]) -> "fact_subclass":
+    def from_fact(cls, fact: Mapping[str, str]) -> "subclass":
         sub_class = string2rdflib(fact[cls.SUBCLASS_SUB])
         super_class = string2rdflib(fact[cls.SUBCLASS_SUPER])
         return cls(sub_class, super_class)
@@ -177,15 +177,6 @@ class frame(fact):
         self.slotkey = slotkey
         self.slotvalue = slotvalue
         self._used_variables = None
-
-    @property
-    def used_variables(self) -> Iterable[Variable]:
-        if isinstance(self.obj, Variable):
-            yield self.obj
-        if isinstance(self.slotkey, Variable):
-            yield self.slotkey
-        if isinstance(self.slotvalue, Variable):
-            yield self.slotvalue
 
     @classmethod
     def from_fact(cls, fact: Mapping[str, str]) -> "frame":
@@ -452,7 +443,7 @@ class retract_object_function:
     def __repr__(self) -> str:
         return "Retract(%s)" % self.atom
 
-def _pretty(t: Union[TRANSLATEABLE_TYPES, external, Variable]) -> str:
+def _pretty(t: Union[TRANSLATEABLE_TYPES, abc_external, Variable]) -> str:
     """Prints a representation of given input for representation of facts"""
     if isinstance(t, Literal):
         return repr(t)

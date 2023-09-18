@@ -8,7 +8,7 @@ from .durable_reasoner.machine_facts import external, TRANSLATEABLE_TYPES
 import rdflib
 from rdflib import IdentifiedNode, Graph, Variable, Literal, URIRef
 import typing as typ
-from typing import Union, Iterable, Any, Callable, MutableMapping, List, Tuple, Optional, Mapping
+from typing import Union, Iterable, Any, Callable, MutableMapping, List, Tuple, Optional, Mapping, Set
 from .shared import RIF, pred, XSD
 from rdflib import RDF
 from . import durable_reasoner
@@ -18,7 +18,6 @@ from dataclasses import dataclass
 from collections.abc import Sequence
 
 ATOM = Union[TRANSLATEABLE_TYPES, Variable, "rif_external", "rif_list"]
-SATOM = Union[TRANSLATEABLE_TYPES, external, Variable, "rif_list"]
 SLOT = Tuple[ATOM, ATOM]
 RIF_ATOM = Union[TRANSLATEABLE_TYPES, "rif_external"]
 FORMULA = Union["rif_frame",
@@ -476,16 +475,23 @@ class rif_implies(_rule_gen):
         logger.info("create implication %r" % newrule)
         newrule.finalize()
 
+    @dataclass
+    class _conditional:
+        condition: Callable[[BINDING], Union[bool, Literal]]
+        action: Callable[[BINDING], None]
+
+        def __call__(self, bindings: BINDING) -> None:
+            if self.condition(bindings):
+                self.action(bindings)
+
+
     def generate_action(self,
                         machine: durable_reasoner.machine,
                         ) -> Tuple[Callable[[BINDING], None], Iterable[Variable]]:
         condition = self.if_.generate_condition(machine)
-        implicated_action = self.then_.generate_action(machine)
-        def act(bindings: BINDING) -> None:
-            if condition(bindings):
-                implicated_action(bindings)
-        used_variable = []
-        return act, used_variable
+        implicated_action, used_variables = self.then_.generate_action(machine)
+        act = self._conditional(condition, implicated_action)
+        return act, used_variables
 
     @classmethod
     def from_rdf(cls, infograph: rdflib.Graph,
@@ -588,7 +594,7 @@ class rif_or(_rif_check):
     @classmethod
     def from_rdf(cls, infograph: rdflib.Graph,
                  rootnode: IdentifiedNode,
-                 ) -> "rif_and":
+                 ) -> "rif_or":
         try:
             formula_list_node, = infograph.objects(rootnode, RIF.formulas)
         except ValueError as err:
@@ -609,7 +615,7 @@ class rif_do(_action_gen):
                         machine: durable_reasoner.machine,
                         ) -> Tuple[Callable[[BINDING], None], Iterable[Variable]]:
         self._all_actions = []
-        used_variables = set()
+        used_variables: Set[Variable] = set()
         for act in self.actions:
             tmp_act, tmp_vars = act.generate_action(machine)
             self._all_actions.append(tmp_act)
@@ -661,14 +667,7 @@ class rif_atom(rif_fact):
 
     @property
     def used_variables(self) -> Iterable[Variable]:
-        for x in (self.op, *self.args):
-            if isinstance(x, Variable):
-                yield x
-            elif isinstance(x, (IdentifiedNode, Literal)):
-                pass
-            else:
-                for y in x.used_variables:
-                    yield y
+        return _get_variables((self.op, *self.args))
 
     def _create_facts(self) -> Iterable[fact]:
         raise NotImplementedError()
@@ -741,14 +740,7 @@ class rif_external(_resolvable_gen, _rif_check):
 
     @property
     def used_variables(self) -> Iterable[Variable]:
-        for x in (self.op, *self.args):
-            if isinstance(x, Variable):
-                yield x
-            elif isinstance(x, (IdentifiedNode, Literal)):
-                pass
-            else:
-                for y in x.used_variables:
-                    yield y
+        return _get_variables((self.op, *self.args))
 
     def as_machinefact(self) -> external:
         args = [x.as_machinefact() if isinstance(x, _resolvable_gen) else x for x in self.args]
@@ -812,14 +804,7 @@ class rif_member(rif_fact):
 
     @property
     def used_variables(self) -> Iterable[Variable]:
-        for x in (self.cls, self.instance):
-            if isinstance(x, Variable):
-                yield x
-            elif isinstance(x, (IdentifiedNode, Literal)):
-                pass
-            else:
-                for y in x.used_variables:
-                    yield y
+        return _get_variables((self.cls, self.instance))
 
     def __repr__(self) -> str:
         return "rif(%s # %s)" % (self.instance, self.cls)
@@ -863,14 +848,7 @@ class rif_subclass(rif_fact):
 
     @property
     def used_variables(self) -> Iterable[Variable]:
-        for x in (self.sub_class, self.super_class):
-            if isinstance(x, Variable):
-                yield x
-            elif isinstance(x, (IdentifiedNode, Literal)):
-                pass
-            else:
-                for y in x.used_variables:
-                    yield y
+        return _get_variables((self.sub_class, self.super_class))
 
     def _add_pattern(self, rule: durable_reasoner.rule) -> None:
         raise NotImplementedError()
@@ -908,9 +886,9 @@ class rif_subclass(rif_fact):
 
 class rif_frame(rif_fact):
     #facts: Iterable[machine_facts.frame]
-    obj: SATOM
+    obj: ATOM
     slots: Iterable[SLOT]
-    def __init__(self, obj: SATOM,
+    def __init__(self, obj: ATOM,
                  slots: Iterable[SLOT],
                  ) -> None:
         self.obj = obj
@@ -918,14 +896,7 @@ class rif_frame(rif_fact):
 
     @property
     def used_variables(self) -> Iterable[Variable]:
-        for x in it.chain((self.obj,), it.chain(*self.slots)):
-            if isinstance(x, Variable):
-                yield x
-            elif isinstance(x, (IdentifiedNode, Literal)):
-                pass
-            else:
-                for y in x.used_variables:
-                    yield y
+        return _get_variables(it.chain((self.obj,), it.chain(*self.slots)))
 
     @property
     def facts(self) -> Iterable[machine_facts.frame]:
@@ -1295,6 +1266,21 @@ rif_member._instance_generators = _term_generators
 rif_member._class_generators = _term_generators
 
 
+def _get_variables(targetlist: Iterable[ATOM]) -> Iterable[Variable]:
+    for x in targetlist:
+        if isinstance(x, Variable):
+            yield x
+        elif isinstance(x, (IdentifiedNode, Literal)):
+            pass
+        elif isinstance(x, term_list):
+            for y in x:
+                if isinstance(y, Variable):
+                    yield y
+        elif isinstance(x, (rif_fact, rif_external)):
+            for y in x.used_variables:
+                yield y
+        else:
+            raise NotImplementedError(type(x), x)
 
 def _get_resolveable(x: Union[TRANSLATEABLE_TYPES, _resolvable_gen, Variable], machine: durable_reasoner.machine) -> RESOLVABLE:
     if isinstance(x, (IdentifiedNode, Literal, Variable, term_list)):

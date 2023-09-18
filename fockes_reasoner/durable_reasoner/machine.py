@@ -8,6 +8,7 @@ import traceback
 from typing import Union, Mapping, Iterable, Callable, Any, MutableMapping, Optional, Container, Dict, Set, get_args, Tuple, List
 from dataclasses import dataclass
 from hashlib import sha1
+import itertools as it
 import rdflib
 from rdflib import URIRef, Variable, Literal, BNode, Graph, IdentifiedNode, XSD
 from . import abc_machine
@@ -435,7 +436,7 @@ class RDFSmachine(_base_durable_machine):
         super().__init__(loggername)
         self.__subclass_rule()
 
-    def __subclass_rule(self):
+    def __subclass_rule(self) -> None:
         sub_type = Variable("sub")
         super_type = Variable("super")
         inst = Variable("inst")
@@ -597,7 +598,7 @@ class durable_rule(abc_machine.implication, abc_machine.rule):
         """
         conditions: List[Callable[[BINDING], Literal]] = []
         patterns: list[_pattern] = []
-        bound_variables = set()
+        bound_variables: Set[Variable] = set()
         #queue = _pattern_combinator()
         for q in self.orig_pattern:
             if isinstance(q, fact):
@@ -667,7 +668,7 @@ class durable_rule(abc_machine.implication, abc_machine.rule):
             ) -> Tuple[Iterable[rls.value],
                        Iterable[Callable[[BINDING], Literal]],
                        Iterable[Variable]]:
-        new_bound_vars = []
+        new_bound_vars: List[Variable] = []
         try:
             raise NoPossibleExternal()
             patterns, conditions\

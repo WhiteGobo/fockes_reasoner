@@ -205,6 +205,11 @@ class rule(abc.ABC):
     action: Optional[Callable]
     machine: machine
 
+    @abc.abstractmethod
+    def set_action(self, action: Callable[[BINDING], None],
+                   needed_variables: Iterable[Variable]) -> None:
+        ...
+
     @property
     @abc.abstractmethod
     def orig_pattern(self) -> pattern_organizer:
