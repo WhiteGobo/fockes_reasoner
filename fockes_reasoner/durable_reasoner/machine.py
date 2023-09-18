@@ -670,8 +670,9 @@ class durable_rule(abc_machine.implication, abc_machine.rule):
             return patterns, conditions
         except NoPossibleExternal:
             cond = self.machine._create_assignment_from_external(op, args)
-        assert not isinstance(cond, (Variable, IdentifiedNode, Literal,\
-                term_list)), "Im not yet sure what i should do here"
+        if isinstance(cond, (Variable, IdentifiedNode, Literal, term_list)):
+            raise Exception("Given external always gives a true statement "
+                            "with %r as return value" % cond)
         return [], [cond], new_bound_vars#type: ignore[list-item]
 
     @property
