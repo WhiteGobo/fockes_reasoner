@@ -459,54 +459,6 @@ class RDFSmachine(_base_durable_machine):
         self._make_rule([desc_subclass, desc_objMember], assert_membership)
 
 
-class _pattern_combinator:
-    _queue: List[Iterable[Tuple[Iterable[_pattern],
-                                Iterable[Callable[[BINDING], Literal]],
-                                Iterable[Variable]]]]
-    def __init__(self) -> None:
-        self._queue = []
-
-    def add_single(self, pattern: Iterable[_pattern],
-                   conditions: Iterable[Callable[[BINDING], Literal]],
-                   bound_variables: Iterable[Variable],
-                   ) -> None:
-        q: Iterable[Tuple[Iterable[_pattern],
-                          Iterable[Callable[[BINDING], Literal]],
-                          Iterable[Variable]]]
-        if len(self._queue) == 0:
-            q = ((pattern, conditions, bound_variables),)
-            self._queue.append(q)
-            return
-        if isinstance(self._queue[-1], List):
-            raise NotImplementedError()
-            if all( isinstance(x, List) for x in self._queue[-1]):
-                self._queue[-1][0].extend(pattern)
-                self._queue[-1][1].extend(conditions)
-                self._queue[-1][2].extend(bound_variables)
-                return
-        q = ((pattern, conditions, bound_variables),)
-        self._queue.append(q)
-
-    def add(self, inner: Iterable[Tuple[Iterable[_pattern],
-                                        Iterable[Callable[[BINDING], Literal]],
-                                        Iterable[Variable]]]
-            ) -> None:
-        self._queue.append(inner)
-
-    def __iter__(self) -> Iterator[Tuple[List[_pattern],
-                                         List[Callable[[BINDING], Literal]],
-                                         Set[Variable]]]:
-        for x in it.product(*self._queue):
-            patterns: List[_pattern] = []
-            conditions: List[Callable[[BINDING], Literal]] = []
-            bound_variables: Set[Variable] = set()
-            for p, c, bv in x:
-                patterns.extend(p)
-                conditions.extend(c)
-                bound_variables.update(bv)
-            yield patterns, conditions, bound_variables
-
-
 class durable_rule(abc_machine.implication, abc_machine.rule):
     patterns: list[rls.value]
     bindings: MutableMapping[Variable, VARIABLE_LOCATOR]
@@ -619,32 +571,11 @@ class durable_rule(abc_machine.implication, abc_machine.rule):
             ) -> Iterable[Tuple[Iterable[_pattern],
                                 Iterable[Callable[[BINDING], Literal]],
                                 Iterable[Variable]]]:
-        """
-        :TODO: If a rule has nopattern but a condition a trigger, a special
-            pattern for the rule should be generated. I have non yet. Maybe
-            it should just result in an error.
-        """
-        conditions: List[Callable[[BINDING], Literal]] = []
-        patterns: list[_pattern] = []
-        bound_variables: Set[Variable] = set()
-        queue = _pattern_combinator()
-        for q in self.orig_pattern:
-            if isinstance(q, fact):
-                logger.debug("appends %s as pattern." % q)
-                queue.add_single([_pattern(q.as_dict())], [], q.used_variables)
-                patterns.append(_pattern(q.as_dict()))
-                bound_variables.update(q.used_variables)
-            elif isinstance(q, abc_external):
-                tmp_p, tmp_c, tmp_v = self._process_external(q.op, q.args, bound_variables)
-                queue.add_single(tmp_p, tmp_c, tmp_v)
-                logger.debug("uses %s to append:\npattern: %s\ncondition: %s"
-                             %(q, tmp_p, tmp_c))
-                bound_variables.update(tmp_v)
-                patterns.extend(tmp_p)
-                conditions.extend(tmp_c)
-            else:
-                raise Exception(type(q))
-        for patterns, conditions, bound_variables in queue:
+        p: List[Union[fact, abc_external]] = list(self.orig_pattern)
+        conditions: List[Callable[[BINDING], Literal]]
+        patterns: List[_pattern]
+        bound_variables: Set[Variable]
+        for patterns, conditions, bound_variables in self._generate_action_prerequisites_inner(p, [], [], set()):
             if len(patterns) == 0 and len(conditions) == 0:
                 #create rule as initialisation rule
                 patterns.insert(0, _pattern({MACHINESTATE: INIT_STATE}))
@@ -653,8 +584,43 @@ class durable_rule(abc_machine.implication, abc_machine.rule):
             else:
                 #TODO : This rule lacks any trigger. 
                 patterns.insert(0, _pattern({MACHINESTATE: RUNNING_STATE}))
-
             yield patterns, conditions, bound_variables
+
+    def _generate_action_prerequisites_inner(
+            self,
+            pattern_parts: List[Union[fact, abc_external]],
+            patterns: list[_pattern],
+            conditions: List[Callable[[BINDING], Literal]],
+            bound_variables: Set[Variable],
+            ) -> Iterable[Tuple[List[_pattern],
+                                List[Callable[[BINDING], Literal]],
+                                Set[Variable]]]:
+        """
+        :TODO: If a rule has nopattern but a condition a trigger, a special
+            pattern for the rule should be generated. I have non yet. Maybe
+            it should just result in an error.
+        """
+        for i, q in enumerate(pattern_parts):
+            if isinstance(q, fact):
+                logger.debug("appends %s as pattern." % q)
+                patterns.append(_pattern(q.as_dict()))
+                bound_variables.update(q.used_variables)
+            elif isinstance(q, abc_external):
+                tmp_p, tmp_c, tmp_v = self._process_external(q.op, q.args, bound_variables)
+                logger.debug("uses %s to append:\npattern: %s\ncondition: %s"
+                             %(q, tmp_p, tmp_c))
+                next_gen = self._generate_action_prerequisites_inner(
+                        pattern_parts[i+1:],
+                        [*patterns, *tmp_p],
+                        [*conditions, *tmp_c],
+                        bound_variables.union(tmp_v),
+                        )
+                for x in next_gen:
+                    yield x
+                return
+            else:
+                raise Exception(type(q))
+        yield patterns, conditions, bound_variables
 
     def _generate_action(
             self,
@@ -693,7 +659,7 @@ class durable_rule(abc_machine.implication, abc_machine.rule):
             op: IdentifiedNode,
             args: ATOM_ARGS,
             bound_variables: Container[Variable] = {},
-            ) -> Tuple[Iterable[rls.value],
+            ) -> Tuple[Iterable[_pattern],
                        Iterable[Callable[[BINDING], Literal]],
                        Iterable[Variable]]:
         new_bound_vars: List[Variable] = []
