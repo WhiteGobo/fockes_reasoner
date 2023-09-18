@@ -3,7 +3,7 @@ import logging
 logger = logging.getLogger(__name__)
 import uuid
 import itertools as it
-from .durable_reasoner import machine_facts, fact, NoPossibleExternal, _resolve, ATOM_ARGS, term_list, machine_list, pattern_generator
+from .durable_reasoner import machine_facts, fact, NoPossibleExternal, _resolve, ATOM_ARGS, term_list, machine_list, pattern_generator, rule
 from .durable_reasoner.machine_facts import external, TRANSLATEABLE_TYPES
 import rdflib
 from rdflib import IdentifiedNode, Graph, Variable, Literal, URIRef
@@ -333,58 +333,34 @@ class rif_forall(_rule_gen):
         self.formula = formula
         self.pattern = pattern
 
-    def _create_generell_rule_without_pattern(
-            self,
-            machine: durable_reasoner.machine,
-            ) -> None:
-        newrule = machine.create_rule_builder()
-        conditions: list[Callable[[BINDING], Union[Literal, bool]]] = []
-        if isinstance(self.formula.if_, rif_and):
-            for pat in self.formula.if_.formulas:
-                try:
-                    newrule.orig_pattern.append(pat)
-                except Exception:
-                    raise
-                    conditions.append(pat.generate_condition(machine))
-        else:
-            newrule.orig_pattern.append(self.formula.if_)
-        if len(conditions) == 0:
-            action, used_variables = self.formula.then_.generate_action(machine)
-        else:
-            raise NotImplementedError()
-        newrule.set_action(action, used_variables)
-        logger.info("create rule %r" % newrule)
-        newrule.finalize()
-
     def _create_implication(self, machine: durable_reasoner.machine) -> None:
         newrule = machine.create_rule_builder()
         conditions: list[Callable[[BINDING], Union[Literal, bool]]] = []
-        if isinstance(self.formula.if_, rif_and):
-            for pat in self.formula.if_.formulas:
-                try:
-                    newrule.orig_pattern.append(pat)
-                except Exception:
-                    raise
-                    conditions.append(pat.generate_condition(machine))
-        else:
-            newrule.orig_pattern.append(self.formula.if_)
+        self.formula._add_condition_as_pattern(newrule)
         if isinstance(self.formula.then_, rif_do):
             raise NotImplementedError()
         if len(conditions) == 0:
             implicated_fact = self.formula.then_
-            action = implicated_fact.generate_assert_action(machine)
+            action, q = implicated_fact.generate_action(machine)
         else:
             raise NotImplementedError()
-        newrule.set_action(action, [])
+        newrule.set_action(action, q)
         logger.info("create rule %r" % newrule)
         newrule.finalize()
 
     def create_rules(self, machine: durable_reasoner.machine) -> None:
-        if self.pattern is None and isinstance(self.formula, rif_implies)\
-                and isinstance(self.formula.then_, (rif_frame,)):
-            return self._create_implication(machine)
-        elif self.pattern is None and isinstance(self.formula, rif_implies):
-            return self._create_generell_rule_without_pattern(machine)
+        #if self.pattern is None and isinstance(self.formula, rif_implies)\
+        #        and isinstance(self.formula.then_, (rif_frame,)):
+        #    return self._create_implication(machine)
+        if isinstance(self.formula, rif_implies):
+            if self.pattern is not None:
+                raise NotImplementedError()
+            newrule = machine.create_rule_builder()
+            self.formula._add_condition_as_pattern(newrule)
+            action, used_variables = self.formula.then_.generate_action(machine)
+            newrule.set_action(action, used_variables)
+            newrule.finalize()
+            return newrule
         elif self.pattern is not None:
             raise NotImplementedError()
         else:
@@ -444,13 +420,7 @@ class rif_implies(_rule_gen):
         def __repr__(self) -> str:
             return f"condition {self.parent}"
 
-
-    def create_rules(self, machine: durable_reasoner.machine) -> None:
-        """Create this as a rule for an expertsystem.
-
-        """
-        newrule = machine.create_implication_builder()
-        conditions: list[Callable[[BINDING], Union[Literal, bool]]] = []
+    def _add_condition_as_pattern(self, newrule: rule) -> None:
         if isinstance(self.if_, rif_and):
             for pat in self.if_.formulas:
                 try:
@@ -462,16 +432,16 @@ class rif_implies(_rule_gen):
                     logger.debug("added with %s cond %s" % (pat, tmp_cond))
         else:
             newrule.orig_pattern.append(self.if_)
-        if isinstance(self.then_, rif_do):
-            action, used_variables = self.then_.generate_action(machine)
-        else:
-            action = self.then_.generate_assert_action(machine)
-            used_variables = self.then_.used_variables
-        if len(conditions) == 0:
-            newrule.set_action(action, used_variables)
-        else:
-            act = self.conditional(self, conditions, action, machine)
-            newrule.set_action(act, used_variables)
+
+    def create_rules(self, machine: durable_reasoner.machine) -> None:
+        """Create this as a rule for an expertsystem.
+
+        """
+        newrule = machine.create_implication_builder()
+        conditions: list[Callable[[BINDING], Union[Literal, bool]]] = []
+        self._add_condition_as_pattern(newrule)
+        action, used_variables = self.then_.generate_action(machine)
+        newrule.set_action(action, used_variables)
         logger.info("create implication %r" % newrule)
         newrule.finalize()
 
