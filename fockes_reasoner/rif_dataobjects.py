@@ -1246,8 +1246,8 @@ def _get_variables(targetlist: Iterable[ATOM]) -> Iterable[Variable]:
                 if isinstance(y, Variable):
                     yield y
         elif isinstance(x, (rif_fact, rif_external)):
-            for y in x.used_variables:
-                yield y
+            for var in x.used_variables:
+                yield var
         else:
             raise NotImplementedError(type(x), x)
 
