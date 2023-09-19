@@ -478,10 +478,10 @@ def IRT_testdata(request):
     param(NST_Core_NonSafeness,
           id=NST_Core_NonSafeness.name),
     param(NST_Core_NonSafeness_2,
-          marks=mark.skip("not implemented yet"),
+          marks=mark.skip("implement PET_Factorial_Forward_Chaining first"),
           id=NST_Core_NonSafeness_2.name),
     param(NST_No_free_variables,
-          marks=mark.skip("not implemented yet"),
+          marks=mark.skip("implement PET_Factorial_Forward_Chaining first"),
           id=NST_No_free_variables.name),
     ])
 def NST_testdata(request):
