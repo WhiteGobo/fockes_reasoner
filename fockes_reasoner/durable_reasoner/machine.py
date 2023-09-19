@@ -406,8 +406,8 @@ class _base_durable_machine(abc_machine.machine):
             args: ATOM_ARGS,
             bound_variables: Container[Variable],
             ) -> Iterable[Tuple[Iterable[_pattern],
-                       Iterable[Callable[[BINDING], Literal]],
-                       Iterable[Variable]]]:
+                                Iterable[Callable[[BINDING], Literal]],
+                                Iterable[Variable]]]:
         """Try to create a complete pattern for given external statement.
         :raises NoPossibleExternal: If given external is not defined
             or cant be used to directly produce a pattern raise this error.

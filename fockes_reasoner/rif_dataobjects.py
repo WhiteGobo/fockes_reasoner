@@ -3,7 +3,7 @@ import logging
 logger = logging.getLogger(__name__)
 import uuid
 import itertools as it
-from .durable_reasoner import machine_facts, fact, NoPossibleExternal, _resolve, ATOM_ARGS, term_list, machine_list, pattern_generator, rule
+from .durable_reasoner import machine_facts, fact, NoPossibleExternal, _resolve, ATOM_ARGS, term_list, machine_list, pattern_generator, rule, machine_or, machine_and
 from .durable_reasoner.machine_facts import external, TRANSLATEABLE_TYPES
 import rdflib
 from rdflib import IdentifiedNode, Graph, Variable, Literal, URIRef, BNode
@@ -63,6 +63,26 @@ class _rif_check(pattern_generator, abc.ABC):
             ) -> bool:
         ...
 
+
+class _resolvable_gen(abc.ABC):
+    """Subclass can be used to retrieve a :term:`translateable object` as
+    described in bridge-rdflib. Is equal to a :term:`formula` in :term:`RIF`
+    """
+    @abc.abstractmethod
+    def as_resolvable(self, machine: durable_reasoner.machine) -> RESOLVABLE:
+        ...
+
+    @abc.abstractmethod
+    def as_machineterm(self) -> Union[external, TRANSLATEABLE_TYPES]:
+        """
+        :TODO: This should be as_machineterm
+        """
+        ...
+
+class _rif_formula(_resolvable_gen, _rif_check):
+    ...
+
+
 class rif_fact(_rif_check, _action_gen, _rule_gen):
     @abc.abstractmethod
     def _create_facts(self) -> Iterable[fact]:
@@ -113,26 +133,12 @@ class rif_fact(_rif_check, _action_gen, _rule_gen):
         action = self.generate_assert_action(machine)
         machine.add_init_action(action)
 
-
-class _resolvable_gen(abc.ABC):
-    """Subclass can be used to retrieve a :term:`translateable object` as
-    described in bridge-rdflib. Is equal to a :term:`formula` in :term:`RIF`
-    """
-    @abc.abstractmethod
-    def as_resolvable(self, machine: durable_reasoner.machine) -> RESOLVABLE:
-        ...
-
-    @abc.abstractmethod
-    def as_machinefact(self) -> Union[external, TRANSLATEABLE_TYPES]:
-        """
-        :TODO: This should be as_machineterm
-        """
-        ...
-
-def _try_as_machinefact(x: Union[TRANSLATEABLE_TYPES, external, Variable, _resolvable_gen],
+def _try_as_machineterm(x: Union[TRANSLATEABLE_TYPES, external, Variable, _resolvable_gen, rif_fact],
                         ) -> Union[TRANSLATEABLE_TYPES, external, Variable]:
     if isinstance(x, _resolvable_gen):
-        return x.as_machinefact()
+        return x.as_machineterm()
+    elif isinstance(x, rif_fact):
+        raise NotImplementedError()
     else:
         return x
 
@@ -481,20 +487,27 @@ class rif_implies(_rule_gen):
 
 class rif_exists(_rif_check):
     formula: rif_fact
+    blank_vars: Iterable[Variable]
     _formula_generators: Mapping[IdentifiedNode, Callable[[Graph, IdentifiedNode], rif_fact]]
-    def __init__(self, formula: rif_fact):
+    def __init__(self, formula: rif_fact, blank_vars: Iterable[Variable]):
         self.formula = formula
+        self.blank_vars = list(blank_vars)
 
     def __repr__(self) -> str:
-        return "exists(%s)" % self.formula
+        return "exists %s (%s)" % (", ".join(str(x) for x in self.blank_vars),
+                                   self.formula)
 
     def _add_pattern(self, rule: durable_reasoner.rule) -> None:
         raise NotImplementedError()
 
     def check(self,
             machine: durable_reasoner.machine,
-            bindings: BINDING = {},
+            bindings: Optional[BINDING] = None,
             ) -> bool:
+        if bindings is None:
+            bindings = {x: None for x in self.blank_vars}
+        else:
+            bindings.update({x: None for x in self.blank_vars})
         return self.formula.check(machine, bindings)
 
     @classmethod
@@ -503,17 +516,29 @@ class rif_exists(_rif_check):
                  ) -> "rif_exists":
         vars_node, = infograph.objects(rootnode, RIF.vars)
         var_list = rdflib.collection.Collection(infograph, vars_node)
+        blank_vars: List[Variable] = []
+        for x in var_list:
+            x_var = slot2node(infograph, x)
+            assert isinstance(x_var, Variable)
+            blank_vars.append(x_var)
         formula_node, = infograph.objects(rootnode, RIF.formula)
         assert isinstance(formula_node, IdentifiedNode)
         formula = _generate_object(infograph, formula_node,
                                    cls._formula_generators)
-        return cls(formula)
+        return cls(formula, blank_vars)
 
-class rif_and(_rif_check):
+class rif_and(_resolvable_gen, _rif_check):
     formulas: Iterable[_rif_check]
     _formulas_generators: Mapping[IdentifiedNode, Callable[[Graph, IdentifiedNode], _rif_check]]
     def __init__(self, formulas: Iterable[_rif_check]):
         self.formulas = list(formulas)
+
+    def as_machineterm(self) -> Union[external, TRANSLATEABLE_TYPES]:
+        args = [_try_as_machineterm(x) for x in self.formulas]
+        return machine_and(RIF.And, args)
+
+    def as_resolvable(self, machine: durable_reasoner.machine) -> RESOLVABLE:
+        raise NotImplementedError()
 
     def __repr__(self) -> str:
         return "(%s)" % " & ".join(repr(x) for x in self.formulas)
@@ -543,10 +568,10 @@ class rif_and(_rif_check):
             formulas.append(next_formula)
         return cls(formulas)
 
-class rif_or(_rif_check):
-    formulas: Iterable[_rif_check]
+class rif_or(_rif_formula):
+    formulas: Iterable[_rif_formula]
     _formulas_generators: Mapping[IdentifiedNode, Callable[[Graph, IdentifiedNode], _rif_check]]
-    def __init__(self, formulas: Iterable[_rif_check]):
+    def __init__(self, formulas: Iterable[_rif_formula]):
         self.formulas = list(formulas)
 
     def check(self,
@@ -556,9 +581,14 @@ class rif_or(_rif_check):
         return any(f.check(machine, bindings) for f in self.formulas)
 
     def _add_pattern(self, rule: durable_reasoner.rule) -> None:
+        rule.orig_pattern.append(self.as_machineterm())
+
+    def as_resolvable(self, machine: durable_reasoner.machine) -> RESOLVABLE:
         raise NotImplementedError()
-        for form in self.formulas:
-            rule.orig_pattern.append(form)
+
+    def as_machineterm(self) -> machine_or:
+        args = [_try_as_machineterm(x) for x in self.formulas]
+        return machine_or(RIF.Or, args)
 
     @classmethod
     def from_rdf(cls, infograph: rdflib.Graph,
@@ -630,7 +660,7 @@ class rif_atom(rif_fact):
         self.args = list(args)
 
     def _add_pattern(self, rule: durable_reasoner.rule) -> None:
-        args = [_try_as_machinefact(arg) for arg in self.args]
+        args = [_try_as_machineterm(arg) for arg in self.args]
         f = machine_facts.atom(self.op, args)
         rule.orig_pattern.append(f)
 
@@ -645,7 +675,7 @@ class rif_atom(rif_fact):
             machine: durable_reasoner.machine,
             bindings: BINDING = {},
             ) -> bool:
-        args_ = [_try_as_machinefact(arg) for arg in self.args]
+        args_ = [_try_as_machineterm(arg) for arg in self.args]
         #args: list[RESOLVABLE] = [_get_resolveable(x, machine) for x in args_]
         f = machine_facts.atom(self.op, args_)
         return f.check_for_pattern(machine, bindings)
@@ -669,7 +699,7 @@ class rif_atom(rif_fact):
         """
         logger.info("op: %s\nargs: %s" % (self.op, self.args))
         binding_actions: list[Callable[[BINDING], None]] = []
-        args = [_try_as_machinefact(arg) for arg in self.args]
+        args = [_try_as_machineterm(arg) for arg in self.args]
         fact = machine_facts.atom(self.op, args)
         return self.assert_action(self, fact, binding_actions, machine)
 
@@ -711,8 +741,8 @@ class rif_external(_resolvable_gen, _rif_check):
     def used_variables(self) -> Iterable[Variable]:
         return _get_variables((self.op, *self.args))
 
-    def as_machinefact(self) -> external:
-        args = [x.as_machinefact() if isinstance(x, _resolvable_gen) else x for x in self.args]
+    def as_machineterm(self) -> external:
+        args = [_try_as_machineterm(x) for x in self.args]
         return external(self.op, args)
 
     def as_resolvable(self, machine: durable_reasoner.machine) -> RESOLVABLE:
@@ -737,7 +767,7 @@ class rif_external(_resolvable_gen, _rif_check):
         raise NotImplementedError()
 
     def _add_pattern(self, rule: durable_reasoner.rule) -> None:
-        m = self.as_machinefact()
+        m = self.as_machineterm()
         rule.orig_pattern.append(m)
 
     @classmethod
@@ -783,14 +813,14 @@ class rif_member(rif_fact):
         self.cls = cls
 
     def _add_pattern(self, rule: durable_reasoner.rule) -> None:
-        instance = _try_as_machinefact(self.instance)
-        cls = _try_as_machinefact(self.cls)
+        instance = _try_as_machineterm(self.instance)
+        cls = _try_as_machineterm(self.cls)
         f = machine_facts.member(instance, cls)
         rule.orig_pattern.append(f)
 
     def _create_facts(self) -> Iterable[machine_facts.member]:
-        cls = _try_as_machinefact(self.cls)
-        instance = _try_as_machinefact(self.instance)
+        cls = _try_as_machineterm(self.cls)
+        instance = _try_as_machineterm(self.instance)
         yield machine_facts.member(instance, cls)
 
     @classmethod
@@ -844,8 +874,8 @@ class rif_subclass(rif_fact):
             machine: durable_reasoner.machine,
             bindings: BINDING = {},
             ) -> bool:
-        sub_class = self.sub_class.as_machinefact() if isinstance(self.sub_class, _resolvable_gen) else self.sub_class
-        super_class = self.super_class.as_machinefact() if isinstance(self.super_class, _resolvable_gen) else self.super_class
+        sub_class = self.sub_class.as_machineterm() if isinstance(self.sub_class, _resolvable_gen) else self.sub_class
+        super_class = self.super_class.as_machineterm() if isinstance(self.super_class, _resolvable_gen) else self.super_class
         f = machine_facts.subclass(sub_class, super_class)
         return f.check_for_pattern(machine, bindings)
 
@@ -869,10 +899,10 @@ class rif_frame(rif_fact):
 
     @property
     def facts(self) -> Iterable[machine_facts.frame]:
-        obj = _try_as_machinefact(self.obj)
+        obj = _try_as_machineterm(self.obj)
         for slotkey, slotvalue in self._machinefact_slots:
-            sk = _try_as_machinefact(slotkey)
-            sv = _try_as_machinefact(slotvalue)
+            sk = _try_as_machineterm(slotkey)
+            sv = _try_as_machineterm(slotvalue)
             yield machine_facts.frame(obj, sk, sv)
 
     def _create_facts(self) -> Iterable[fact]:
@@ -881,14 +911,14 @@ class rif_frame(rif_fact):
     @property
     def _machinefact_slots(self) -> Iterable[Tuple[Union[TRANSLATEABLE_TYPES, external, Variable], Union[TRANSLATEABLE_TYPES, external, Variable]]]:
         for slot in self.slots:
-            slotkey, slotvalue = (x.as_machinefact() if isinstance(x, _resolvable_gen) else x for x in slot)
+            slotkey, slotvalue = (x.as_machineterm() if isinstance(x, _resolvable_gen) else x for x in slot)
             yield slotkey, slotvalue
 
     def _add_pattern(self, rule: durable_reasoner.rule) -> None:
-        obj = _try_as_machinefact(self.obj)
+        obj = _try_as_machineterm(self.obj)
         for slotkey, slotvalue in self._machinefact_slots:
-            sk = _try_as_machinefact(slotkey)
-            sv = _try_as_machinefact(slotvalue)
+            sk = _try_as_machineterm(slotkey)
+            sv = _try_as_machineterm(slotvalue)
             f = machine_facts.frame(obj, sk, sv)
             rule.orig_pattern.append(f)
 
@@ -927,7 +957,7 @@ class rif_frame(rif_fact):
         :TODO: Creation of variable is not safe
         """
         facts = []
-        obj = _try_as_machinefact(self.obj)
+        obj = _try_as_machineterm(self.obj)
         for slotkey, slotvalue in self._machinefact_slots:
             facts.append(machine_facts.frame(obj, slotkey, slotvalue))
         return self.__assert_action(self, facts, machine)
@@ -1170,8 +1200,8 @@ class rif_list(_resolvable_gen):
     def as_resolvable(self, machine: durable_reasoner.machine) -> RESOLVABLE:
         raise NotImplementedError()
 
-    def as_machinefact(self) -> machine_list:
-        items = [_try_as_machinefact(x) for x in self.items]
+    def as_machineterm(self) -> machine_list:
+        items = [_try_as_machineterm(x) for x in self.items]
         return machine_list(items)
 
 

@@ -36,10 +36,9 @@ class _dict_fact(fact):
         fact_ = self.as_dict(bindings)
         fact = {}
         for key, value in fact_.items():
-            try:
-                fact[key] = _node2string(value, c, bindings)
-            except _NotBoundVar:
-                pass
+            q = _node2string(value, c, bindings)
+            if q is not None:
+                fact[key] = q
         for _ in c.get_facts(fact):
             return True
         return False
@@ -68,6 +67,23 @@ class external(abc_external):
     def __repr__(self) -> str:
         return "external %s(%s)" % (self.op,
                                     ", ".join(_pretty(x) for x in self.args))
+
+class machine_or(external):
+    op: URIRef
+    args: Iterable[Union[TRANSLATEABLE_TYPES, "external", Variable]]
+    def __init__(self, op: URIRef, args: Iterable[Union[TRANSLATEABLE_TYPES, "external", Variable]]) -> None:
+        assert op == URIRef("http://www.w3.org/2007/rif#Or")
+        self.op = op
+        self.args = list(args)
+
+
+class machine_and(external):
+    op: URIRef
+    args: Iterable[Union[TRANSLATEABLE_TYPES, "external", Variable]]
+    def __init__(self, op: URIRef, args: Iterable[Union[TRANSLATEABLE_TYPES, "external", Variable]]) -> None:
+        assert op == URIRef("http://www.w3.org/2007/rif#And")
+        self.op = op
+        self.args = list(args)
 
 
 class machine_list(external):
@@ -135,10 +151,9 @@ class subclass(_dict_fact):
                 (self.SUBCLASS_SUB, self.sub_class),
                 (self.SUBCLASS_SUPER, self.super_class),
                 ]:
-            try:
-                fact[label] = _node2string(x, c, bindings)
-            except _NotBoundVar:
-                pass
+            q = _node2string(x, c, bindings)
+            if q is not None:
+                fact[label] = q
         for _ in c.get_facts(fact):
             #triggers, when any corresponding fact is found
             return True
@@ -230,9 +245,11 @@ class frame(fact):
                 (self.FRAME_SLOTVALUE, self.slotvalue),
                 ]:
             try:
-                fact[label] = _node2string(x, c, bindings)
-            except _NotBoundVar:
-                pass
+                q = _node2string(x, c, bindings)
+            except Exception as err:
+                raise Exception(bindings) from err
+            if q is not None:
+                fact[label] = q
         for _ in c.get_facts(fact):
             #triggers, when any corresponding fact is found
             return True
@@ -363,10 +380,9 @@ class atom(fact):
         fact[self.ATOM_OP] = _node2string(self.op, c, bindings)
         for i, x in enumerate(self.args):
             label = self.ATOM_ARGS % i
-            try:
-                fact[label] = _node2string(x, c, bindings)
-            except _NotBoundVar:
-                pass
+            q = _node2string(x, c, bindings)
+            if q is not None:
+                fact[label] = q
             #fact[label] = rdflib2string(_resolve(x, bindings))
         for _ in c.get_facts(fact):
             #triggers, when any corresponding fact is found
@@ -411,13 +427,17 @@ class atom(fact):
 def _node2string(x: Union[TRANSLATEABLE_TYPES, Variable, str, abc_external],
                  machine: abc_machine.machine,
                  bindings: BINDING,
-                 ) -> str:
+                 ) -> Optional[str]:
     if isinstance(x, rdflib.Variable):
         try:
-            return rdflib2string(bindings[x])
+            q = bindings[x]
         except KeyError as err:
             raise _NotBoundVar("Tried to get not yet bind variable '%s' "
                                "from %s" % (x, bindings)) from err
+        if q is None:
+            return
+        else:
+            return rdflib2string(q)
     elif isinstance(x, (URIRef, BNode, Literal)):
         return rdflib2string(x)
     elif isinstance(x, external):
