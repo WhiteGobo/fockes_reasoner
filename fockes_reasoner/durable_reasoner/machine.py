@@ -25,7 +25,7 @@ from . import default_externals as def_ext
 
 PATTERNGENERATOR\
         = Callable[[Iterable[RESOLVABLE], Container[Variable]],
-                   Tuple[Iterable["_pattern"], Iterable[Callable[[BINDING], None]], Iterable[Variable]]]
+                   Tuple[Iterable[abc_pattern], Iterable[Callable[[BINDING], Literal]], Iterable[Variable]]]
 
 MACHINESTATE = "machinestate"
 RUNNING_STATE = "running"
@@ -222,7 +222,7 @@ class _base_durable_machine(abc_machine.machine):
     available_import_profiles: MutableMapping[Optional[IdentifiedNode],
                                               importProfile]
     _registered_pattern_generator: Dict[IdentifiedNode,
-                                        Callable[..., RESOLVABLE]]
+                                        PATTERNGENERATOR]
     _registered_action_generator: Dict[IdentifiedNode,
                                        Callable[..., RESOLVABLE]]
     _registered_assignment_generator: Dict[IdentifiedNode,
@@ -414,7 +414,16 @@ class _base_durable_machine(abc_machine.machine):
             mygen = self._registered_pattern_generator[op]
         except KeyError:
             raise NoPossibleExternal()
-        return mygen(args, bound_variables)
+        args_ = []
+        for a in args:
+            assert not isinstance(a, abc_external)
+            args_.append(a)
+        x, y, z = mygen(args_, bound_variables)
+        xx: list[_pattern] = []
+        for _x in x:
+            assert isinstance(_x, _pattern)
+            xx.append(_x)
+        return xx, y, z
 
     def _create_assignment_from_external(self,
                                          op: IdentifiedNode,
