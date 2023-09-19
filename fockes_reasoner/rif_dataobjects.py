@@ -168,7 +168,8 @@ def slot2node(infograph: Graph, x: IdentifiedNode) -> ATOM:
         val = val_info[RIF.constname]
         assert isinstance(val, Literal)
         #return local(val, graph.identifier)
-        return BNode(_sn_gen=lambda: str(val), _prefix=infograph.identifier)
+        return BNode(_sn_gen=lambda: str(val),
+                     _prefix=str(infograph.identifier))
     elif t == RIF.Const:
         raise NotImplementedError(val_info)
     elif t == RIF.External:

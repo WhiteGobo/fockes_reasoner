@@ -8,7 +8,7 @@ from dataclasses import dataclass
 import math
 from .bridge_rdflib import term_list, _term_list, TRANSLATEABLE_TYPES
 
-from .abc_machine import BINDING, RESOLVABLE, _resolve, RESOLVER
+from .abc_machine import BINDING, RESOLVABLE, _resolve, RESOLVER, abc_pattern
 from ..shared import pred, func
 
 @dataclass
@@ -397,8 +397,10 @@ class pred_iri_string:
 
     @classmethod
     def pattern_generator(
-            cls, args: Iterable[RESOLVABLE], bound_variables,
-            ) -> Tuple[Iterable["_pattern"],
+            cls,
+            args: Iterable[RESOLVABLE],
+            bound_variables: Container[Variable],
+            ) -> Tuple[Iterable[abc_pattern],
                        Tuple["pred_iri_string"],
                        Iterable[Variable]]:
         target_var, source_string = args

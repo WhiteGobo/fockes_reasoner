@@ -237,6 +237,8 @@ class pattern_generator(abc.ABC):
     def _add_pattern(self, rule: rule) -> None:
         ...
 
+class abc_pattern(abc.ABC):
+    """shared implementation of patterns used within machine."""
 
 class implication(rule, abc.ABC):
     patterns: typ.Any

@@ -12,7 +12,7 @@ import itertools as it
 import rdflib
 from rdflib import URIRef, Variable, Literal, BNode, Graph, IdentifiedNode, XSD
 from . import abc_machine
-from .abc_machine import TRANSLATEABLE_TYPES, FACTTYPE, BINDING, VARIABLE_LOCATOR, NoPossibleExternal, importProfile, RESOLVABLE, ATOM_ARGS, abc_external, RESOLVER, RuleNotComplete, pattern_generator, VariableNotBoundError
+from .abc_machine import TRANSLATEABLE_TYPES, FACTTYPE, BINDING, VARIABLE_LOCATOR, NoPossibleExternal, importProfile, RESOLVABLE, ATOM_ARGS, abc_external, RESOLVER, RuleNotComplete, pattern_generator, VariableNotBoundError, abc_pattern
 
 from .bridge_rdflib import rdflib2string, string2rdflib, term_list
 
@@ -43,7 +43,7 @@ LIST_MEMBERS = "member"
 class FailedInternalAction(Exception):
     ...
 
-class _pattern:
+class _pattern(abc_pattern):
     pattern: Mapping[str, Union[Variable, str, TRANSLATEABLE_TYPES]]
     factname: str
     def __init__(
