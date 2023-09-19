@@ -21,6 +21,18 @@ class rif_or:
                 return y
         return Literal(False)
 
+    @classmethod
+    def pattern_generator(
+            cls,
+            args: Iterable[RESOLVABLE],
+            bound_variables: Container[Variable],
+            ) -> Tuple[Iterable[abc_pattern],
+                       Tuple["pred_iri_string"],
+                       Iterable[Variable]]:
+        raise NotImplementedError()
+        
+        
+
 
 @dataclass
 class invert:
@@ -400,13 +412,13 @@ class pred_iri_string:
             cls,
             args: Iterable[RESOLVABLE],
             bound_variables: Container[Variable],
-            ) -> Tuple[Iterable[abc_pattern],
-                       Tuple["pred_iri_string"],
-                       Iterable[Variable]]:
+            ) -> Iterable[Tuple[Iterable[abc_pattern],
+                                Tuple["pred_iri_string"],
+                                Iterable[Variable]]]:
         target_var, source_string = args
         assert isinstance(target_var, Variable)
         assert target_var not in bound_variables
-        return tuple(), (cls(target_var, source_string),), [target_var]
+        yield tuple(), (cls(target_var, source_string),), [target_var]
 
     def __call__(self, bindings: BINDING) -> Literal:
         assert self.target_var not in bindings

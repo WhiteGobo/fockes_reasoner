@@ -25,7 +25,9 @@ from . import default_externals as def_ext
 
 PATTERNGENERATOR\
         = Callable[[Iterable[RESOLVABLE], Container[Variable]],
-                   Tuple[Iterable[abc_pattern], Iterable[Callable[[BINDING], Literal]], Iterable[Variable]]]
+                   Iterable[Tuple[Iterable[abc_pattern],
+                                  Iterable[Callable[[BINDING], Literal]],
+                                  Iterable[Variable]]]]
 
 MACHINESTATE = "machinestate"
 RUNNING_STATE = "running"
@@ -403,9 +405,9 @@ class _base_durable_machine(abc_machine.machine):
             op: IdentifiedNode,
             args: ATOM_ARGS,
             bound_variables: Container[Variable],
-            ) -> Tuple[Iterable[_pattern],
+            ) -> Iterable[Tuple[Iterable[_pattern],
                        Iterable[Callable[[BINDING], Literal]],
-                       Iterable[Variable]]:
+                       Iterable[Variable]]]:
         """Try to create a complete pattern for given external statement.
         :raises NoPossibleExternal: If given external is not defined
             or cant be used to directly produce a pattern raise this error.
@@ -418,12 +420,12 @@ class _base_durable_machine(abc_machine.machine):
         for a in args:
             assert not isinstance(a, abc_external)
             args_.append(a)
-        x, y, z = mygen(args_, bound_variables)
-        xx: list[_pattern] = []
-        for _x in x:
-            assert isinstance(_x, _pattern)
-            xx.append(_x)
-        return xx, y, z
+        for x, y, z in mygen(args_, bound_variables):
+            xx: list[_pattern] = []
+            for _x in x:
+                assert isinstance(_x, _pattern)
+                xx.append(_x)
+            yield xx, y, z
 
     def _create_assignment_from_external(self,
                                          op: IdentifiedNode,
@@ -626,19 +628,19 @@ class durable_rule(abc_machine.implication, abc_machine.rule):
                 patterns.append(_pattern(q.as_dict()))
                 bound_variables.update(q.used_variables)
             elif isinstance(q, abc_external):
-                tmp_p, tmp_c, tmp_v\
-                        = self._process_external_as_pattern(q.op, q.args,
-                                                            bound_variables)
-                logger.debug("uses %s to append:\npattern: %s\ncondition: %s"
-                             %(q, tmp_p, tmp_c))
-                next_gen = self._generate_action_prerequisites_inner(
-                        pattern_parts[i+1:],
-                        [*patterns, *tmp_p],
-                        [*conditions, *tmp_c],
-                        bound_variables.union(tmp_v),
-                        )
-                for x in next_gen:
-                    yield x
+                for tmp_p, tmp_c, tmp_v\
+                        in self._process_external_as_pattern(q.op, q.args,
+                                                             bound_variables):
+                    logger.debug("uses %s to append:\npattern: %s\ncondition: %s"
+                                 %(q, tmp_p, tmp_c))
+                    next_gen = self._generate_action_prerequisites_inner(
+                            pattern_parts[i+1:],
+                            [*patterns, *tmp_p],
+                            [*conditions, *tmp_c],
+                            bound_variables.union(tmp_v),
+                            )
+                    for x in next_gen:
+                        yield x
                 return
             else:
                 raise Exception(type(q))
@@ -681,24 +683,25 @@ class durable_rule(abc_machine.implication, abc_machine.rule):
             op: IdentifiedNode,
             args: ATOM_ARGS,
             bound_variables: Container[Variable] = {},
-            ) -> Tuple[Iterable[_pattern],
+            ) -> Iterable[Tuple[Iterable[_pattern],
                        Iterable[Callable[[BINDING], Literal]],
-                       Iterable[Variable]]:
+                       Iterable[Variable]]]:
         """
         :TODO: resolve this method into surrounding. Seems overkill
         """
         new_bound_vars: List[Variable] = []
         try:
-            patterns, conditions, new_vars\
-                    = self.machine._create_pattern_from_external(
-                            op, args, bound_variables)
-            return patterns, conditions, new_vars
+            for patterns, conditions, new_vars\
+                    in self.machine._create_pattern_from_external(
+                            op, args, bound_variables):
+                yield patterns, conditions, new_vars
+            return
         except NoPossibleExternal:
             cond = self.machine._create_assignment_from_external(op, args)
         if isinstance(cond, (Variable, IdentifiedNode, Literal, term_list)):
             raise Exception("Given external always gives a true statement "
                             "with %r as return value" % cond)
-        return [], [cond], new_bound_vars#type: ignore[list-item]
+        yield [], [cond], new_bound_vars#type: ignore[list-item]
 
     @property
     def logger(self) -> logging.Logger:
