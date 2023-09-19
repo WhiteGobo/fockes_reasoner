@@ -495,7 +495,6 @@ def NST_testdata(request):
           marks=mark.skip("implement PET_Factorial_Forward_Chaining first"),
           id=PST_Core_Safeness_2.name),
     param(PST_Core_Safeness_3,
-          marks=mark.skip("not implemented yet"),
           id=PST_Core_Safeness_3.name),
     ])
 def PST_testdata(request):
