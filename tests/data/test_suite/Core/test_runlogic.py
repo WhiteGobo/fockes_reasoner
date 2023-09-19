@@ -431,10 +431,8 @@ def PET_testdata(request):
 
 @pytest.fixture(params=[
     param(NET_Local_Constant,
-          marks=pytest.mark.skip("No local variables supported yet"),
           id="NET_Local_Constant"),
     param(NET_Local_Predicate,
-          marks=pytest.mark.skip("No local variables supported yet"),
           id="NET_Local_Predicate"),
     param(NET_NestedListsAreNotFlatLists,
           id="NET NestedListsAreNotFlatLists"),

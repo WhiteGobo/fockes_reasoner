@@ -6,7 +6,7 @@ import itertools as it
 from .durable_reasoner import machine_facts, fact, NoPossibleExternal, _resolve, ATOM_ARGS, term_list, machine_list, pattern_generator, rule
 from .durable_reasoner.machine_facts import external, TRANSLATEABLE_TYPES
 import rdflib
-from rdflib import IdentifiedNode, Graph, Variable, Literal, URIRef
+from rdflib import IdentifiedNode, Graph, Variable, Literal, URIRef, BNode
 import typing as typ
 from typing import Union, Iterable, Any, Callable, MutableMapping, List, Tuple, Optional, Mapping, Set
 from .shared import RIF, pred, XSD
@@ -28,6 +28,7 @@ FORMULA = Union["rif_frame",
                 "rif_or",
                 "rif_ineg",
                 "rif_exists"]
+
 
 class _child_action:
     """Shared parent for all action classes for callables for the machine"""
@@ -167,7 +168,7 @@ def slot2node(infograph: Graph, x: IdentifiedNode) -> ATOM:
         val = val_info[RIF.constname]
         assert isinstance(val, Literal)
         #return local(val, graph.identifier)
-        return val
+        return BNode(_sn_gen=lambda: str(val), _prefix=infograph.identifier)
     elif t == RIF.Const:
         raise NotImplementedError(val_info)
     elif t == RIF.External:
