@@ -405,16 +405,16 @@ class atom(fact):
 
     def __iter__(self) -> Iterable[str]:
         yield self.ATOM_OP
-        for i in range(len(self.ATOM_ARGS)):
+        for i in range(len(self.args)):
             yield self.ATOM_ARGS % i
 
     def __len__(self) -> int:
-        return 1 + len(self.ATOM_ARGS)
+        return 1 + len(self.args)
 
     def __getitem__(self, key: str,
                 ) -> Union[TRANSLATEABLE_TYPES, external, Variable]:
         if key == self.ATOM_OP:
-            return self.instance
+            return self.op
         elif key[:4] == "args":
             try:
                 i = int(key[4:])

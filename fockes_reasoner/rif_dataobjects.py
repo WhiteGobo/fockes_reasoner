@@ -679,7 +679,7 @@ class rif_atom(rif_fact):
         args_ = [_try_as_machineterm(arg) for arg in self.args]
         #args: list[RESOLVABLE] = [_get_resolveable(x, machine) for x in args_]
         f = machine_facts.atom(self.op, args_)
-        return f.check_for_pattern(machine, bindings)
+        return machine.check_statement([f], bindings)
 
     @dataclass
     class assert_action(_child_action):
