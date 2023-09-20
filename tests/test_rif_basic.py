@@ -39,15 +39,6 @@ def _import_graph(filepath) -> rdflib.Graph:
                     "for more info")
 
 
-_rif_type_to_constructor = {RIF.Frame: rif_frame.from_rdf,
-                            #RIF.External: rif_external.from_rdf,
-                            RIF.Subclass: rif_subclass.from_rdf,
-                            RIF.Member: rif_member.from_rdf,
-                            RIF.Atom: rif_atom.from_rdf,
-                            RIF.And: rif_and.from_rdf,
-                            RIF.Exists: rif_exists.from_rdf,
-                            }
-
 def test_simpletestrun():
     """Small testrun for the machine and a simple task"""
     testfile = str(PET_Assert.premise)

@@ -5,8 +5,21 @@ import logging
 logger = logging.getLogger(__name__)
 from pytest import param, mark, skip, raises
 import fockes_reasoner
-from .test_rif_basic import _rif_type_to_constructor, _import_graph
+from .test_rif_basic import _import_graph
 from .class_officialTestCases import PositiveEntailmentTest, NegativeEntailmentTest, ImportRejectionTest, PositiveSyntaxTest, NegativeSyntaxTest
+
+from fockes_reasoner.shared import RIF
+from fockes_reasoner import rif_dataobjects as rif_obj
+_rif_type_to_constructor = {RIF.Frame: rif_obj.rif_frame.from_rdf,
+                            #RIF.External: rif_obj.rif_external.from_rdf,
+                            RIF.Subclass: rif_obj.rif_subclass.from_rdf,
+                            RIF.Member: rif_obj.rif_member.from_rdf,
+                            RIF.Atom: rif_obj.rif_atom.from_rdf,
+                            RIF.And: rif_obj.rif_and.from_rdf,
+                            RIF.Exists: rif_obj.rif_exists.from_rdf,
+                            RIF.Equal: rif_obj.rif_equal.from_rdf,
+                            }
+
 
 class ExpectedFailure(Exception):
     ...
