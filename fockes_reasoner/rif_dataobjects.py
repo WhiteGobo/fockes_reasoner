@@ -97,14 +97,13 @@ class rif_fact(_rif_check, _action_gen, _rule_gen):
             machine: durable_reasoner.machine,
             bindings: BINDING = {},
             ) -> bool:
-        """Checks if all micro-facts are true for given machine.
-        Variables are treated as blanks if not given by bindings,
-        so accepts instead of a variable anything.
-        """
-        for f in self._create_facts():
-            if not f.check_for_pattern(machine, bindings):
-                return False
-        return True
+        test_facts = list(self._create_facts())
+        try:
+            return machine.check_statement(test_facts, bindings)
+        except Exception:
+            logger.error("Raised error when executing check of %s" % self)
+            logger.error(str(test_facts))
+            raise
 
     @dataclass
     class __assert_action(_child_action):
@@ -671,13 +670,6 @@ class rif_atom(rif_fact):
     def _create_facts(self) -> Iterable[fact]:
         args = [_try_as_machineterm(arg) for arg in self.args]
         yield machine_facts.atom(self.op, args)
-
-    def check(self,
-            machine: durable_reasoner.machine,
-            bindings: BINDING = {},
-            ) -> bool:
-        test_facts = list(self._create_facts())
-        return machine.check_statement(test_facts, bindings)
 
     @dataclass
     class assert_action(_child_action):

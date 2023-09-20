@@ -137,7 +137,7 @@ class _no_closure(_context_helper):
         else:
             return (f #type: ignore[no-any-return]
                     for f in rls.get_facts(self.machine._rulename)
-                    if all(f[key] == val for key, val in fact_filter.items()))
+                    if all(f.get(key) == val for key, val in fact_filter.items()))
 
     def retract_fact(self, fact: Mapping[str, str]) -> None:
         for f in self.get_facts():
@@ -234,10 +234,15 @@ class _base_durable_machine(abc_machine.machine):
     _knownLocations: MutableMapping[IdentifiedNode, rdflib.Graph]
 
     _registered_facttypes = {frame: frame.ID,
-                             member: frame.ID,
+                             member: member.ID,
                              subclass: subclass.ID,
                              atom: atom.ID,
                              }
+    _fact_generator_from_id = {frame.ID: frame,
+                               member.ID: member,
+                               subclass.ID: subclass,
+                               atom.ID: atom,
+                               }
 
     def __init__(self, loggername: str = __name__) -> None:
         rulesetname = str(uuid.uuid4())
@@ -307,11 +312,11 @@ class _base_durable_machine(abc_machine.machine):
             should support complex statement like 'Xor'
         """
         for f in statement:
-            d_ = ((key, _node2string(x, self, bindings))
-                  for key, x in f.items())
-            d = {key: x_ for key, x_ in d_
-                 if x_ is not None}
-            d[FACTTYPE] = self._registered_facttypes[type(f)]
+            d = {FACTTYPE: self._registered_facttypes[type(f)]}
+            for key, x in f.items():
+                x_ = _node2string(x, self, bindings)
+                if x_ is not None:
+                    d[key] = x_
             try:
                 iter(self.get_facts(d)).__next__()
             except StopIteration:
@@ -326,14 +331,9 @@ class _base_durable_machine(abc_machine.machine):
 
     def get_facts(self, fact_filter: Optional[Mapping[str, str]] = None,
             ) -> Iterable[abc_machine.fact]:
-        q: Mapping[str, type[fact]] = {frame.ID: frame,
-                                       member.ID: member,
-                                       subclass.ID: subclass,
-                                       atom.ID: atom,
-                                       }
         for f in self._current_context.get_facts(fact_filter):
             fact_id = f[FACTTYPE]
-            yield q[fact_id].from_fact(f)
+            yield self._fact_generator_from_id[fact_id].from_fact(f)
 
     def _make_rule(self, patterns: Iterable[_pattern],
                   action: Callable,
