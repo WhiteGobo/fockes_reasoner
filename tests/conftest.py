@@ -80,17 +80,26 @@ def logicmachine_after_run(testdata, logic_machine, valid_exceptions):
                 % list(q.machine.get_facts()))
     return q
 
+class _LoadingError(Exception):
+    ...
+
 @pytest.fixture
 def rif_facts_PET(logicmachine_after_PET, PET_testdata):
     conclusionfile = str(PET_testdata.conclusion)
     logger.debug("Conclusion: %s" % conclusionfile)
-    return rif_facts(conclusionfile)
+    try:
+        return rif_facts(conclusionfile)
+    except _LoadingError as err1:
+        raise
 
 @pytest.fixture
 def rif_facts_NET(logicmachine_after_NET, NET_testdata):
     nonconclusionfile = str(NET_testdata.nonconclusion)
     logger.debug("Nonconclusion: %s" % nonconclusionfile)
-    return rif_facts(nonconclusionfile)
+    try:
+        return rif_facts(nonconclusionfile)
+    except _LoadingError as err1:
+        raise
 
 def rif_facts(conclusionfile):
     try:
@@ -104,8 +113,12 @@ def rif_facts(conclusionfile):
     _objs = set(conc_graph.objects())
     subjects = set(x for x in conc_graph.subjects() if x not in _objs)
     for fact_root in subjects:
-        t, = conc_graph.objects(fact_root, RDF.type)
-        generator = _rif_type_to_constructor[t]
+        try:
+            t, = conc_graph.objects(fact_root, RDF.type)
+            generator = _rif_type_to_constructor[t]
+        except (KeyError, ValueError) as err:
+            raise _LoadingError("Couldnt find constructur for rootnode %r"
+                                % fact_root) from err
         rif_facts.append(generator(conc_graph, fact_root))
     logger.info("Expected facts:\n%s" % rif_facts)
     return rif_facts
