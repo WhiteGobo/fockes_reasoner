@@ -13,7 +13,7 @@ import itertools as it
 import rdflib
 from rdflib import URIRef, Variable, Literal, BNode, Graph, IdentifiedNode, XSD
 from . import abc_machine
-from .abc_machine import TRANSLATEABLE_TYPES, FACTTYPE, BINDING, BINDING_WITH_BLANKS, VARIABLE_LOCATOR, NoPossibleExternal, importProfile, RESOLVABLE, ATOM_ARGS, abc_external, RESOLVER, RuleNotComplete, pattern_generator, VariableNotBoundError, abc_pattern
+from .abc_machine import TRANSLATEABLE_TYPES, FACTTYPE, BINDING, BINDING_WITH_BLANKS, VARIABLE_LOCATOR, NoPossibleExternal, importProfile, RESOLVABLE, ATOM_ARGS, abc_external, RESOLVER, RuleNotComplete, pattern_generator, VariableNotBoundError, abc_pattern, _resolve
 from ..class_profileOWLDirect import profileOWLDirect
 
 from .bridge_rdflib import rdflib2string, string2rdflib, term_list
@@ -334,7 +334,9 @@ class _base_durable_machine(abc_machine.machine):
                 except StopIteration:
                     return False
             else:
-                raise NotImplementedError(f)
+                q = self._create_assignment_from_external(f.op, f.args)
+                if not _resolve(q, bindings):
+                    return False
         return True
 
     def assert_fact(self, new_fact: abc_machine.fact, bindings: BINDING,
