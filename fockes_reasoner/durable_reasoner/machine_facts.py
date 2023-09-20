@@ -121,6 +121,22 @@ class subclass(_dict_fact):
         self.sub_class = sub_class
         self.super_class = super_class
 
+    def __iter__(self) -> Iterable[str]:
+        yield self.SUBCLASS_SUB
+        yield self.SUBCLASS_SUPER
+
+    def __len__(self) -> int:
+        return 2
+
+    def __getitem__(self, key: str,
+                ) -> Union[TRANSLATEABLE_TYPES, external, Variable]:
+        if key == self.SUBCLASS_SUB:
+            return self.sub_class
+        elif key == self.SUBCLASS_SUPER:
+            return self.super_class
+        else:
+            raise KeyError(key)
+
     @property
     def used_variables(self) -> Iterable[Variable]:
         if isinstance(self.sub_class, Variable):
@@ -192,6 +208,25 @@ class frame(fact):
         self.slotkey = slotkey
         self.slotvalue = slotvalue
         self._used_variables = None
+
+    def __iter__(self) -> Iterable[str]:
+        yield self.FRAME_OBJ
+        yield self.FRAME_SLOTKEY
+        yield self.FRAME_SLOTVALUE
+
+    def __len__(self) -> int:
+        return 3
+
+    def __getitem__(self, key: str,
+                ) -> Union[TRANSLATEABLE_TYPES, external, Variable]:
+        if key == self.FRAME_OBJ:
+            return self.obj
+        elif key == self.FRAME_SLOTKEY:
+            return self.slotkey
+        elif key == self.FRAME_SLOTVALUE:
+            return self.slotvalue
+        else:
+            raise KeyError(key)
 
     @classmethod
     def from_fact(cls, fact: Mapping[str, str]) -> "frame":
@@ -301,6 +336,22 @@ class member(_dict_fact):
         self.instance = instance
         self.cls = cls
 
+    def __iter__(self) -> Iterable[str]:
+        yield self.INSTANCE
+        yield self.CLASS
+
+    def __len__(self) -> int:
+        return 2
+
+    def __getitem__(self, key: str,
+                ) -> Union[TRANSLATEABLE_TYPES, external, Variable]:
+        if key == self.INSTANCE:
+            return self.instance
+        elif key == self.CLASS:
+            return self.cls
+        else:
+            raise KeyError(key)
+
     @property
     def used_variables(self) -> Iterable[Variable]:
         if isinstance(self.instance, Variable):
@@ -351,6 +402,27 @@ class atom(fact):
                  ) -> None:
         self.op = op
         self.args = tuple(args)
+
+    def __iter__(self) -> Iterable[str]:
+        yield self.ATOM_OP
+        for i in range(len(self.ATOM_ARGS)):
+            yield self.ATOM_ARGS % i
+
+    def __len__(self) -> int:
+        return 1 + len(self.ATOM_ARGS)
+
+    def __getitem__(self, key: str,
+                ) -> Union[TRANSLATEABLE_TYPES, external, Variable]:
+        if key == self.ATOM_OP:
+            return self.instance
+        elif key[:4] == "args":
+            try:
+                i = int(key[4:])
+            except ValueError as err:
+                raise KeyError(key) from err
+            return self.args[i]
+        else:
+            raise KeyError(key)
 
     @property
     def used_variables(self) -> Iterable[Variable]:

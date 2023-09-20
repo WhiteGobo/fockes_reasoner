@@ -508,7 +508,8 @@ class rif_exists(_rif_check):
             bindings = {x: None for x in self.blank_vars}
         else:
             bindings.update({x: None for x in self.blank_vars})
-        return self.formula.check(machine, bindings)
+        test_facts = list(self.formula._create_facts())
+        return machine.check_statement(test_facts, bindings)
 
     @classmethod
     def from_rdf(cls, infograph: rdflib.Graph,

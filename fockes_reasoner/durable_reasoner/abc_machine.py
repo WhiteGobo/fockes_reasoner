@@ -2,6 +2,7 @@ import abc
 import logging
 import typing as typ
 from typing import MutableMapping, Mapping, Union, Callable, Iterable, Optional, overload
+from collections.abc import Collection
 import rdflib
 from rdflib import IdentifiedNode, Graph, Literal, Variable
 from collections.abc import MutableSequence
@@ -69,7 +70,8 @@ class pattern(abc.ABC):
     #replaces rls.value
     pass
 
-class fact(abc.ABC):
+class fact(Mapping[str, Union[TRANSLATEABLE_TYPES, abc_external, Variable]],
+           abc.ABC):
     ID: str
 
     @abc.abstractmethod
@@ -125,7 +127,9 @@ class machine(abc.ABC):
         ...
 
     @abc.abstractmethod
-    def check_statement(self, statement: fact) -> bool:
+    def check_statement(self, statement: Collection[fact],
+                        bindings: BINDING = {},
+                        ) -> bool:
         """Checks if given proposition is true.
         :TODO: currently facts are only simple facts like a frame. But check
             should support complex statement like 'Xor'

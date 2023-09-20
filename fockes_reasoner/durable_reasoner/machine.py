@@ -6,6 +6,7 @@ import logging
 logger = logging.getLogger(__name__)
 import traceback
 from typing import Union, Mapping, Iterable, Callable, Any, MutableMapping, Optional, Container, Dict, Set, get_args, Tuple, List, Iterator
+from collections.abc import Collection
 from dataclasses import dataclass
 from hashlib import sha1
 import itertools as it
@@ -18,7 +19,7 @@ from .bridge_rdflib import rdflib2string, string2rdflib, term_list
 
 from ..shared import RDF, pred, func, entailment, RIF
 from . import machine_facts
-from .machine_facts import frame, member, subclass, fact, external, atom, rdflib2string
+from .machine_facts import frame, member, subclass, fact, external, atom, rdflib2string, _node2string
 #from .machine_facts import frame, member, subclass, fact
 
 from . import default_externals as def_ext
@@ -291,12 +292,25 @@ class _base_durable_machine(abc_machine.machine):
             raise NoPossibleExternal(op) from err
         return funcgen(*args)
 
-    def check_statement(self, statement: machine_facts.fact) -> bool:
+    def check_statement(self,
+                        statement: Collection[machine_facts.fact],
+                        bindings: BINDING = {},
+                        ) -> bool:
         """Checks if given proposition is true.
         :TODO: currently facts are only simple facts like a frame. But check
             should support complex statement like 'Xor'
         """
-        raise NotImplementedError()
+        for f in statement:
+            d_ = ((key, _node2string(x, self, bindings))
+                  for key, x in f.items())
+            d = {key: x_ for key, x_ in d_
+                 if x_ is not None}
+            d[FACTTYPE] = f.ID
+            try:
+                iter(self.get_facts(d)).__next__()
+            except StopIteration:
+                return False
+        return True
 
     def assert_fact(self, fact: Mapping[str, str]) -> None:
         self._current_context.assert_fact(fact)
