@@ -13,7 +13,7 @@ import itertools as it
 import rdflib
 from rdflib import URIRef, Variable, Literal, BNode, Graph, IdentifiedNode, XSD
 from . import abc_machine
-from .abc_machine import TRANSLATEABLE_TYPES, FACTTYPE, BINDING, BINDING_WITH_BLANKS, VARIABLE_LOCATOR, NoPossibleExternal, importProfile, RESOLVABLE, ATOM_ARGS, abc_external, RESOLVER, RuleNotComplete, pattern_generator, VariableNotBoundError, abc_pattern, _resolve
+from .abc_machine import TRANSLATEABLE_TYPES, FACTTYPE, BINDING, BINDING_WITH_BLANKS, VARIABLE_LOCATOR, NoPossibleExternal, importProfile, RESOLVABLE, ATOM_ARGS, abc_external, RESOLVER, RuleNotComplete, pattern_generator, VariableNotBoundError, abc_pattern, _resolve, _assignment
 from ..class_profileOWLDirect import profileOWLDirect
 
 from .bridge_rdflib import rdflib2string, string2rdflib, term_list
@@ -202,6 +202,7 @@ def _transform_all_externals_to_calls(args: ATOM_ARGS,
         except (AssertionError, TypeError):
             pass
 
+        raise NotImplementedError()
         try:
             e_arg = arg#type: ignore[assignment]
             tmp_assign = tmp_machine._create_assignment_from_external(
@@ -231,7 +232,7 @@ class _base_durable_machine(abc_machine.machine):
     _registered_action_generator: Dict[IdentifiedNode,
                                        Callable[..., RESOLVABLE]]
     _registered_assignment_generator: Dict[IdentifiedNode,
-                                           Callable[..., RESOLVABLE]]
+                                           Callable[..., _assignment]]
     _imported_locations: Set[Optional[IdentifiedNode]]
     _knownLocations: MutableMapping[IdentifiedNode, rdflib.Graph]
 
@@ -334,6 +335,7 @@ class _base_durable_machine(abc_machine.machine):
                 except StopIteration:
                     return False
             else:
+                raise NotImplementedError()
                 q = self._create_assignment_from_external(f.op, f.args)
                 if not _resolve(q, bindings):
                     return False
@@ -470,10 +472,11 @@ class _base_durable_machine(abc_machine.machine):
                 xx.append(_x)
             yield xx, y, z
 
-    def _create_assignment_from_external(self,
-                                         op: IdentifiedNode,
-                                         args: ATOM_ARGS,
-                                         ) -> RESOLVABLE:
+    def _create_assignment_from_external(
+            self,
+            op: IdentifiedNode,
+            args: ATOM_ARGS,
+            ) -> _assignment:
         try:
             mygen = self._registered_assignment_generator[op]
         except KeyError as err:
@@ -707,11 +710,20 @@ class durable_rule(abc_machine.implication, abc_machine.rule):
                                                              bound_variables):
                     logger.debug("uses %s to append:\npattern: %s\ncondition: %s"
                                  %(q, tmp_p, tmp_c))
+                    new_bound_variables = bound_variables.union(tmp_v)
+                    if any(x not in new_bound_variables for x in q.args
+                           if isinstance(x, Variable)):
+                        raise VariableNotBoundError(
+                                "Condition uses unbound variables %s "
+                                "but doesnt bind it."
+                                % [x for x in q.args
+                                   if isinstance(x, Variable)
+                                   and x not in new_bound_variables])
                     next_gen = self._generate_action_prerequisites_inner(
                             pattern_parts[i+1:],
                             [*patterns, *tmp_p],
                             [*conditions, *tmp_c],
-                            bound_variables.union(tmp_v),
+                            new_bound_variables,
                             )
                     for x in next_gen:
                         yield x
@@ -763,19 +775,24 @@ class durable_rule(abc_machine.implication, abc_machine.rule):
         """
         :TODO: resolve this method into surrounding. Seems overkill
         """
-        new_bound_vars: List[Variable] = []
+        new_bound_vars: Iterable[Variable]
         try:
-            for patterns, conditions, new_vars\
+            for patterns, conditions, new_bound_vars\
                     in self.machine._create_pattern_from_external(
                             op, args, bound_variables):
-                yield patterns, conditions, new_vars
+                yield patterns, conditions, new_bound_vars
             return
         except NoPossibleExternal:
             cond = self.machine._create_assignment_from_external(op, args)
-        if isinstance(cond, (Variable, IdentifiedNode, Literal, term_list)):
-            raise Exception("Given external always gives a true statement "
-                            "with %r as return value" % cond)
-        yield [], [cond], new_bound_vars#type: ignore[list-item]
+            try:
+                new_bound_vars = list(cond.binds_variables)
+            except AttributeError:
+                new_bound_vars = []
+        yield [], [cond], new_bound_vars
+        #if isinstance(cond, (Variable, IdentifiedNode, Literal, term_list)):
+        #    raise Exception("Given external always gives a true statement "
+        #                    "with %r as return value" % cond)
+        #yield [], [cond], new_bound_vars#type: ignore[list-item]
 
     @property
     def logger(self) -> logging.Logger:

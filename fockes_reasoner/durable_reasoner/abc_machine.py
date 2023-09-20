@@ -1,11 +1,10 @@
 import abc
 import logging
 import typing as typ
-from typing import MutableMapping, Mapping, Union, Callable, Iterable, Optional, overload
-from collections.abc import Collection
+from typing import MutableMapping, Mapping, Union, Iterable, Optional, overload
+from collections.abc import MutableSequence, Callable, Collection
 import rdflib
 from rdflib import IdentifiedNode, Graph, Literal, Variable
-from collections.abc import MutableSequence
 
 FACTTYPE = "type"
 """Labels in where the type of fact is saved"""
@@ -54,6 +53,15 @@ class NoPossibleExternal(ValueError):
     """Raise this, if wanted functionality is not implemented for this external
     """
     ...
+
+class _assignment(abc.ABC):
+    """Class used for externals for use as condition"""
+    binds_variables: Iterable[Variable]
+
+    @abc.abstractmethod
+    def __call__(self, bindings: BINDING) -> Literal:
+        ...
+
 
 #class external(abc.ABC):
 #    """Parentclass for all extension for information representation."""
