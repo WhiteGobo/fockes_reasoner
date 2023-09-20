@@ -128,7 +128,7 @@ class rif_fact(_rif_check, _action_gen, _rule_gen):
         """
         :TODO: Creation of variable is not safe
         """
-        return self.__assert_action(self, self._create_facts(), machine)
+        return self.__assert_action(self, list(self._create_facts()), machine)
 
     def create_rules(self, machine: durable_reasoner.machine) -> None:
         """Is called, when frame is direct sub to a Group"""
@@ -670,29 +670,6 @@ class rif_atom(rif_fact):
         args = [_try_as_machineterm(arg) for arg in self.args]
         yield machine_facts.atom(self.op, args)
 
-    @dataclass
-    class assert_action(_child_action):
-        parent: "rif_atom"
-        fact: machine_facts.atom
-        binding_actions: Iterable[Callable[[BINDING], None]]
-        machine: durable_reasoner.machine
-        def __call__(self, bindings: BINDING) -> None:
-            for act in self.binding_actions:
-                act(bindings)
-            self.fact.assert_fact(self.machine, bindings)
-
-    def generate_assert_action(self,
-                               machine: durable_reasoner.machine,
-                               ) -> Callable[[machine_facts.BINDING], None]:
-        """
-        :TODO: Creation of variable is not safe
-        """
-        logger.info("op: %s\nargs: %s" % (self.op, self.args))
-        binding_actions: list[Callable[[BINDING], None]] = []
-        args = [_try_as_machineterm(arg) for arg in self.args]
-        fact = machine_facts.atom(self.op, args)
-        return self.assert_action(self, fact, binding_actions, machine)
-
     @classmethod
     def from_rdf(cls, infograph: rdflib.Graph,
                  rootnode: rdflib.IdentifiedNode,
@@ -906,27 +883,6 @@ class rif_frame(rif_fact):
             for f in self.facts:
                 f.retract_fact(machine, bindings)
         return _assert
-
-    @dataclass
-    class __assert_action(_child_action):
-        parent: "rif_frame"
-        facts: Iterable[machine_facts.frame]
-        machine: durable_reasoner.machine
-        def __call__(self, bindings: BINDING) -> None:
-            for f in self.facts:
-                f.assert_fact(self.machine, bindings)
-
-    def generate_assert_action(self,
-                               machine: durable_reasoner.machine,
-                               ) -> Callable[[machine_facts.BINDING], None]:
-        """
-        :TODO: Creation of variable is not safe
-        """
-        facts = []
-        obj = _try_as_machineterm(self.obj)
-        for slotkey, slotvalue in self._machinefact_slots:
-            facts.append(machine_facts.frame(obj, slotkey, slotvalue))
-        return self.__assert_action(self, facts, machine)
 
     def __repr__(self) -> str:
         name = type(self).__name__
