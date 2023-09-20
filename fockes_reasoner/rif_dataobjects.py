@@ -844,7 +844,9 @@ class rif_subclass(rif_fact):
         raise NotImplementedError()
 
     def _create_facts(self) -> Iterable[fact]:
-        raise NotImplementedError()
+        sub_class = _try_as_machineterm(self.sub_class)
+        super_class = _try_as_machineterm(self.super_class)
+        yield machine_facts.subclass(sub_class, super_class)
 
     @classmethod
     def from_rdf(cls, infograph: rdflib.Graph,
@@ -860,15 +862,6 @@ class rif_subclass(rif_fact):
         sub_obj = slot2node(infograph, sub_node)
         super_obj = slot2node(infograph, super_node)
         return cls(sub_obj, super_obj)
-
-    def check(self,
-            machine: durable_reasoner.machine,
-            bindings: BINDING = {},
-            ) -> bool:
-        sub_class = self.sub_class.as_machineterm() if isinstance(self.sub_class, _resolvable_gen) else self.sub_class
-        super_class = self.super_class.as_machineterm() if isinstance(self.super_class, _resolvable_gen) else self.super_class
-        f = machine_facts.subclass(sub_class, super_class)
-        return f.check_for_pattern(machine, bindings)
 
     def __repr__(self) -> str:
         return "%s # %s" % (self.sub_class, self.super_class)
