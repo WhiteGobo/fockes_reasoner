@@ -104,6 +104,9 @@ class fact(Mapping[str, Union[TRANSLATEABLE_TYPES, abc_external, Variable]],
     def from_fact(cls, fact: Mapping[str, str]) -> "fact":
         ...
 
+class abc_action(abc.ABC):
+    machine: "machine"
+
 class machine(abc.ABC):
     logger: logging.Logger
     errors: list

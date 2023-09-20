@@ -12,7 +12,7 @@ from typing import Union, Iterable, Any, Callable, MutableMapping, List, Tuple, 
 from .shared import RIF, pred, XSD
 from rdflib import RDF
 from . import durable_reasoner
-from .durable_reasoner import machine
+from .durable_reasoner import machine, action_assert, action_retract
 from .durable_reasoner import BINDING, RESOLVABLE, BINDING_WITH_BLANKS
 from dataclasses import dataclass
 from collections.abc import Sequence
@@ -108,15 +108,6 @@ class rif_fact(_rif_check, _action_gen, _rule_gen):
             logger.error(str(test_facts))
             raise
 
-    @dataclass
-    class __assert_action(_child_action):
-        parent: "rif_fact"
-        facts: Iterable[fact]
-        machine: durable_reasoner.machine
-        def __call__(self, bindings: BINDING) -> None:
-            for f in self.facts:
-                self.machine.assert_fact(f, bindings)
-
     def generate_action(self,
                         machine: durable_reasoner.machine,
                         ) -> Tuple[Callable[..., None], Iterable[Variable]]:
@@ -128,7 +119,7 @@ class rif_fact(_rif_check, _action_gen, _rule_gen):
         """
         :TODO: Creation of variable is not safe
         """
-        return self.__assert_action(self, list(self._create_facts()), machine)
+        return action_assert(self._create_facts(), machine)
 
     def create_rules(self, machine: durable_reasoner.machine) -> None:
         """Is called, when frame is direct sub to a Group"""
@@ -854,10 +845,7 @@ class rif_frame(rif_fact):
     def generate_retract_action(self,
                       machine: durable_reasoner.machine,
                       ) -> Callable[[machine_facts.BINDING], None]:
-        def _assert(bindings: BINDING) -> None:
-            for f in self._create_facts():
-                f.retract_fact(machine, bindings)
-        return _assert
+        return action_retract(self._create_facts(), machine)
 
     def __repr__(self) -> str:
         name = type(self).__name__

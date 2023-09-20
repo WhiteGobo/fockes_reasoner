@@ -3,3 +3,4 @@ from .abc_machine import BINDING, BINDING_WITH_BLANKS, fact, NoPossibleExternal,
         VariableNotBoundError, RuleNotComplete
 from .machine_facts import frame, member, subclass, machine_list, machine_or, machine_and
 from .bridge_rdflib import TRANSLATEABLE_TYPES, term_list
+from .machine_actions import action_assert, action_retract
