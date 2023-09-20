@@ -19,7 +19,7 @@ from .bridge_rdflib import rdflib2string, string2rdflib, term_list
 
 from ..shared import RDF, pred, func, entailment, RIF
 from . import machine_facts
-from .machine_facts import frame, member, subclass, fact, external, atom, rdflib2string, _node2string
+from .machine_facts import frame, member, subclass, atom, fact, external, rdflib2string, _node2string
 #from .machine_facts import frame, member, subclass, fact
 
 from . import default_externals as def_ext
@@ -233,6 +233,12 @@ class _base_durable_machine(abc_machine.machine):
     _imported_locations: Set[Optional[IdentifiedNode]]
     _knownLocations: MutableMapping[IdentifiedNode, rdflib.Graph]
 
+    _registered_facttypes = {frame: frame.ID,
+                             member: frame.ID,
+                             subclass: subclass.ID,
+                             atom: atom.ID,
+                             }
+
     def __init__(self, loggername: str = __name__) -> None:
         rulesetname = str(uuid.uuid4())
         self._ruleset = rls.ruleset(rulesetname)
@@ -305,7 +311,7 @@ class _base_durable_machine(abc_machine.machine):
                   for key, x in f.items())
             d = {key: x_ for key, x_ in d_
                  if x_ is not None}
-            d[FACTTYPE] = f.ID
+            d[FACTTYPE] = self._registered_facttypes[type(f)]
             try:
                 iter(self.get_facts(d)).__next__()
             except StopIteration:
