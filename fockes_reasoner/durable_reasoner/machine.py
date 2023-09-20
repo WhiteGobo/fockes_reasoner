@@ -309,7 +309,7 @@ class _base_durable_machine(abc_machine.machine):
         return funcgen(*args)
 
     def check_statement(self,
-                        statement: Union[Collection[machine_facts.fact, machine_facts.abc_external], machine_facts.fact, machine_facts.abc_external],
+                        statement: Union[Collection[Union[machine_facts.fact, machine_facts.abc_external]], machine_facts.fact, machine_facts.abc_external],
                         bindings: BINDING_WITH_BLANKS = {},
                         ) -> bool:
         """Checks if given proposition is true.
@@ -320,7 +320,7 @@ class _base_durable_machine(abc_machine.machine):
         """
         if self.inconsistent_information:
             return True
-        if isinstance(statement, (machine_facts.fact, machine_facts.external)):
+        if isinstance(statement, (machine_facts.fact, machine_facts.abc_external)):
             statement = [statement]
         for f in statement:
             if isinstance(f, machine_facts.fact):
