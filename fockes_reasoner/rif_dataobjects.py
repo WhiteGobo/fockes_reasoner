@@ -135,11 +135,11 @@ class rif_fact(_rif_check, _action_gen, _rule_gen):
         action = self.generate_assert_action(machine)
         machine.add_init_action(action)
 
-def _try_as_machineterm(x: Union[TRANSLATEABLE_TYPES, external, Variable, _resolvable_gen, rif_fact],
+def _try_as_machineterm(x: Union[TRANSLATEABLE_TYPES, external, Variable, _resolvable_gen, rif_fact, _rif_check],
                         ) -> Union[TRANSLATEABLE_TYPES, external, Variable]:
     if isinstance(x, _resolvable_gen):
         return x.as_machineterm()
-    elif isinstance(x, rif_fact):
+    elif isinstance(x, (rif_fact, _rif_check)):
         raise NotImplementedError()
     else:
         return x

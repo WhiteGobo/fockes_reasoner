@@ -39,7 +39,8 @@ class abc_external(abc.ABC):
     def as_resolvable(self, machine: "machine") -> RESOLVABLE:
         ...
 
-def _resolve(x: RESOLVABLE, bindings: BINDING) -> TRANSLATEABLE_TYPES:
+def _resolve(x: RESOLVABLE, bindings: BINDING,
+             ) -> TRANSLATEABLE_TYPES:
     """Resolve variables and externals
     """
     if isinstance(x, (IdentifiedNode, Literal, list, tuple, term_list)):

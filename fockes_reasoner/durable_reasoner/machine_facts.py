@@ -9,7 +9,8 @@ logger = logging.getLogger(__name__)
 import rdflib
 from rdflib import URIRef, BNode, Literal, Variable
 import typing as typ
-from typing import MutableMapping, Mapping, Union, Callable, Iterable, Tuple, Optional
+from typing import MutableMapping, Mapping, Union, Callable, Iterable, Tuple, Optional, overload, cast
+from collections.abc import Collection
 
 
 from .abc_machine import BINDING, BINDING_WITH_BLANKS, CLOSURE_BINDINGS, VARIABLE_LOCATOR, TRANSLATEABLE_TYPES, ATOM_ARGS, abc_external, RESOLVABLE, _resolve
@@ -121,7 +122,7 @@ class subclass(_dict_fact):
         self.sub_class = sub_class
         self.super_class = super_class
 
-    def __iter__(self) -> Iterable[str]:
+    def __iter__(self) -> Iterator[str]:
         yield self.SUBCLASS_SUB
         yield self.SUBCLASS_SUPER
 
@@ -129,7 +130,7 @@ class subclass(_dict_fact):
         return 2
 
     def __getitem__(self, key: str,
-                ) -> Union[TRANSLATEABLE_TYPES, external, Variable]:
+                ) -> Union[TRANSLATEABLE_TYPES, abc_external, Variable]:
         if key == self.SUBCLASS_SUB:
             return self.sub_class
         elif key == self.SUBCLASS_SUPER:
@@ -209,7 +210,7 @@ class frame(fact):
         self.slotvalue = slotvalue
         self._used_variables = None
 
-    def __iter__(self) -> Iterable[str]:
+    def __iter__(self) -> Iterator[str]:
         yield self.FRAME_OBJ
         yield self.FRAME_SLOTKEY
         yield self.FRAME_SLOTVALUE
@@ -218,7 +219,7 @@ class frame(fact):
         return 3
 
     def __getitem__(self, key: str,
-                ) -> Union[TRANSLATEABLE_TYPES, external, Variable]:
+                ) -> Union[TRANSLATEABLE_TYPES, abc_external, Variable]:
         if key == self.FRAME_OBJ:
             return self.obj
         elif key == self.FRAME_SLOTKEY:
@@ -336,7 +337,7 @@ class member(_dict_fact):
         self.instance = instance
         self.cls = cls
 
-    def __iter__(self) -> Iterable[str]:
+    def __iter__(self) -> Iterator[str]:
         yield self.INSTANCE
         yield self.CLASS
 
@@ -344,7 +345,7 @@ class member(_dict_fact):
         return 2
 
     def __getitem__(self, key: str,
-                ) -> Union[TRANSLATEABLE_TYPES, external, Variable]:
+                ) -> Union[TRANSLATEABLE_TYPES, abc_external, Variable]:
         if key == self.INSTANCE:
             return self.instance
         elif key == self.CLASS:
@@ -393,7 +394,7 @@ class member(_dict_fact):
 class atom(fact):
     ID: str = "atom"
     op: typ.Union[TRANSLATEABLE_TYPES, external, Variable]
-    args: Iterable[Union[TRANSLATEABLE_TYPES, external, Variable]]
+    args: Sequence[Union[TRANSLATEABLE_TYPES, external, Variable]]
     """facttype :term:`atom` are labeled with this."""
     ATOM_OP = "op"
     ATOM_ARGS = "args%d"
@@ -403,7 +404,7 @@ class atom(fact):
         self.op = op
         self.args = tuple(args)
 
-    def __iter__(self) -> Iterable[str]:
+    def __iter__(self) -> Iterator[str]:
         yield self.ATOM_OP
         for i in range(len(self.args)):
             yield self.ATOM_ARGS % i
@@ -412,7 +413,7 @@ class atom(fact):
         return 1 + len(self.args)
 
     def __getitem__(self, key: str,
-                ) -> Union[TRANSLATEABLE_TYPES, external, Variable]:
+                ) -> Union[TRANSLATEABLE_TYPES, abc_external, Variable]:
         if key == self.ATOM_OP:
             return self.op
         elif key[:4] == "args":
@@ -496,9 +497,23 @@ class atom(fact):
     def __repr__(self) -> str:
         return "%s%s" % (self.op, self.args)
 
+@overload
+def _node2string(x: Union[TRANSLATEABLE_TYPES, Variable, str, abc_external],
+                 machine: abc_machine.machine,
+                 bindings: BINDING,
+                 ) -> str:
+    ...
+
+@overload
 def _node2string(x: Union[TRANSLATEABLE_TYPES, Variable, str, abc_external],
                  machine: abc_machine.machine,
                  bindings: BINDING_WITH_BLANKS,
+                 ) -> Optional[str]:
+    ...
+
+def _node2string(x: Union[TRANSLATEABLE_TYPES, Variable, str, abc_external],
+                 machine: abc_machine.machine,
+                 bindings: Union[BINDING_WITH_BLANKS, BINDING],
                  ) -> Optional[str]:
     if isinstance(x, rdflib.Variable):
         try:
@@ -507,13 +522,16 @@ def _node2string(x: Union[TRANSLATEABLE_TYPES, Variable, str, abc_external],
             raise _NotBoundVar("Tried to get not yet bind variable '%s' "
                                "from %s" % (x, bindings)) from err
         if q is None:
-            return
+            return None
         else:
             return rdflib2string(q)
     elif isinstance(x, (URIRef, BNode, Literal)):
         return rdflib2string(x)
     elif isinstance(x, external):
-        newnode = _resolve(x.as_resolvable(machine), bindings)
+        assert None not in bindings.values()
+        #cast(BINDING, bindings)
+        newnode = _resolve(x.as_resolvable(machine),
+                           bindings)#type: ignore[arg-type]
         return rdflib2string(newnode)
     elif isinstance(x, str):
         return x

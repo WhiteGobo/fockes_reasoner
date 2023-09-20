@@ -233,16 +233,18 @@ class _base_durable_machine(abc_machine.machine):
     _imported_locations: Set[Optional[IdentifiedNode]]
     _knownLocations: MutableMapping[IdentifiedNode, rdflib.Graph]
 
-    _registered_facttypes = {frame: frame.ID,
-                             member: member.ID,
-                             subclass: subclass.ID,
-                             atom: atom.ID,
-                             }
-    _fact_generator_from_id = {frame.ID: frame,
-                               member.ID: member,
-                               subclass.ID: subclass,
-                               atom.ID: atom,
-                               }
+    _registered_facttypes: Mapping[type[fact], str] = {
+            frame: frame.ID,
+            member: member.ID,
+            subclass: subclass.ID,
+            atom: atom.ID,
+            }
+    _fact_generator_from_id: Mapping[str, type[fact]] = {
+            frame.ID: frame,
+            member.ID: member,
+            subclass.ID: subclass,
+            atom.ID: atom,
+            }
 
     def __init__(self, loggername: str = __name__) -> None:
         rulesetname = str(uuid.uuid4())
