@@ -115,7 +115,7 @@ class rif_fact(_rif_check, _action_gen, _rule_gen):
 
     def generate_assert_action(self,
                                machine: durable_reasoner.machine,
-                               ) -> Callable[[machine_facts.BINDING], None]:
+                               ) -> action_assert:
         """
         :TODO: Creation of variable is not safe
         """
@@ -844,7 +844,7 @@ class rif_frame(rif_fact):
 
     def generate_retract_action(self,
                       machine: durable_reasoner.machine,
-                      ) -> Callable[[machine_facts.BINDING], None]:
+                      ) -> action_retract:
         return action_retract(self._create_facts(), machine)
 
     def __repr__(self) -> str:
