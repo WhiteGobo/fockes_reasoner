@@ -83,25 +83,29 @@ def logicmachine_after_run(testdata, logic_machine, valid_exceptions):
 @pytest.fixture
 def rif_facts_PET(logicmachine_after_PET, PET_testdata):
     conclusionfile = str(PET_testdata.conclusion)
+    logger.debug("Conclusion: %s" % conclusionfile)
     return rif_facts(conclusionfile)
 
 @pytest.fixture
 def rif_facts_NET(logicmachine_after_NET, NET_testdata):
     nonconclusionfile = str(NET_testdata.nonconclusion)
+    logger.debug("Nonconclusion: %s" % nonconclusionfile)
     return rif_facts(nonconclusionfile)
 
 def rif_facts(conclusionfile):
-    logger.debug("Conclusion: %s" % conclusionfile)
     try:
         conc_graph = rdflib.Graph().parse(conclusionfile, format="rif")
     except rdflib.plugin.PluginException:
-        pytest.skip("Need rdflib parser plugin to load RIF-file")
+        pytest.skip("Need rdflib parser plugin to load RIF-file %s"
+                    % conclusionfile)
     #logger.debug("Expected conclusions in ttl:\n%s" % conc_graph.serialize())
-
     rif_facts = []
-    for typeref, generator in _rif_type_to_constructor.items():
-        for node in conc_graph.subjects(RDF.type, typeref):
-            if not (None, None, node) in conc_graph:
-                rif_facts.append(generator(conc_graph, node))
+
+    _objs = set(conc_graph.objects())
+    subjects = set(x for x in conc_graph.subjects() if x not in _objs)
+    for fact_root in subjects:
+        t, = conc_graph.objects(fact_root, RDF.type)
+        generator = _rif_type_to_constructor[t]
+        rif_facts.append(generator(conc_graph, fact_root))
     logger.info("Expected facts:\n%s" % rif_facts)
     return rif_facts

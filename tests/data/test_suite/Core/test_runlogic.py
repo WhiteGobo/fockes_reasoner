@@ -6,6 +6,8 @@ from rdflib import Namespace
 from ...blueprints_tests import blueprint_test_logicmachine
 from ....class_officialTestCases import PositiveEntailmentTest, NegativeEntailmentTest, ImportRejectionTest, PositiveSyntaxTest, NegativeSyntaxTest
 
+tc = Namespace("http://www.w3.org/2005/rules/test/repository/tc/")
+
 from .PositiveEntailmentTest import \
         Builtin_literalnotidentical,\
         Builtins_Binary,\
@@ -159,6 +161,8 @@ tmp = files(OWL_Combination_Vocabulary_Separation_Inconsistency_1)
 PET_OWL_Combination_Vocabulary_Separation_Inconsistency_1 = PositiveEntailmentTest(
         tmp.joinpath("OWL_Combination_Vocabulary_Separation_Inconsistency_1-premise.rif"),
         tmp.joinpath("OWL_Combination_Vocabulary_Separation_Inconsistency_1-conclusion.rif"),
+        {tc["OWL_Combination_Vocabulary_Separation_Inconsistency_1/OWL_Combination_Vocabulary_Separation_Inconsistency_1-import001"]:
+         tmp.joinpath("OWL_Combination_Vocabulary_Separation_Inconsistency_1-import001.ttl")}
         )
 
 tmp = files(OWL_Combination_Vocabulary_Separation_Inconsistency_2)
@@ -279,7 +283,6 @@ from .ImportRejectionTest import\
         RDF_Combination_Invalid_Constant_2,\
         RDF_Combination_Invalid_Profiles_1
 
-tc = Namespace("http://www.w3.org/2005/rules/test/repository/tc/")
 tmp = files(Multiple_Context_Error)
 IRT_Multiple_Context_Error = ImportRejectionTest(
         tmp.joinpath("Multiple_Context_Error-input.rif"),
@@ -405,7 +408,6 @@ tmp = files(Core_Safeness_3)
                  marks=mark.skip("No owl implemented yet."),
                  id="PET_Modeling_Brain_Anatomy"),
     pytest.param(PET_OWL_Combination_Vocabulary_Separation_Inconsistency_1,
-                 marks=mark.skip("not yet implemented"),
                  id="PET_OWL_Comb Vocabulary_Separation_Inconsistency_1"),
     pytest.param(PET_OWL_Combination_Vocabulary_Separation_Inconsistency_2,
                  marks=mark.skip("not yet implemented"),
