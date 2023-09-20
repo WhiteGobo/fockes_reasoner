@@ -18,7 +18,7 @@ from ..class_profileOWLDirect import profileOWLDirect
 
 from .bridge_rdflib import rdflib2string, string2rdflib, term_list
 
-from ..shared import RDF, pred, func, entailment, RIF
+from ..shared import RDF, pred, func, entailment, RIF, OWL
 from . import machine_facts
 from .machine_facts import frame, member, subclass, atom, fact, external, rdflib2string, _node2string
 #from .machine_facts import frame, member, subclass, fact
@@ -493,6 +493,37 @@ class _base_durable_machine(abc_machine.machine):
         if aspattern is not None:
             self._registered_pattern_generator[op] = aspattern
 
+class OWLmachine(_base_durable_machine):
+    """Implements owl functionality"""
+    def __init__(self, loggername: str = __name__) -> None:
+        super().__init__(loggername)
+        self.__inconsistency_rules()
+
+    def __inconsistency_rules(self) -> None:
+        x = Variable("x")
+        described_property = Variable("descprop")
+        value = Variable("value")
+        desc_findObjectProperty = _pattern({
+            FACTTYPE: member.ID,
+            member.INSTANCE: described_property,
+            member.CLASS: OWL.ObjectProperty,
+            }, "findObjectProperty")
+        desc_valueToProperty = _pattern({
+            FACTTYPE: frame.ID,
+            frame.FRAME_OBJ: x,
+            frame.FRAME_SLOTKEY: described_property,
+            frame.FRAME_SLOTVALUE: value,
+            }, "FindValueToProperty")
+        def evaluate_inconsistency(bindings: BINDING) -> None:
+            if isinstance(bindings[value], Literal):
+                self.inconsistent_information = True
+                err_message = "found inconsistency. owl.objectProperty %s "\
+                        "is pointed to a literal value %r"\
+                        % (bindings[described_property], bindings[value])
+                logger.error(err_message)
+                raise FailedInternalAction(err_message)
+        self._make_rule([desc_findObjectProperty, desc_valueToProperty],
+                        evaluate_inconsistency)
 
 class RDFSmachine(_base_durable_machine):
     """Implements translation of as in RDF specified syntax for the machine
@@ -608,7 +639,7 @@ class durable_rule(abc_machine.implication, abc_machine.rule):
                         return
                 except Exception as err:
                     self.logger.info("Failed at condition %r with "
-                                "bindings %s. Produced traceback:\n%s"
+                                "bindings %s.\n Produced traceback:\n%s"
                                  % (cond, bindings,
                                     traceback.format_exc()))
                     raise FailedInternalAction() from err
@@ -617,7 +648,7 @@ class durable_rule(abc_machine.implication, abc_machine.rule):
             try:
                 self.action(bindings)
             except Exception as err:
-                self.logger.info("Failed at action %r with bindings %s. "
+                self.logger.info("Failed at action %r with bindings %s.\n"
                                  "Produced traceback:\n%s"
                                  % (self.action, bindings,
                                     traceback.format_exc()))
@@ -1023,5 +1054,5 @@ class _machine_default_externals(_base_durable_machine):
                       asassign=def_ext.assign_rdflib.gen(XSD["unsignedByte"]))
 
 
-class durable_machine(_machine_default_externals, RDFSmachine):
+class durable_machine(_machine_default_externals, RDFSmachine, OWLmachine):
     pass

@@ -15,6 +15,9 @@ class ImportReject(Exception):
     :TODO: This must be placed somewhere else
     """
 
+class StuckWithIncosistentInformation(Exception):
+    ...
+
 class logicMachine(abc.ABC):
     @abc.abstractmethod
     def check(self, rif_facts: Iterable[rif_fact]) -> bool:

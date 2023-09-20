@@ -5,7 +5,7 @@ from .shared import RIF
 from collections.abc import Mapping
 import logging
 logger = logging.getLogger(__name__)
-from .abc_logicMachine import PRD_logicMachine, SyntaxReject, AlgorithmRejection, ImportReject
+from .abc_logicMachine import PRD_logicMachine, SyntaxReject, AlgorithmRejection, ImportReject, StuckWithIncosistentInformation
 
 from .rif_dataobjects import rif_document, rif_fact
 from .class_machineWithImport import machineWithImport as machine
@@ -76,8 +76,14 @@ class simpleLogicMachine(PRD_logicMachine):
         return cls(document)
 
     def run(self, steps: Union[int, None] = None) -> None:
-        if steps is None:
-            self.machine.run()
-        else:
-            self.machine.run(steps)
+        try:
+            if steps is None:
+                self.machine.run()
+            else:
+                self.machine.run(steps)
+        except Exception as err:
+            if self.machine.inconsistent_information:
+                raise StuckWithIncosistentInformation() from err
+            else:
+                raise
         myfacts = self.machine.get_facts()
