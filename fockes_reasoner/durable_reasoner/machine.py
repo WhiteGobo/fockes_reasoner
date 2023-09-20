@@ -325,8 +325,12 @@ class _base_durable_machine(abc_machine.machine):
                 return False
         return True
 
-    def assert_fact(self, fact: Mapping[str, str]) -> None:
-        self._current_context.assert_fact(fact)
+    def assert_fact(self, new_fact: abc_machine.fact, bindings: BINDING,
+                    ) -> None:
+        d = {FACTTYPE: self._registered_facttypes[type(new_fact)]}
+        for key, x in new_fact.items():
+            d[key] = _node2string(x, self, bindings)
+        self._current_context.assert_fact(d)
     
     def retract_fact(self, fact: Mapping[str, str]) -> None:
         self._current_context.retract_fact(fact)
@@ -497,7 +501,7 @@ class RDFSmachine(_base_durable_machine):
         newObjMember = member(inst, super_type)
         def assert_membership(bindings: BINDING) -> None:
             try:
-                newObjMember.assert_fact(self, bindings)
+                self.assert_fact(newObjMember, bindings)
             except durable.engine.MessageObservedException:
                 pass
         self._make_rule([desc_subclass, desc_objMember], assert_membership)

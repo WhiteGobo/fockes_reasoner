@@ -83,12 +83,6 @@ class fact(Mapping[str, Union[TRANSLATEABLE_TYPES, abc_external, Variable]],
         ...
 
     @abc.abstractmethod
-    def assert_fact(self, c: "machine",
-               bindings: BINDING = {},
-               ) -> None:
-        ...
-
-    @abc.abstractmethod
     def as_dict(self, bindings: Optional[BINDING] = None,
                 ) -> Mapping[str, Union[str, Variable, TRANSLATEABLE_TYPES]]:
         ...
@@ -129,7 +123,8 @@ class machine(abc.ABC):
         """
 
     @abc.abstractmethod
-    def assert_fact(self, fact: Mapping[str, str]) -> None:
+    def assert_fact(self, new_fact: fact, bindings: BINDING,
+                    ) -> None:
         ...
 
     @abc.abstractmethod

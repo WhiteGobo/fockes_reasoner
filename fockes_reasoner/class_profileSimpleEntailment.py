@@ -19,7 +19,7 @@ class profileSimpleEntailment(importProfile):
                 assert isinstance(pred, (BNode, URIRef, Literal))
                 assert isinstance(obj , (BNode, URIRef, Literal))
                 f = frame(subj, pred, obj)
-                f.assert_fact(self.machine)
+                self.machine.assert_fact(f, {})
 
     def create_rules(self, machine: machine, location: str) -> None:
         machine.add_init_action(self._initImport(machine, location))

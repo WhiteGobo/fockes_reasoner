@@ -115,7 +115,7 @@ class rif_fact(_rif_check, _action_gen, _rule_gen):
         machine: durable_reasoner.machine
         def __call__(self, bindings: BINDING) -> None:
             for f in self.facts:
-                f.assert_fact(self.machine, bindings)
+                self.machine.assert_fact(f, bindings)
 
     def generate_action(self,
                         machine: durable_reasoner.machine,

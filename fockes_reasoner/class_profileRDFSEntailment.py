@@ -31,7 +31,7 @@ class profileRDFSEntailment(importProfile):
                 assert isinstance(subj, (BNode, URIRef, Literal))
                 assert isinstance(obj , (BNode, URIRef, Literal))
                 f = member(subj, obj)
-                f.assert_fact(self.machine)
+                self.machine.assert_fact(f, {})
 
         def load_subclasses(self, infograph: Graph) -> None:
             for subj, obj in infograph.subject_objects(RDFS.subClassOf):
@@ -39,7 +39,7 @@ class profileRDFSEntailment(importProfile):
                 assert isinstance(subj, (BNode, URIRef, Literal))
                 assert isinstance(obj , (BNode, URIRef, Literal))
                 f = subclass(subj, obj)
-                f.assert_fact(self.machine)
+                self.machine.assert_fact(f, {})
 
         def load_subproperties(self, infograph: Graph) -> None:
             for subj, obj in infograph.subject_objects(RDFS.subPropertyOf):
@@ -80,7 +80,7 @@ class profileRDFSEntailment(importProfile):
                 assert isinstance(pred_, (BNode, URIRef, Literal))
                 assert isinstance(obj_ , (BNode, URIRef, Literal))
                 f = frame(subj_, pred_, obj_)
-                f.assert_fact(self.machine)
+                self.machine.assert_fact(f, {})
 
 
     def create_rules(self, machine: machine, location: str) -> None:

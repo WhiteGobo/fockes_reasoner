@@ -23,13 +23,7 @@ class _NotBoundVar(KeyError):
     ...
 
 class _dict_fact(fact):
-    def assert_fact(self, c: abc_machine.machine,
-                    bindings: BINDING = {}) -> None:
-        fact_ = self.as_dict(bindings)
-        fact = {}
-        for key, value in fact_.items():
-            fact[key] = _node2string(value, c, bindings)
-        c.assert_fact(fact)
+    ...
 
 
 class external(abc_external):
@@ -208,18 +202,6 @@ class frame(fact):
         slotvalue = string2rdflib(fact[cls.FRAME_SLOTVALUE])
         return cls(obj, slotkey, slotvalue)
 
-    def assert_fact(self, c: abc_machine.machine,
-               bindings: BINDING = {},
-               ) -> None:
-        fact = {"type": self.ID}
-        for label, x, in [
-                (self.FRAME_OBJ, self.obj),
-                (self.FRAME_SLOTKEY, self.slotkey),
-                (self.FRAME_SLOTVALUE, self.slotvalue),
-                ]:
-            fact[label] = _node2string(x, c, bindings)
-        c.assert_fact(fact)
-
     def as_dict(self, bindings: Optional[BINDING] = None,
                 ) -> Mapping[str, Union[str, Variable, TRANSLATEABLE_TYPES]]:
         if isinstance(self.obj, external) or isinstance(self.slotkey, external) or isinstance(self.slotvalue, external):
@@ -275,7 +257,7 @@ class frame(fact):
             fact[label] = _node2string(x, c, bindings)
 
         c.retract_fact(fact)
-        c.assert_fact(fact)
+        c.assert_fact(self, bindings)
 
 
 class member(_dict_fact):
@@ -397,17 +379,6 @@ class atom(fact):
                 raise NotImplementedError()
             pattern[self.ATOM_ARGS % i] = arg
         return pattern
-
-
-    def assert_fact(self, c: abc_machine.machine,
-               bindings: BINDING = {},
-               ) -> None:
-        fact = {"type": self.ID}
-        fact[self.ATOM_OP] = _node2string(self.op, c, bindings)
-        for i, x in enumerate(self.args):
-            label = self.ATOM_ARGS % i
-            fact[label] = _node2string(x, c, bindings)
-        c.assert_fact(fact)
 
     def retract_fact(self, c: abc_machine.machine,
                 bindings: BINDING = {},
