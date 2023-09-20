@@ -93,6 +93,9 @@ class rif_fact(_rif_check, _action_gen, _rule_gen):
     def used_variables(self) -> Iterable[Variable]:
         ...
 
+    def _add_pattern(self, rule: durable_reasoner.rule) -> None:
+        rule.orig_pattern.extend(self._create_facts())
+
     def check(self,
             machine: durable_reasoner.machine,
             bindings: BINDING = {},
@@ -659,10 +662,6 @@ class rif_atom(rif_fact):
         self.op = op
         self.args = list(args)
 
-    def _add_pattern(self, rule: durable_reasoner.rule) -> None:
-        f, = self._create_facts()
-        rule.orig_pattern.append(f)
-
     @property
     def used_variables(self) -> Iterable[Variable]:
         return _get_variables((self.op, *self.args))
@@ -803,12 +802,6 @@ class rif_member(rif_fact):
         self.instance = instance
         self.cls = cls
 
-    def _add_pattern(self, rule: durable_reasoner.rule) -> None:
-        instance = _try_as_machineterm(self.instance)
-        cls = _try_as_machineterm(self.cls)
-        f = machine_facts.member(instance, cls)
-        rule.orig_pattern.append(f)
-
     def _create_facts(self) -> Iterable[machine_facts.member]:
         cls = _try_as_machineterm(self.cls)
         instance = _try_as_machineterm(self.instance)
@@ -839,9 +832,6 @@ class rif_subclass(rif_fact):
     @property
     def used_variables(self) -> Iterable[Variable]:
         return _get_variables((self.sub_class, self.super_class))
-
-    def _add_pattern(self, rule: durable_reasoner.rule) -> None:
-        raise NotImplementedError()
 
     def _create_facts(self) -> Iterable[fact]:
         sub_class = _try_as_machineterm(self.sub_class)
@@ -897,14 +887,6 @@ class rif_frame(rif_fact):
         for slot in self.slots:
             slotkey, slotvalue = (x.as_machineterm() if isinstance(x, _resolvable_gen) else x for x in slot)
             yield slotkey, slotvalue
-
-    def _add_pattern(self, rule: durable_reasoner.rule) -> None:
-        obj = _try_as_machineterm(self.obj)
-        for slotkey, slotvalue in self._machinefact_slots:
-            sk = _try_as_machineterm(slotkey)
-            sv = _try_as_machineterm(slotvalue)
-            f = machine_facts.frame(obj, sk, sv)
-            rule.orig_pattern.append(f)
 
     def generate_condition(self,
                            machine: durable_reasoner.machine,
