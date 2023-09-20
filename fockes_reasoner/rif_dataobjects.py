@@ -661,8 +661,7 @@ class rif_atom(rif_fact):
         self.args = list(args)
 
     def _add_pattern(self, rule: durable_reasoner.rule) -> None:
-        args = [_try_as_machineterm(arg) for arg in self.args]
-        f = machine_facts.atom(self.op, args)
+        f, = self._create_facts()
         rule.orig_pattern.append(f)
 
     @property
@@ -670,7 +669,8 @@ class rif_atom(rif_fact):
         return _get_variables((self.op, *self.args))
 
     def _create_facts(self) -> Iterable[fact]:
-        raise NotImplementedError()
+        args = [_try_as_machineterm(arg) for arg in self.args]
+        yield machine_facts.atom(self.op, args)
 
     def check(self,
             machine: durable_reasoner.machine,
