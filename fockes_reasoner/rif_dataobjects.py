@@ -694,7 +694,9 @@ class rif_external(_resolvable_gen, _rif_check):
             machine: durable_reasoner.machine,
             bindings: BINDING_WITH_BLANKS = {},
             ) -> bool:
-        raise NotImplementedError()
+        args = [_try_as_machineterm(x) for x in self.args]
+        q = external(self.op, args)
+        return machine.check_statement([q], bindings)
 
     @property
     def used_variables(self) -> Iterable[Variable]:

@@ -117,7 +117,7 @@ class machine(abc.ABC):
         ...
 
     @abc.abstractmethod
-    def check_statement(self, statement: Collection[fact],
+    def check_statement(self, statement: Union[Collection[Union[fact, abc_external]], fact, abc_external],
                         bindings: BINDING_WITH_BLANKS = {},
                         ) -> bool:
         """Checks if given proposition is true.

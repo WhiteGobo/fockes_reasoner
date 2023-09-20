@@ -309,7 +309,7 @@ class _base_durable_machine(abc_machine.machine):
         return funcgen(*args)
 
     def check_statement(self,
-                        statement: Collection[machine_facts.fact],
+                        statement: Union[Collection[machine_facts.fact, machine_facts.abc_external], machine_facts.fact, machine_facts.abc_external],
                         bindings: BINDING_WITH_BLANKS = {},
                         ) -> bool:
         """Checks if given proposition is true.
@@ -320,16 +320,21 @@ class _base_durable_machine(abc_machine.machine):
         """
         if self.inconsistent_information:
             return True
+        if isinstance(statement, (machine_facts.fact, machine_facts.external)):
+            statement = [statement]
         for f in statement:
-            d = {FACTTYPE: self._registered_facttypes[type(f)]}
-            for key, x in f.items():
-                x_ = _node2string(x, self, bindings)
-                if x_ is not None:
-                    d[key] = x_
-            try:
-                iter(self.get_facts(d)).__next__()
-            except StopIteration:
-                return False
+            if isinstance(f, machine_facts.fact):
+                d = {FACTTYPE: self._registered_facttypes[type(f)]}
+                for key, x in f.items():
+                    x_ = _node2string(x, self, bindings)
+                    if x_ is not None:
+                        d[key] = x_
+                try:
+                    iter(self.get_facts(d)).__next__()
+                except StopIteration:
+                    return False
+            else:
+                raise NotImplementedError(f)
         return True
 
     def assert_fact(self, new_fact: abc_machine.fact, bindings: BINDING,
