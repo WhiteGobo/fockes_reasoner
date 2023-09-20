@@ -232,9 +232,20 @@ class numeric_equal:
         return Literal(left.value == right.value) #type: ignore[union-attr]
 
 @dataclass
+class set_var:
+    left: Variable
+    right: RESOLVABLE
+
+    def __call__(self, bindings:BINDING) -> Literal:
+        right = _resolve(self.right, bindings)
+        bindings[left] = right
+        return Literal(True)
+
+@dataclass
 class literal_equal:
     left: RESOLVABLE
     right: RESOLVABLE
+
     def __call__(self, bindings:BINDING) -> Literal:
         left = _resolve(self.left, bindings)
         right = _resolve(self.right, bindings)

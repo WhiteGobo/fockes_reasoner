@@ -21,6 +21,7 @@ from .bridge_rdflib import rdflib2string, string2rdflib, term_list
 from ..shared import RDF, pred, func, entailment, RIF, OWL
 from . import machine_facts
 from .machine_facts import frame, member, subclass, atom, fact, external, rdflib2string, _node2string
+from . import special_externals
 #from .machine_facts import frame, member, subclass, fact
 
 from . import default_externals as def_ext
@@ -476,6 +477,7 @@ class _base_durable_machine(abc_machine.machine):
             self,
             op: IdentifiedNode,
             args: ATOM_ARGS,
+            bound_variables: Container[Variable] = [],
             ) -> _assignment:
         try:
             mygen = self._registered_assignment_generator[op]
@@ -695,10 +697,12 @@ class durable_rule(abc_machine.implication, abc_machine.rule):
                                 List[Callable[[BINDING], Literal]],
                                 Set[Variable]]]:
         """
-        :TODO: If a rule has nopattern but a condition a trigger, a special
-            pattern for the rule should be generated. I have non yet. Maybe
-            it should just result in an error.
+        :TODO: The rules are not garantueed to be in the same sequence as
+            binding the variables would be required. For this case
         """
+        #sorting cause patterns always bind succesfully -> more Success chance
+        pattern_parts = sorted(pattern_parts,
+                               key=lambda x: 0 if isinstance(x, fact) else 1)
         for i, q in enumerate(pattern_parts):
             if isinstance(q, fact):
                 logger.debug("appends %s as pattern." % q)
@@ -714,11 +718,11 @@ class durable_rule(abc_machine.implication, abc_machine.rule):
                     if any(x not in new_bound_variables for x in q.args
                            if isinstance(x, Variable)):
                         raise VariableNotBoundError(
-                                "Condition uses unbound variables %s "
+                                "Condition (%s) uses unbound variables %s "
                                 "but doesnt bind it."
-                                % [x for x in q.args
-                                   if isinstance(x, Variable)
-                                   and x not in new_bound_variables])
+                                % (q.op, [x for x in q.args
+                                          if isinstance(x, Variable)
+                                          and x not in new_bound_variables]))
                     next_gen = self._generate_action_prerequisites_inner(
                             pattern_parts[i+1:],
                             [*patterns, *tmp_p],
@@ -783,9 +787,9 @@ class durable_rule(abc_machine.implication, abc_machine.rule):
                 yield patterns, conditions, new_bound_vars
             return
         except NoPossibleExternal:
-            cond = self.machine._create_assignment_from_external(op, args)
+            cond = self.machine._create_assignment_from_external(op, args, bound_variables)
             try:
-                new_bound_vars = list(cond.binds_variables)
+                new_bound_vars = list(cond.binds_variables(bound_variables))
             except AttributeError:
                 new_bound_vars = []
         yield [], [cond], new_bound_vars
@@ -885,6 +889,8 @@ class _machine_default_externals(_base_durable_machine):
 
     def __register_externals(self) -> None:
         from .default_externals import invert
+        self.register(special_externals.equality.op,
+                      asassign=def_ext.literal_equal)
         self.register(RIF.Or, asassign=def_ext.rif_or)
         self.register(pred["iri-string"],
                       aspattern=def_ext.pred_iri_string.pattern_generator)

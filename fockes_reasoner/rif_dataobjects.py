@@ -14,6 +14,7 @@ from rdflib import RDF
 from . import durable_reasoner
 from .durable_reasoner import machine, action_assert, action_retract
 from .durable_reasoner import BINDING, RESOLVABLE, BINDING_WITH_BLANKS
+from .durable_reasoner import special_externals
 from dataclasses import dataclass
 from collections.abc import Sequence
 
@@ -1022,7 +1023,7 @@ class rif_assert(_action_gen):
         return "Assert( %s )" % self.fact
 
 class rif_equal(rif_external):
-    op: URIRef = pred["XMLLiteral-equal"]
+    op: Any = special_externals.equality.op
     def __init__(self, left: ATOM, right: ATOM):
         self.args = (left, right)
 

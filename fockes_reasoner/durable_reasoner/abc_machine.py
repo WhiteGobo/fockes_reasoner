@@ -1,7 +1,7 @@
 import abc
 import logging
 import typing as typ
-from typing import MutableMapping, Mapping, Union, Iterable, Optional, overload
+from typing import MutableMapping, Mapping, Union, Iterable, Optional, overload, Any
 from collections.abc import MutableSequence, Callable, Collection
 import rdflib
 from rdflib import IdentifiedNode, Graph, Literal, Variable
@@ -31,7 +31,7 @@ class VariableNotBoundError(Exception):
     """If a rules doesnt bound Variables as expected by the action."""
 
 class abc_external(abc.ABC):
-    op: IdentifiedNode
+    op: Any
     args: ATOM_ARGS
 
     @abc.abstractmethod
