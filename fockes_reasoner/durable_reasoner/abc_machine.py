@@ -77,16 +77,6 @@ class fact(Mapping[str, Union[TRANSLATEABLE_TYPES, abc_external, Variable]],
            abc.ABC):
     ID: str
 
-    @abc.abstractmethod
-    def check_for_pattern(self, c: "machine",
-                          bindings: BINDING = {},
-                          ) -> bool:
-        """Checks if all fact is true for given machine.
-        Variables are treated as blanks if not given by bindings,
-        so accepts anything instead of a variable.
-        """
-        ...
-
     @property
     @abc.abstractmethod
     def used_variables(self) -> Iterable[Variable]:

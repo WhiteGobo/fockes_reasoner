@@ -31,18 +31,6 @@ class _dict_fact(fact):
             fact[key] = _node2string(value, c, bindings)
         c.assert_fact(fact)
 
-    def check_for_pattern(self, c: abc_machine.machine,
-                          bindings: BINDING = {},
-                          ) -> bool:
-        fact_ = self.as_dict(bindings)
-        fact = {}
-        for key, value in fact_.items():
-            q = _node2string(value, c, bindings)
-            if q is not None:
-                fact[key] = q
-        for _ in c.get_facts(fact):
-            return True
-        return False
 
 class external(abc_external):
     op: URIRef
@@ -160,22 +148,6 @@ class subclass(_dict_fact):
                    }
         return pattern
 
-    def check_for_pattern(self, c: abc_machine.machine,
-                          bindings: BINDING = {},
-                          ) -> bool:
-        fact = {"type": self.ID}
-        for label, x in [
-                (self.SUBCLASS_SUB, self.sub_class),
-                (self.SUBCLASS_SUPER, self.super_class),
-                ]:
-            q = _node2string(x, c, bindings)
-            if q is not None:
-                fact[label] = q
-        for _ in c.get_facts(fact):
-            #triggers, when any corresponding fact is found
-            return True
-        return False
-
     def retract_fact(self, c: abc_machine.machine,
                 bindings: BINDING = {},
                 ) -> None:
@@ -270,26 +242,6 @@ class frame(fact):
                 used_variables.append(x)
         self._used_variables = used_variables
         return used_variables
-
-    def check_for_pattern(self, c: abc_machine.machine,
-                          bindings: BINDING = {},
-                          ) -> bool:
-        fact = {"type": self.ID}
-        for label, x, in [
-                (self.FRAME_OBJ, self.obj),
-                (self.FRAME_SLOTKEY, self.slotkey),
-                (self.FRAME_SLOTVALUE, self.slotvalue),
-                ]:
-            try:
-                q = _node2string(x, c, bindings)
-            except Exception as err:
-                raise Exception(bindings) from err
-            if q is not None:
-                fact[label] = q
-        for _ in c.get_facts(fact):
-            #triggers, when any corresponding fact is found
-            return True
-        return False
 
     def retract_fact(self, c: abc_machine.machine,
                 bindings: BINDING = {},
@@ -446,21 +398,6 @@ class atom(fact):
             pattern[self.ATOM_ARGS % i] = arg
         return pattern
 
-    def check_for_pattern(self, c: abc_machine.machine,
-                          bindings: BINDING = {},
-                          ) -> bool:
-        fact = {"type": self.ID}
-        fact[self.ATOM_OP] = _node2string(self.op, c, bindings)
-        for i, x in enumerate(self.args):
-            label = self.ATOM_ARGS % i
-            q = _node2string(x, c, bindings)
-            if q is not None:
-                fact[label] = q
-            #fact[label] = rdflib2string(_resolve(x, bindings))
-        for _ in c.get_facts(fact):
-            #triggers, when any corresponding fact is found
-            return True
-        return False
 
     def assert_fact(self, c: abc_machine.machine,
                bindings: BINDING = {},
