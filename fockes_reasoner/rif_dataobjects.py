@@ -676,10 +676,8 @@ class rif_atom(rif_fact):
             machine: durable_reasoner.machine,
             bindings: BINDING = {},
             ) -> bool:
-        args_ = [_try_as_machineterm(arg) for arg in self.args]
-        #args: list[RESOLVABLE] = [_get_resolveable(x, machine) for x in args_]
-        f = machine_facts.atom(self.op, args_)
-        return machine.check_statement([f], bindings)
+        test_facts = list(self._create_facts())
+        return machine.check_statement(test_facts, bindings)
 
     @dataclass
     class assert_action(_child_action):
