@@ -462,6 +462,7 @@ class rif_implies(_rule_gen):
     def generate_action(self,
                         machine: durable_reasoner.machine,
                         ) -> Tuple[Callable[[BINDING], None], Iterable[Variable]]:
+        raise NotImplementedError("removed generate_condition completly")
         condition = self.if_.generate_condition(machine)
         implicated_action, used_variables = self.then_.generate_action(machine)
         act = self._conditional(condition, implicated_action)
@@ -728,11 +729,6 @@ class rif_external(_resolvable_gen, _rif_check):
         return self.as_resolvable(machine)
         #return machine.get_binding_action(self.op, self.args)
 
-    def generate_condition(self,
-                           machine: durable_reasoner.machine,
-                           ) -> Callable[[BINDING], bool]:
-        raise NotImplementedError()
-
     def _add_pattern(self, rule: durable_reasoner.rule) -> None:
         m = self.as_machineterm()
         rule.orig_pattern.append(m)
@@ -854,17 +850,6 @@ class rif_frame(rif_fact):
             sk = _try_as_machineterm(slotkey)
             sv = _try_as_machineterm(slotvalue)
             yield machine_facts.frame(obj, sk, sv)
-
-    def generate_condition(self,
-                           machine: durable_reasoner.machine,
-                           ) -> Callable[[BINDING], bool]:
-        raise NotImplementedError()
-        def condition(bindings: BINDING) -> bool:
-            for f in self.facts:
-                if not f.check_for_pattern(machine, bindings):
-                    return False
-            return True
-        return condition
 
     def generate_retract_action(self,
                       machine: durable_reasoner.machine,
