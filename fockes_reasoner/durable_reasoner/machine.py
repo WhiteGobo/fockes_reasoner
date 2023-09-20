@@ -14,6 +14,7 @@ import rdflib
 from rdflib import URIRef, Variable, Literal, BNode, Graph, IdentifiedNode, XSD
 from . import abc_machine
 from .abc_machine import TRANSLATEABLE_TYPES, FACTTYPE, BINDING, BINDING_WITH_BLANKS, VARIABLE_LOCATOR, NoPossibleExternal, importProfile, RESOLVABLE, ATOM_ARGS, abc_external, RESOLVER, RuleNotComplete, pattern_generator, VariableNotBoundError, abc_pattern
+from ..class_profileOWLDirect import profileOWLDirect
 
 from .bridge_rdflib import rdflib2string, string2rdflib, term_list
 
@@ -816,8 +817,7 @@ class _machine_default_externals(_base_durable_machine):
         self.__register_importProfiles()
 
     def __register_importProfiles(self) -> None:
-        #self.available_import_profiles[entailment["OWL-Direct"]] = None
-        pass
+        self.available_import_profiles[entailment["OWL-Direct"]] = profileOWLDirect()
 
     def __register_externals(self) -> None:
         from .default_externals import invert
