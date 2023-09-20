@@ -220,6 +220,7 @@ class _base_durable_machine(abc_machine.machine):
     Also logs internal failures.
     """
     errors: list
+    inconsistent_information: bool
     _current_context: _context_helper
     _initialized: bool
     _imported_location: Container[IdentifiedNode]
@@ -249,6 +250,7 @@ class _base_durable_machine(abc_machine.machine):
 
     def __init__(self, loggername: str = __name__) -> None:
         rulesetname = str(uuid.uuid4())
+        self.inconsistent_information = False
         self._ruleset = rls.ruleset(rulesetname)
         self.logger = logging.getLogger(loggername)
         self.__set_basic_rules()
@@ -311,9 +313,13 @@ class _base_durable_machine(abc_machine.machine):
                         bindings: BINDING_WITH_BLANKS = {},
                         ) -> bool:
         """Checks if given proposition is true.
+        If machine is the machine holds incosistent data, everything is true.
+
         :TODO: currently facts are only simple facts like a frame. But check
             should support complex statement like 'Xor'
         """
+        if self.inconsistent_information:
+            return True
         for f in statement:
             d = {FACTTYPE: self._registered_facttypes[type(f)]}
             for key, x in f.items():
@@ -394,6 +400,9 @@ class _base_durable_machine(abc_machine.machine):
 
 
     def run(self, steps: Union[int, None] = None) -> None:
+        if self.inconsistent_information:
+            raise Exception("machine has reached a state with inconsistent "
+                            "information. No Action is possible anymore.")
         if not self._initialized:
             rls.assert_fact(self._rulename, {MACHINESTATE: INIT_STATE})
             rls.retract_fact(self._rulename, {MACHINESTATE: INIT_STATE})
