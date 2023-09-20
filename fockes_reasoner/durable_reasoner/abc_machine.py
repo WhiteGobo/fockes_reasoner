@@ -14,6 +14,8 @@ from .bridge_rdflib import TRANSLATEABLE_TYPES, term_list
 
 BINDABLE_TYPES = Union[TRANSLATEABLE_TYPES]
 BINDING = MutableMapping[rdflib.Variable, TRANSLATEABLE_TYPES]
+BINDING_WITH_BLANKS = MutableMapping[rdflib.Variable,
+                                     Union[TRANSLATEABLE_TYPES, None]]
 RESOLVER = Callable[[BINDING], TRANSLATEABLE_TYPES]
 RESOLVABLE = Union[Variable, TRANSLATEABLE_TYPES, RESOLVER]
 #VARIABLE_LOCATOR = Callable[[typ.Union[durable.engine.Closure, None]], TRANSLATEABLE_TYPES]
@@ -128,7 +130,7 @@ class machine(abc.ABC):
 
     @abc.abstractmethod
     def check_statement(self, statement: Collection[fact],
-                        bindings: BINDING = {},
+                        bindings: BINDING_WITH_BLANKS = {},
                         ) -> bool:
         """Checks if given proposition is true.
         :TODO: currently facts are only simple facts like a frame. But check

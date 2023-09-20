@@ -13,7 +13,7 @@ from .shared import RIF, pred, XSD
 from rdflib import RDF
 from . import durable_reasoner
 from .durable_reasoner import machine
-from .durable_reasoner import BINDING, RESOLVABLE
+from .durable_reasoner import BINDING, RESOLVABLE, BINDING_WITH_BLANKS
 from dataclasses import dataclass
 from collections.abc import Sequence
 
@@ -59,7 +59,7 @@ class _rif_check(pattern_generator, abc.ABC):
     @abc.abstractmethod
     def check(self,
             machine: durable_reasoner.machine,
-            bindings: BINDING = {},
+            bindings: BINDING_WITH_BLANKS = {},
             ) -> bool:
         ...
 
@@ -98,7 +98,7 @@ class rif_fact(_rif_check, _action_gen, _rule_gen):
 
     def check(self,
             machine: durable_reasoner.machine,
-            bindings: BINDING = {},
+            bindings: BINDING_WITH_BLANKS = {},
             ) -> bool:
         test_facts = list(self._create_facts())
         try:
@@ -505,7 +505,7 @@ class rif_exists(_rif_check):
 
     def check(self,
             machine: durable_reasoner.machine,
-            bindings: Optional[BINDING] = None,
+            bindings: Optional[BINDING_WITH_BLANKS] = None,
             ) -> bool:
         if bindings is None:
             bindings = {x: None for x in self.blank_vars}
@@ -549,7 +549,7 @@ class rif_and(_resolvable_gen, _rif_check):
 
     def check(self,
             machine: durable_reasoner.machine,
-            bindings: BINDING = {},
+            bindings: BINDING_WITH_BLANKS = {},
             ) -> bool:
         return all(f.check(machine, bindings) for f in self.formulas)
 
@@ -580,7 +580,7 @@ class rif_or(_rif_formula):
 
     def check(self,
             machine: durable_reasoner.machine,
-            bindings: BINDING = {},
+            bindings: BINDING_WITH_BLANKS = {},
             ) -> bool:
         return any(f.check(machine, bindings) for f in self.formulas)
 
@@ -603,7 +603,7 @@ class rif_or(_rif_formula):
         except ValueError as err:
             raise Exception("Syntaxerror of RIF document") from err
         formula_list: Iterable[IdentifiedNode] = rdflib.collection.Collection(infograph, formula_list_node) #type: ignore[assignment]
-        formulas: list[Union["rif_frame"]] = []
+        formulas: list[_rif_formula] = []
         for formula_node in formula_list:
             next_formula = _generate_object(infograph, formula_node, cls._formulas_generators)
             formulas.append(next_formula)
@@ -701,7 +701,7 @@ class rif_external(_resolvable_gen, _rif_check):
 
     def check(self,
             machine: durable_reasoner.machine,
-            bindings: BINDING = {},
+            bindings: BINDING_WITH_BLANKS = {},
             ) -> bool:
         raise NotImplementedError()
 
@@ -968,7 +968,7 @@ class rif_ineg(_rif_check):
 
     def check(self,
             machine: durable_reasoner.machine,
-            bindings: BINDING = {},
+            bindings: BINDING_WITH_BLANKS = {},
             ) -> bool:
         raise NotImplementedError()
 

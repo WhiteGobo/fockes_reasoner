@@ -12,7 +12,7 @@ import typing as typ
 from typing import MutableMapping, Mapping, Union, Callable, Iterable, Tuple, Optional
 
 
-from .abc_machine import BINDING, CLOSURE_BINDINGS, VARIABLE_LOCATOR, TRANSLATEABLE_TYPES, ATOM_ARGS, abc_external, RESOLVABLE, _resolve
+from .abc_machine import BINDING, BINDING_WITH_BLANKS, CLOSURE_BINDINGS, VARIABLE_LOCATOR, TRANSLATEABLE_TYPES, ATOM_ARGS, abc_external, RESOLVABLE, _resolve
 
 from .bridge_rdflib import *
 from .bridge_rdflib import term_list, _term_list
@@ -498,7 +498,7 @@ class atom(fact):
 
 def _node2string(x: Union[TRANSLATEABLE_TYPES, Variable, str, abc_external],
                  machine: abc_machine.machine,
-                 bindings: BINDING,
+                 bindings: BINDING_WITH_BLANKS,
                  ) -> Optional[str]:
     if isinstance(x, rdflib.Variable):
         try:
