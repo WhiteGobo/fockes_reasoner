@@ -848,16 +848,12 @@ class rif_frame(rif_fact):
     def used_variables(self) -> Iterable[Variable]:
         return _get_variables(it.chain((self.obj,), it.chain(*self.slots)))
 
-    @property
-    def facts(self) -> Iterable[machine_facts.frame]:
+    def _create_facts(self) -> Iterable[fact]:
         obj = _try_as_machineterm(self.obj)
         for slotkey, slotvalue in self._machinefact_slots:
             sk = _try_as_machineterm(slotkey)
             sv = _try_as_machineterm(slotvalue)
             yield machine_facts.frame(obj, sk, sv)
-
-    def _create_facts(self) -> Iterable[fact]:
-        return self.facts
 
     @property
     def _machinefact_slots(self) -> Iterable[Tuple[Union[TRANSLATEABLE_TYPES, external, Variable], Union[TRANSLATEABLE_TYPES, external, Variable]]]:
@@ -880,7 +876,7 @@ class rif_frame(rif_fact):
                       machine: durable_reasoner.machine,
                       ) -> Callable[[machine_facts.BINDING], None]:
         def _assert(bindings: BINDING) -> None:
-            for f in self.facts:
+            for f in self._create_facts():
                 f.retract_fact(machine, bindings)
         return _assert
 
