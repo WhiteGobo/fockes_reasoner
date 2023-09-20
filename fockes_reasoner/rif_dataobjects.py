@@ -850,16 +850,10 @@ class rif_frame(rif_fact):
 
     def _create_facts(self) -> Iterable[fact]:
         obj = _try_as_machineterm(self.obj)
-        for slotkey, slotvalue in self._machinefact_slots:
+        for slotkey, slotvalue in self.slots:
             sk = _try_as_machineterm(slotkey)
             sv = _try_as_machineterm(slotvalue)
             yield machine_facts.frame(obj, sk, sv)
-
-    @property
-    def _machinefact_slots(self) -> Iterable[Tuple[Union[TRANSLATEABLE_TYPES, external, Variable], Union[TRANSLATEABLE_TYPES, external, Variable]]]:
-        for slot in self.slots:
-            slotkey, slotvalue = (x.as_machineterm() if isinstance(x, _resolvable_gen) else x for x in slot)
-            yield slotkey, slotvalue
 
     def generate_condition(self,
                            machine: durable_reasoner.machine,
