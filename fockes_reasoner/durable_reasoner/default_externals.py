@@ -31,8 +31,6 @@ class rif_or:
                        Iterable[Variable]]:
         raise NotImplementedError()
         
-        
-
 
 @dataclass
 class invert:

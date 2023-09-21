@@ -26,6 +26,10 @@ from . import special_externals
 
 from . import default_externals as def_ext
 
+BINDING_DESCRIPTION = Mapping[tuple[bool], Callable]
+"""Maps a tuple representing the position of unbound variables to a generator
+"""
+
 PATTERNGENERATOR\
         = Callable[[Iterable[RESOLVABLE], Container[Variable]],
                    Iterable[Tuple[Iterable[abc_pattern],
@@ -234,6 +238,8 @@ class _base_durable_machine(abc_machine.machine):
                                        Callable[..., RESOLVABLE]]
     _registered_assignment_generator: Dict[IdentifiedNode,
                                            Callable[..., _assignment]]
+    _registered_binding_generator: Dict[IdentifiedNode, BINDING_DESCRIPTION]
+
     _imported_locations: Set[Optional[IdentifiedNode]]
     _knownLocations: MutableMapping[IdentifiedNode, rdflib.Graph]
 
@@ -263,6 +269,7 @@ class _base_durable_machine(abc_machine.machine):
         self._registered_pattern_generator = {}
         self._registered_action_generator = {}
         self._registered_assignment_generator = {}
+        self._registered_binding_generator = {}
 
         self._imported_locations = set()
         self.available_import_profiles = {}
@@ -473,6 +480,32 @@ class _base_durable_machine(abc_machine.machine):
                 xx.append(_x)
             yield xx, y, z
 
+    def _create_binding_from_external(
+            self,
+            op: IdentifiedNode,
+            args: ATOM_ARGS,
+            bound_variables: Container[Variable] = [],
+            ) -> Tuple[Iterable[_pattern],
+                       Iterable[Callable[[BINDING], Literal]],
+                       Iterable[Variable]]:
+        try:
+            binding_map = self._registered_binding_generator[op]
+        except KeyError as err:
+            logger.error((1,op, args, bound_variables))
+            raise NoPossibleExternal(op) from err
+        try:
+            funcgen = binding_map[tuple(isinstance(x, Variable)
+                                        and x not in bound_variables
+                                        for x in args)]
+        except KeyError as err:
+            logger.error((2,op, args, bound_variables))
+            raise NoPossibleExternal(op) from err
+        args_: Iterable[RESOLVABLE]\
+                = _transform_all_externals_to_calls(args, self)
+        return [], [funcgen(*args_)], [x for x in args
+                                      if (isinstance(x, Variable)
+                                          and x not in bound_variables)]
+
     def _create_assignment_from_external(
             self,
             op: IdentifiedNode,
@@ -490,6 +523,7 @@ class _base_durable_machine(abc_machine.machine):
                  asaction: Optional[Callable] = None,
                  asassign: Optional[Callable] = None,
                  aspattern: Optional[PATTERNGENERATOR] = None,
+                 asbinding: Optional[BINDING_DESCRIPTION] = None,
                  ) -> None:
         if asaction is not None:
             self._registered_action_generator[op] = asaction
@@ -497,6 +531,8 @@ class _base_durable_machine(abc_machine.machine):
             self._registered_assignment_generator[op] = asassign
         if aspattern is not None:
             self._registered_pattern_generator[op] = aspattern
+        if asbinding is not None:
+            self._registered_binding_generator[op] = asbinding
 
 class OWLmachine(_base_durable_machine):
     """Implements owl functionality"""
@@ -787,16 +823,15 @@ class durable_rule(abc_machine.implication, abc_machine.rule):
                 yield patterns, conditions, new_bound_vars
             return
         except NoPossibleExternal:
-            cond = self.machine._create_assignment_from_external(op, args, bound_variables)
-            try:
-                new_bound_vars = list(cond.binds_variables(bound_variables))
-            except AttributeError:
-                new_bound_vars = []
-        yield [], [cond], new_bound_vars
-        #if isinstance(cond, (Variable, IdentifiedNode, Literal, term_list)):
-        #    raise Exception("Given external always gives a true statement "
-        #                    "with %r as return value" % cond)
-        #yield [], [cond], new_bound_vars#type: ignore[list-item]
+            pass
+        try:
+            yield self.machine._create_binding_from_external(op, args,
+                                                             bound_variables)
+            return
+        except NoPossibleExternal:
+            pass
+        cond = self.machine._create_assignment_from_external(op, args, bound_variables)
+        yield [], [cond], []
 
     @property
     def logger(self) -> logging.Logger:
@@ -889,8 +924,7 @@ class _machine_default_externals(_base_durable_machine):
 
     def __register_externals(self) -> None:
         from .default_externals import invert
-        self.register(special_externals.equality.op,
-                      asassign=def_ext.literal_equal)
+        self.register(**special_externals.equality)
         self.register(RIF.Or, asassign=def_ext.rif_or)
         self.register(pred["iri-string"],
                       aspattern=def_ext.pred_iri_string.pattern_generator)
