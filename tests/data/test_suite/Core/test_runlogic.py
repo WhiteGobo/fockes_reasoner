@@ -400,7 +400,7 @@ tmp = files(Core_Safeness_3)
                  marks=mark.skip("First have to implemente builtin time"),
                  id="PET_EBusiness_Contract"),
     pytest.param(PET_Factorial_Forward_Chaining,
-                 marks=mark.skip("Uses rif_equal to bind variables. nyi"),
+                 marks=mark.skip("need first to implement step limit")
                  id="PET_Factorial_Forward_Chaining"),
     pytest.param(PET_Frame_slots_are_independent,
                  id="independent frame slots"),
