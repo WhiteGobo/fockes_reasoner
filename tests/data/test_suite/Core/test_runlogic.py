@@ -400,7 +400,6 @@ tmp = files(Core_Safeness_3)
                  marks=mark.skip("First have to implemente builtin time"),
                  id="PET_EBusiness_Contract"),
     pytest.param(PET_Factorial_Forward_Chaining,
-                 marks=mark.skip("need first to implement step limit")
                  id="PET_Factorial_Forward_Chaining"),
     pytest.param(PET_Frame_slots_are_independent,
                  id="independent frame slots"),
@@ -495,7 +494,6 @@ def NST_testdata(request):
 
 @pytest.fixture(params=[
     param(PST_Core_Safeness,
-          marks=mark.skip("Implement Steplimit first"),
           id=PST_Core_Safeness.name),
     param(PST_Core_Safeness_2,
           marks=mark.skip("implement PET_Factorial_Forward_Chaining first"),

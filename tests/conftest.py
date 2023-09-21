@@ -32,46 +32,50 @@ def logic_machine(request):
 
 
 @pytest.fixture
-def logicmachine_after_PET(PET_testdata, logic_machine, valid_exceptions):
+def logicmachine_after_PET(PET_testdata, logic_machine, valid_exceptions, steplimit):
     try:
         return logicmachine_after_run(PET_testdata, logic_machine,
-                                  valid_exceptions)
+                                  valid_exceptions, steplimit)
     except ExpectedFailure as err:
         return err
 
 @pytest.fixture
-def logicmachine_after_NET(NET_testdata, logic_machine, valid_exceptions):
+def logicmachine_after_NET(NET_testdata, logic_machine, valid_exceptions, steplimit):
     try:
         return logicmachine_after_run(NET_testdata, logic_machine,
-                                  valid_exceptions)
+                                  valid_exceptions, steplimit)
     except ExpectedFailure as err:
         return err
 
 @pytest.fixture
-def logicmachine_after_NST(NST_testdata, logic_machine, valid_exceptions):
+def logicmachine_after_NST(NST_testdata, logic_machine, valid_exceptions, steplimit):
     try:
         return logicmachine_after_run(NST_testdata, logic_machine,
-                                  (fockes_reasoner.SyntaxReject, *valid_exceptions))
+                                  (fockes_reasoner.SyntaxReject, *valid_exceptions), steplimit)
     except ExpectedFailure as err:
         return err
 
 @pytest.fixture
-def logicmachine_after_PST(PST_testdata, logic_machine, valid_exceptions):
+def logicmachine_after_PST(PST_testdata, logic_machine, valid_exceptions, steplimit):
     try:
         return logicmachine_after_run(PST_testdata, logic_machine,
-                                  valid_exceptions)
+                                  valid_exceptions, steplimit)
     except ExpectedFailure as err:
         return err
 
 @pytest.fixture
-def logicmachine_after_IRT(IRT_testdata, logic_machine, valid_exceptions):
+def logicmachine_after_IRT(IRT_testdata, logic_machine, valid_exceptions, steplimit):
     try:
         return logicmachine_after_run(IRT_testdata, logic_machine,
-                                  (fockes_reasoner.ImportReject, *valid_exceptions))
+                                  (fockes_reasoner.ImportReject, *valid_exceptions), steplimit)
     except ExpectedFailure as err:
         return err
 
-def logicmachine_after_run(testdata, logic_machine, valid_exceptions):
+@pytest.fixture
+def steplimit():
+    return 20
+
+def logicmachine_after_run(testdata, logic_machine, valid_exceptions, steplimit_):
     testfile = str(testdata.premise)
     logger.debug("Premise: %s" % testdata)
     try:
@@ -86,7 +90,7 @@ def logicmachine_after_run(testdata, logic_machine, valid_exceptions):
     try:
         q = logic_machine.from_rdf(g, extra_documents)
         logger.debug("Running Machine ... ")
-        myfacts = q.run()
+        myfacts = q.run(steplimit_)
     except valid_exceptions as err:
         raise ExpectedFailure() from err
     logger.info("All facts after machine has run:\n%s"

@@ -52,6 +52,9 @@ LIST_MEMBERS = "member"
 class FailedInternalAction(Exception):
     ...
 
+class ReachedStepLimit(Exception):
+    ...
+
 class _pattern(abc_pattern):
     pattern: Mapping[str, Union[Variable, str, TRANSLATEABLE_TYPES]]
     factname: str
@@ -274,6 +277,7 @@ class _base_durable_machine(abc_machine.machine):
         self._imported_locations = set()
         self.available_import_profiles = {}
         self._knownLocations = {}
+        self._steps_left = 1
 
     def import_data(self,
                     infograph: Graph,
@@ -394,6 +398,9 @@ class _base_durable_machine(abc_machine.machine):
                                      % (action, bindings,
                                         traceback.format_exc()))
                     raise FailedInternalAction(error_message) from err
+                self._steps_left = self._steps_left - 1
+                if self._steps_left == 0:
+                    c.retract_fact({MACHINESTATE: RUNNING_STATE})
 
     def __set_basic_rules(self) -> None:
         with self._ruleset:
@@ -428,9 +435,9 @@ class _base_durable_machine(abc_machine.machine):
             rls.assert_fact(self._rulename, {MACHINESTATE: RUNNING_STATE})
             rls.retract_fact(self._rulename, {MACHINESTATE: RUNNING_STATE})
         else:
-            raise NotImplementedError()
-            for t in range(steps):
-                rls.post(self._rulename, {MACHINESTATE: RUNNING_STATE})
+            self._steps_left = steps
+            rls.assert_fact(self._rulename, {MACHINESTATE: RUNNING_STATE})
+            rls.retract_fact(self._rulename, {MACHINESTATE: RUNNING_STATE})
         if self.errors:
             raise Exception("Rules produced an error.", self.errors)
 
