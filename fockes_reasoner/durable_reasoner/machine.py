@@ -931,6 +931,7 @@ class _machine_default_externals(_base_durable_machine):
 
     def __register_externals(self) -> None:
         from .default_externals import invert
+        def_ext._register_timeExternals(self)
         self.register(**special_externals.equality)
         self.register(RIF.Or, asassign=def_ext.rif_or)
         self.register(pred["iri-string"],
