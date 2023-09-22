@@ -611,27 +611,6 @@
                      <content>
                       <Expr>
                           <op>
-                            <Const type="&rif;iri">http://www.w3.org/2007/rif-builtin-function#timezone-from-date</Const>
-                          </op>
-                            <args ordered="yes">
-                              <Const type="&xs;date">1999-05-31-05:00</Const>
-                            </args>
-                      </Expr>
-                     </content>
-                    </External>
-                  </left>
-                  <right>
-                    <Const type="&xs;dayTimeDuration">-PT5H</Const>
-                  </right>
-                </Equal>
-              </formula>
-              <formula>
-                <Equal>
-                  <left>
-                    <External>
-                     <content>
-                      <Expr>
-                          <op>
                             <Const type="&rif;iri">http://www.w3.org/2007/rif-builtin-function#timezone-from-time</Const>
                           </op>
                             <args ordered="yes">

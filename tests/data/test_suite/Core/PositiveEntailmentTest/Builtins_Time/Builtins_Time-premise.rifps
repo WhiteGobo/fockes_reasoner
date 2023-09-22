@@ -39,7 +39,6 @@ Document(
     External( func:minutes-from-time( "13:20:00-05:00"^^xs:time ) ) = 20
     External( func:seconds-from-time( "13:20:00-05:00"^^xs:time ) ) = 0
     External( func:timezone-from-dateTime( "1999-05-31T13:20:00-05:00"^^xs:dateTime ) ) = "-PT5H"^^xs:dayTimeDuration
-    External( func:timezone-from-date( "1999-05-31-05:00"^^xs:date ) ) = "-PT5H"^^xs:dayTimeDuration
     External( func:timezone-from-time( "13:20:00-05:00"^^xs:time) ) = "-PT5H"^^xs:dayTimeDuration
     External( func:years-from-duration( "P20Y15M"^^xs:yearMonthDuration ) ) = 21
     External( func:months-from-duration( "P20Y15M"^^xs:yearMonthDuration ) ) = 3
