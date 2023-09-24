@@ -13,6 +13,7 @@ from ...shared import pred, func
 from .numeric_externals import *
 from .list_externals import *
 from .time_externals import _register_timeExternals
+from .plainLiteral_externals import _register_plainLiteralExternals
 from .shared import invert, assign_rdflib
 
 @dataclass

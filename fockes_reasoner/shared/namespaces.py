@@ -100,6 +100,9 @@ class pred(DefinedNamespace):
             "yearMonthDuration-greater-than-or-equal",
             "dayTimeDuration-less-than-or-equal",
             "dayTimeDuration-greater-than-or-equal",
+            "is-literal-PlainLiteral",
+            "is-literal-not-PlainLiteral",
+            "matches-language-range",
             ]
     _NS = Namespace("http://www.w3.org/2007/rif-builtin-predicate#")
 
@@ -180,6 +183,11 @@ class func(DefinedNamespace):
             "add-dayTimeDuration-to-time",
             "subtract-yearMonthDuration-from-dateTime",
             "subtract-yearMonthDuration-from-date",
+
+            "PlainLiteral-from-string-lang",
+            "string-from-PlainLiteral",
+            "lang-from-PlainLiteral",
+            "PlainLiteral-compare",
             ]
 
     _NS = Namespace("http://www.w3.org/2007/rif-builtin-function#")
