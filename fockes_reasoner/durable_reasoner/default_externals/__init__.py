@@ -13,6 +13,7 @@ from ...shared import pred, func
 from .numeric_externals import *
 from .list_externals import *
 from .time_externals import _register_timeExternals
+from .shared import invert, assign_rdflib
 
 @dataclass
 class rif_or:
@@ -34,18 +35,6 @@ class rif_or:
                        Iterable[Variable]]:
         raise NotImplementedError()
         
-
-@dataclass
-class invert:
-    to_invert: RESOLVER
-    def __call__(self, bindings: BINDING) -> Literal:
-        b = self.to_invert(bindings)
-        return Literal(not b)
-
-    @classmethod
-    def gen(cls, to_invert: Callable[..., RESOLVER]) -> Callable[..., "invert"]:
-        return lambda *args: cls(to_invert(*args))
-
 
 
 @dataclass
@@ -83,22 +72,4 @@ class pred_iri_string:
         s = _resolve(self.source_string, bindings)
         bindings[self.target_var] = URIRef(str(s))
         return Literal(True)
-
-
-@dataclass
-class assign_rdflib:
-    target: RESOLVABLE
-    type_uri: RESOLVABLE
-    def __call__(self, bindings: BINDING) -> Literal:
-        t = _resolve(self.target, bindings)
-        type_uri = _resolve(self.type_uri, bindings)
-        assert isinstance(type_uri, URIRef)
-        return Literal(t, datatype=type_uri)
-
-    def __repr__(self) -> str:
-        return "%s: %s" % (self.type_uri, self.target)
-
-    @classmethod
-    def gen(cls, type_uri: URIRef) -> Callable[..., "assign_rdflib"]:
-        return lambda target: cls(target, type_uri)
 

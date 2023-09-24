@@ -438,7 +438,7 @@ class rif_implies(_rule_gen):
         self._add_condition_as_pattern(newrule)
         action, used_variables = self.then_.generate_action(machine)
         newrule.set_action(action, used_variables)
-        logger.info("create implication %r" % newrule)
+        logger.debug("create implication %r" % newrule)
         newrule.finalize()
 
     @dataclass

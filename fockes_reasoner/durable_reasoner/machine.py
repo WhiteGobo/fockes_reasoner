@@ -498,14 +498,12 @@ class _base_durable_machine(abc_machine.machine):
         try:
             binding_map = self._registered_binding_generator[op]
         except KeyError as err:
-            logger.error((1,op, args, bound_variables))
             raise NoPossibleExternal(op) from err
         try:
             funcgen = binding_map[tuple(isinstance(x, Variable)
                                         and x not in bound_variables
                                         for x in args)]
         except KeyError as err:
-            logger.error((2,op, args, bound_variables))
             raise NoPossibleExternal(op) from err
         args_: Iterable[RESOLVABLE]\
                 = _transform_all_externals_to_calls(args, self)
