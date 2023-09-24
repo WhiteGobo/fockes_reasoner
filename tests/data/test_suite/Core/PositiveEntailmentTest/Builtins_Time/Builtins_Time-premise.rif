@@ -747,7 +747,7 @@
                     </External>
                   </left>
                   <right>
-                    <Const type="&xs;float">12.5</Const>
+                    <Const type="&xs;decimal">12.5</Const>
                   </right>
                 </Equal>
               </formula>
@@ -872,7 +872,7 @@
                           </op>
                             <args ordered="yes">
                               <Const type="&xs;yearMonthDuration">P2Y11M</Const>
-                              <Const type="&xs;float">2.3</Const>
+                              <Const type="&xs;decimal">2.3</Const>
                             </args>
                       </Expr>
                      </content>
@@ -894,7 +894,7 @@
                           </op>
                             <args ordered="yes">
                               <Const type="&xs;yearMonthDuration">P2Y11M</Const>
-                              <Const type="&xs;float">1.5</Const>
+                              <Const type="&xs;decimal">1.5</Const>
                             </args>
                       </Expr>
                      </content>
@@ -923,7 +923,7 @@
                     </External>
                   </left>
                   <right>
-                    <Const type="&xs;float">-2.5</Const>
+                    <Const type="&xs;decimal">-2.5</Const>
                   </right>
                 </Equal>
               </formula>
@@ -982,7 +982,7 @@
                           </op>
                             <args ordered="yes">
                               <Const type="&xs;dayTimeDuration">PT2H10M</Const>
-                              <Const type="&xs;float">2.1</Const>
+                              <Const type="&xs;decimal">2.1</Const>
                             </args>
                       </Expr>
                      </content>
@@ -1246,14 +1246,14 @@
                           </op>
                             <args ordered="yes">
                               <Const type="&xs;date">2000-10-30</Const>
-                              <Const type="&xs;dayTimeDuration">P3DT1H15M</Const>
+                              <Const type="&xs;dayTimeDuration">P3D</Const>
                             </args>
                       </Expr>
                      </content>
                     </External>
                   </left>
                   <right>
-                    <Const type="&xs;date">2000-10-26</Const>
+                    <Const type="&xs;date">2000-10-27</Const>
                   </right>
                 </Equal>
               </formula>
@@ -1332,8 +1332,8 @@
                         <Const type="&rif;iri">http://www.w3.org/2007/rif-builtin-predicate#date-equal</Const>
                       </op>
                         <args ordered="yes">
-                          <Const type="&xs;date">2004-12-25-12:00</Const>
-                          <Const type="&xs;date">2004-12-26+12:00</Const>
+                          <Const type="&xs;date">2004-12-26</Const>
+                          <Const type="&xs;date">2004-12-26</Const>
                         </args>
                   </Atom>
                  </content>

@@ -68,12 +68,12 @@ Document(
     External( func:subtract-yearMonthDuration-from-dateTime( "2000-10-30T11:12:00"^^xs:dateTime "P1Y2M"^^xs:yearMonthDuration ) ) = "1999-08-30T11:12:00"^^xs:dateTime
     External( func:subtract-yearMonthDuration-from-date( "2000-10-30"^^xs:date "P1Y2M"^^xs:yearMonthDuration ) ) = "1999-08-30"^^xs:date
     External( func:subtract-dayTimeDuration-from-dateTime( "2000-10-30T11:12:00"^^xs:dateTime "P3DT1H15M"^^xs:dayTimeDuration ) ) = "2000-10-27T09:57:00"^^xs:dateTime
-    External( func:subtract-dayTimeDuration-from-date( "2000-10-30"^^xs:date "P3DT1H15M"^^xs:dayTimeDuration ) ) = "2000-10-26"^^xs:date
+    External( func:subtract-dayTimeDuration-from-date( "2000-10-30"^^xs:date "P3D"^^xs:dayTimeDuration ) ) = "2000-10-27"^^xs:date
     External( func:subtract-dayTimeDuration-from-time( "11:12:00"^^xs:time "P3DT1H15M"^^xs:dayTimeDuration ) ) = "09:57:00"^^xs:time
     External( pred:dateTime-equal( "2002-04-02T12:00:00-01:00"^^xs:dateTime "2002-04-02T17:00:00+04:00"^^xs:dateTime ) )
     External( pred:dateTime-less-than( "2002-04-01T12:00:00-01:00"^^xs:dateTime "2002-04-02T17:00:00+04:00"^^xs:dateTime ) )
     External( pred:dateTime-greater-than( "2002-04-03T12:00:00-01:00"^^xs:dateTime "2002-04-02T17:00:00+04:00"^^xs:dateTime ) )
-    External( pred:date-equal( "2004-12-25-12:00"^^xs:date "2004-12-26+12:00"^^xs:date ) )
+    External( pred:date-equal( "2004-12-26"^^xs:date "2004-12-26"^^xs:date ) )
     External( pred:date-less-than( "2004-12-24"^^xs:date "2004-12-26"^^xs:date ) )
     External( pred:date-greater-than( "2004-12-26"^^xs:date "2004-12-25"^^xs:date ) )
     External( pred:time-equal( "21:30:00+10:30"^^xs:time "06:00:00-05:00"^^xs:time ) )

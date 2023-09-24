@@ -1,5 +1,5 @@
 import pytest
-from pytest import param, mark, skip, raises
+from pytest import param, mark, skip, raises, xfail
 from importlib.resources import files
 
 from rdflib import Namespace
@@ -385,7 +385,8 @@ tmp = files(Core_Safeness_3)
     pytest.param(PET_Builtins_String,
                  marks=mark.skip("not yet implemented")),
     pytest.param(PET_Builtins_Time,
-                 marks=mark.skip("not yet implemented")),
+                 marks=mark.xfail,
+                 id="Core PET_Builtins_Time"),
     pytest.param(PET_Builtins_XMLLiteral,
                  marks=mark.skip("not yet implemented")),
     pytest.param(PET_Builtins_anyURI,
