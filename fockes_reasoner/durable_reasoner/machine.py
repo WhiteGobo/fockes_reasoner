@@ -522,7 +522,10 @@ class _base_durable_machine(abc_machine.machine):
         except KeyError as err:
             raise NoPossibleExternal(op) from err
         useable_args = _transform_all_externals_to_calls(args, self)
-        return mygen(*useable_args)
+        try:
+            return mygen(*useable_args)
+        except Exception as err:
+            raise Exception(useable_args) from err
 
     def register(self, op: rdflib.URIRef,
                  asaction: Optional[Callable] = None,
