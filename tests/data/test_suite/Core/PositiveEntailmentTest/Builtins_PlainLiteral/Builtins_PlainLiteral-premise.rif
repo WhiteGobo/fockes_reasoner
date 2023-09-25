@@ -161,7 +161,7 @@
                     </External>
                   </left>
                   <right>
-                    <Const type="&xs;lang">en</Const>
+                    <Const type="&xs;language">en</Const>
                   </right>
                 </Equal>
               </formula>

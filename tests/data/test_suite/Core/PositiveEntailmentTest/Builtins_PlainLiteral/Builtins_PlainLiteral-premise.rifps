@@ -15,7 +15,7 @@ Document(
      External( func:PlainLiteral-from-string-lang( "Hello World!" "en" ) ) = "Hello World!"@en
      External( func:string-from-PlainLiteral( "Hello World!"@en ) ) = "Hello World!"
      External( func:string-from-PlainLiteral( "Hello World!@en" ) )= "Hello World!@en"
-     External( func:lang-from-PlainLiteral( "Hello World!@en"^^rdf:PlainLiteral ) )= "en"^^xs:lang
+     External( func:lang-from-PlainLiteral( "Hello World!@en"^^rdf:PlainLiteral ) )= "en"^^xs:language
      External( func:lang-from-PlainLiteral( "Hello World!@en" ) ) = ""
      -1 = External ( func:PlainLiteral-compare( "hallo"@de "welt"@de ) )
      1 = External ( func:PlainLiteral-compare( "welt"@de "hallo"@de ) )
