@@ -43,7 +43,13 @@ def _register_timeExternals(machine):
 @dataclass
 class is_literal_date:
     op = pred["is-literal-date"]
-    asassign = lambda dt: is_datatype(XSD.date, dt)
+    #asassign = lambda dt: is_datatype(XSD.date, dt)
+    asassign = None
+    target: RESOLVABLE
+    def __call__(self, bindings: BINDING) -> Literal:
+        t = _resolve(self.target, bindings)
+        logger.error(repr(t))
+        return Literal(t.datatype == XSD.date)
 
 
 @dataclass
