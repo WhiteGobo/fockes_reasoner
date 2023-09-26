@@ -126,6 +126,8 @@ class pred(DefinedNamespace):
 
             "is-literal-XMLLiteral",
             "is-literal-not-XMLLiteral",
+            "is-literal-anyURI",
+            "is-literal-not-anyURI",
             ]
     _NS = Namespace("http://www.w3.org/2007/rif-builtin-predicate#")
 
