@@ -98,7 +98,7 @@
                      <content>
                       <Atom>
                           <op>
-                            <Const type="&rif;iri">http://www.w3.org/2007/rif-builtin-predicate#is-literal-dateTime</Const>
+                            <Const type="&rif;iri">http://www.w3.org/2007/rif-builtin-predicate#is-literal-date</Const>
                           </op>
                             <args ordered="yes">
                               <Var>deliverydate</Var>
@@ -112,7 +112,7 @@
                      <content>
                       <Atom>
                           <op>
-                            <Const type="&rif;iri">http://www.w3.org/2007/rif-builtin-predicate#is-literal-dateTime</Const>
+                            <Const type="&rif;iri">http://www.w3.org/2007/rif-builtin-predicate#is-literal-date</Const>
                           </op>
                             <args ordered="yes">
                               <Var>scheduledate</Var>
@@ -131,7 +131,7 @@
                          <content>
                           <Expr>
                               <op>
-                                <Const type="&rif;iri">http://www.w3.org/2007/rif-builtin-function#subtract-dateTimes</Const>
+                                <Const type="&rif;iri">http://www.w3.org/2007/rif-builtin-function#subtract-dates</Const>
                               </op>
                                 <args ordered="yes">
                                   <Var>deliverydate</Var>
