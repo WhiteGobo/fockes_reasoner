@@ -400,7 +400,6 @@ tmp = files(Core_Safeness_3)
     pytest.param(PET_Chaining_strategy_numeric_subtract_2,
                  id="chaining strategy numeric subtract 2"),
     pytest.param(PET_EBusiness_Contract,
-                 marks=mark.skip("First have to implemente builtin time"),
                  id="PET_EBusiness_Contract"),
     pytest.param(PET_Factorial_Forward_Chaining,
                  id="PET_Factorial_Forward_Chaining"),
