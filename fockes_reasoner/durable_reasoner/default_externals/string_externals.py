@@ -263,9 +263,11 @@ class iri_to_uri:
     target: RESOLVABLE
     def __call__(self, bindings: BINDING) -> Literal:
         t = _resolve(self.target, bindings)
-        scheme, location = urllib.parse.splittype(t)
-        newlocation = urllib.parse.quote(location)
-        return Literal(":".join((scheme, newlocation)), datatype=XSD.string)
+        components = list(urllib.parse.urlparse(t))
+        for i, x in enumerate(components):
+            components[i] = urllib.parse.quote(x)
+        return Literal(urllib.parse.urlunparse(components),
+                       datatype=XSD.string)
 
 @dataclass
 class escape_html_uri:
