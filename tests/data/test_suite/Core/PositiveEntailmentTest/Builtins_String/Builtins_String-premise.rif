@@ -549,7 +549,7 @@
               <formula>
                 <Equal>
                   <left>
-                    <Const type="&xs;string">fo</Const>
+                    <Const type="&xs;string">foo</Const>
                   </left>
                   <right>
                     <External>
@@ -666,7 +666,7 @@
                             <Const type="&rif;iri">http://www.w3.org/2007/rif-builtin-function#iri-to-uri</Const>
                           </op>
                             <args ordered="yes">
-                              <Const type="&xs;string">http://www.example.com/~bÃ©bÃ©</Const>
+				    <Const type="&xs;string">http://www.example.com/~bébé</Const>
                             </args>
                       </Expr>
                      </content>
@@ -687,7 +687,7 @@
                             <Const type="&rif;iri">http://www.w3.org/2007/rif-builtin-function#escape-html-uri</Const>
                           </op>
                             <args ordered="yes">
-                              <Const type="&xs;string">javascript:if (navigator.browserLanguage == 'fr') window.open('http://www.example.com/~bÃ©bÃ©');</Const>
+                              <Const type="&xs;string">javascript:if (navigator.browserLanguage == 'fr') window.open('http://www.example.com/~bébé');</Const>
                             </args>
                       </Expr>
                      </content>

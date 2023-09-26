@@ -37,7 +37,7 @@ Document(
      "foobar" = External ( func:concat( "foo" "bar" ) )
      "foo,bar" = External ( func:string-join( "foo" "bar" "," ) )
      "bar" = External ( func:substring( "foobar" 3 ) )
-     "fo" = External ( func:substring( "foobar" 0 3 ) )
+     "foo" = External ( func:substring( "foobar" 0 3 ) )
      3 = External ( func:string-length( "foo" ) )
      "FOOBAR" = External ( func:upper-case( "FooBar" ) )
      "foobar" = External ( func:lower-case( "FooBar" ) )
