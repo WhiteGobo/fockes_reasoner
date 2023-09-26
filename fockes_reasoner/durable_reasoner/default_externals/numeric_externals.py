@@ -128,7 +128,7 @@ class pred_less_than:
         return Literal(s < b)#type: ignore[operator]
 
 @dataclass
-class ascondition_pred_greater_than:
+class pred_greater_than:
     bigger: RESOLVABLE
     smaller: RESOLVABLE
     def __call__(self, bindings: BINDING) -> Literal:

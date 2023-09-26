@@ -17,6 +17,7 @@ from .plainLiteral_externals import _register_plainLiteralExternals
 from .xml_externals import _register_xmlExternals
 from .anyURI_externals import _register_anyURIExternals
 from .string_externals import _register_stringExternals
+from .boolean_externals import _register_booleanExternals
 from .shared import invert, assign_rdflib
 
 @dataclass

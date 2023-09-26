@@ -937,6 +937,7 @@ class _machine_default_externals(_base_durable_machine):
         def_ext._register_stringExternals(self)
         def_ext._register_xmlExternals(self)
         def_ext._register_anyURIExternals(self)
+        def_ext._register_booleanExternals(self)
         self.register(**special_externals.equality)
         self.register(RIF.Or, asassign=def_ext.rif_or)
         self.register(pred["numeric-equal"],
@@ -944,10 +945,10 @@ class _machine_default_externals(_base_durable_machine):
         self.register(pred["numeric-not-equal"],
                       asassign=invert.gen(def_ext.numeric_equal))
         self.register(pred["numeric-greater-than"],
-                      asassign=def_ext.ascondition_pred_greater_than)
+                      asassign=def_ext.pred_greater_than)
         self.register(pred["numeric-less-than-or-equal"],
                       asassign=invert.gen(
-                          def_ext.ascondition_pred_greater_than))
+                          def_ext.pred_greater_than))
         self.register(pred["numeric-less-than"],
                       asassign=def_ext.pred_less_than)
         self.register(pred["numeric-greater-than-or-equal"],

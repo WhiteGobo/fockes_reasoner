@@ -14,7 +14,7 @@ import isodate
 from ..abc_machine import BINDING, RESOLVABLE, _resolve, RESOLVER, abc_pattern, ATOM_ARGS, _assignment
 from ...shared import pred, func
 from .shared import is_datatype, invert, assign_rdflib
-from .numeric_externals import literal_equal, pred_less_than, ascondition_pred_greater_than
+from .numeric_externals import literal_equal, pred_less_than, pred_greater_than
 
 _externals: Iterable
 _datatypes: Iterable[URIRef] = [
@@ -650,7 +650,7 @@ class dateTime_less_than:
 @dataclass
 class dateTime_greater_than:
     op = pred["dateTime-greater-than"]
-    asassign = ascondition_pred_greater_than
+    asassign = pred_greater_than
 @dataclass
 class date_equal:
     op = pred["date-equal"]
@@ -669,7 +669,7 @@ class date_less_than:
 @dataclass
 class date_greater_than:
     op = pred["date-greater-than"]
-    asassign = ascondition_pred_greater_than
+    asassign = pred_greater_than
 @dataclass
 class time_equal:
     op = pred["time-equal"]
@@ -690,7 +690,7 @@ class time_less_than:
 @dataclass
 class time_greater_than:
     op = pred["time-greater-than"]
-    asassign = ascondition_pred_greater_than
+    asassign = pred_greater_than
 @dataclass
 class duration_equal:
     op = pred["duration-equal"]
@@ -761,7 +761,7 @@ class dateTime_not_equal:
 @dataclass
 class dateTime_less_than_or_equal:
     op = pred["dateTime-less-than-or-equal"]
-    asassign = invert.gen(ascondition_pred_greater_than)
+    asassign = invert.gen(pred_greater_than)
 @dataclass
 class dateTime_greater_than_or_equal:
     op = pred["dateTime-greater-than-or-equal"]
@@ -773,7 +773,7 @@ class date_not_equal:
 @dataclass
 class date_less_than_or_equal:
     op = pred["date-less-than-or-equal"]
-    asassign = invert.gen(ascondition_pred_greater_than)
+    asassign = invert.gen(pred_greater_than)
 @dataclass
 class date_greater_than_or_equal:
     op = pred["date-greater-than-or-equal"]
@@ -785,7 +785,7 @@ class time_not_equal:
 @dataclass
 class time_less_then_or_equal:
     op = pred["time-less-than-or-equal"]
-    asassign = invert.gen(ascondition_pred_greater_than)
+    asassign = invert.gen(pred_greater_than)
 @dataclass
 class time_greater_then_or_equal:
     op = pred["time-greater-than-or-equal"]
