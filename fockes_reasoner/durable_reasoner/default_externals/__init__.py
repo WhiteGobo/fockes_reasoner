@@ -14,6 +14,7 @@ from .numeric_externals import *
 from .list_externals import *
 from .time_externals import _register_timeExternals
 from .plainLiteral_externals import _register_plainLiteralExternals
+from .xml_externals import _register_xmlExternals
 from .string_externals import _register_stringExternals
 from .shared import invert, assign_rdflib
 

@@ -935,6 +935,7 @@ class _machine_default_externals(_base_durable_machine):
         def_ext._register_timeExternals(self)
         def_ext._register_plainLiteralExternals(self)
         def_ext._register_stringExternals(self)
+        def_ext._register_xmlExternals(self)
         self.register(**special_externals.equality)
         self.register(RIF.Or, asassign=def_ext.rif_or)
         self.register(pred["numeric-equal"],

@@ -123,6 +123,9 @@ class pred(DefinedNamespace):
             "starts-with",
             "ends-with",
             "matches",
+
+            "is-literal-XMLLiteral",
+            "is-literal-not-XMLLiteral",
             ]
     _NS = Namespace("http://www.w3.org/2007/rif-builtin-predicate#")
 
