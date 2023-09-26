@@ -392,7 +392,6 @@ tmp = files(Core_Safeness_3)
     pytest.param(PET_Builtins_XMLLiteral,
                  id="PET_Builtins_XMLLiteral"),
     pytest.param(PET_Builtins_anyURI,
-                 marks=mark.skip("not yet implemented"),
                  id="PET_Builtins_anyURI"),
     pytest.param(PET_Builtins_boolean,
                  marks=mark.skip("not yet implemented"),
