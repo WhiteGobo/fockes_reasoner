@@ -6,6 +6,7 @@ rif2internal = Namespace("http://example.com/builtin#")
 class pred(DefinedNamespace):
     _fail = True
     _extras = [
+
             "is-literal-boolean",
             "is-literal-not-boolean",
             "boolean-equal",
@@ -103,6 +104,25 @@ class pred(DefinedNamespace):
             "is-literal-PlainLiteral",
             "is-literal-not-PlainLiteral",
             "matches-language-range",
+
+            "is-literal-string",
+            "is-literal-normalizedString",
+            "is-literal-token",
+            "is-literal-NMTOKEN",
+            "is-literal-language",
+            "is-literal-Name",
+            "is-literal-NCName",
+            "is-literal-not-string",
+            "is-literal-not-normalizedString",
+            "is-literal-not-token",
+            "is-literal-not-NMTOKEN",
+            "is-literal-not-language",
+            "is-literal-not-Name",
+            "is-literal-not-NCName",
+            "contains",
+            "starts-with",
+            "ends-with",
+            "matches",
             ]
     _NS = Namespace("http://www.w3.org/2007/rif-builtin-predicate#")
 
@@ -188,6 +208,20 @@ class func(DefinedNamespace):
             "string-from-PlainLiteral",
             "lang-from-PlainLiteral",
             "PlainLiteral-compare",
+
+            "compare",
+            "concat",
+            "string-join",
+            "substring",
+            "string-length",
+            "upper-case",
+            "lower-case",
+            "encode-for-uri",
+            "iri-to-uri",
+            "escape-html-uri",
+            "substring-before",
+            "substring-after",
+            "replace",
             ]
 
     _NS = Namespace("http://www.w3.org/2007/rif-builtin-function#")

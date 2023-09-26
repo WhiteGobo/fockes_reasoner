@@ -480,12 +480,12 @@ class _base_durable_machine(abc_machine.machine):
         for a in args:
             assert not isinstance(a, abc_external)
             args_.append(a)
-        for x, y, z in mygen(args_, bound_variables):
-            xx: list[_pattern] = []
-            for _x in x:
+        for tmp_pattern, cond, new_bound_vars in mygen(args_, bound_variables):
+            tmp_pattern_: list[_pattern] = []
+            for _x in tmp_pattern:
                 assert isinstance(_x, _pattern)
-                xx.append(_x)
-            yield xx, y, z
+                tmp_pattern_.append(_x)
+            yield tmp_pattern_, cond, new_bound_vars
 
     def _create_binding_from_external(
             self,
@@ -934,10 +934,9 @@ class _machine_default_externals(_base_durable_machine):
         from .default_externals import invert
         def_ext._register_timeExternals(self)
         def_ext._register_plainLiteralExternals(self)
+        def_ext._register_stringExternals(self)
         self.register(**special_externals.equality)
         self.register(RIF.Or, asassign=def_ext.rif_or)
-        self.register(pred["iri-string"],
-                      aspattern=def_ext.pred_iri_string.pattern_generator)
         self.register(pred["numeric-equal"],
                       asassign=def_ext.numeric_equal)
         self.register(pred["numeric-not-equal"],
