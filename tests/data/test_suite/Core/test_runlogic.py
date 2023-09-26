@@ -394,7 +394,6 @@ tmp = files(Core_Safeness_3)
     pytest.param(PET_Builtins_anyURI,
                  id="PET_Builtins_anyURI"),
     pytest.param(PET_Builtins_boolean,
-                 marks=mark.skip("not yet implemented"),
                  id="PET_Builtins_boolean"),
     pytest.param(PET_Chaining_strategy_numeric_add_1,
                  id="chaining strategy numeric add 1"),
