@@ -57,8 +57,9 @@ class profileRDFSEntailment(importProfile):
                     infograph.remove((subj, RDF.rest, obj))
                     assert isinstance(subj, IdentifiedNode)
                     found.append(subj)
-                    item, = infograph.objects(obj, RDF.first)
+                    item, = infograph.objects(subj, RDF.first)
                     mylists[subj] = [item] + mylists[obj]
+                    infograph.remove((subj, RDF.first, item))
             return mylists
 
         def load_axiom_as_frames(

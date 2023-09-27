@@ -18,6 +18,7 @@ from .abc_machine import BINDING, BINDING_WITH_BLANKS, CLOSURE_BINDINGS, VARIABL
 from .bridge_rdflib import *
 from .bridge_rdflib import term_list, _term_list
 from .abc_machine import fact
+from ..shared import _pretty
 
 class _NotBoundVar(KeyError):
     ...
@@ -460,18 +461,3 @@ class retract_object_function:
 
     def __repr__(self) -> str:
         return "Retract(%s)" % self.atom
-
-def _pretty(t: Union[TRANSLATEABLE_TYPES, abc_external, Variable]) -> str:
-    """Prints a representation of given input for representation of facts"""
-    if isinstance(t, Literal):
-        return repr(t)
-    elif isinstance(t, Variable):
-        return "?%s" % t
-    elif isinstance(t, URIRef):
-        return "<%s>" % t
-    elif isinstance(t, BNode):
-        return "_:%s" % t
-    else:
-        return repr(t)
-
-

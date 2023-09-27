@@ -1,7 +1,7 @@
 """Provides multiple shared methods between different parts of this package.
 """
 import typing as typ
-from typing import Iterable, List, Union
+from typing import Iterable, List, Union, Any
 import rdflib
 import pyparsing.results
 
@@ -10,9 +10,7 @@ focke = rdflib.Namespace("http://example.com/internaldata#")
 RIF = rdflib.Namespace("http://www.w3.org/2007/rif#")
 act = rdflib.Namespace("http://www.w3.org/2007/rif-builtin-action#")
 from .namespaces import func, pred, rif2internal, entailment
-from rdflib import XSD
-from rdflib import RDF
-from rdflib import OWL
+from rdflib import XSD, RDF, OWL, RDFS, Variable, BNode, URIRef, Literal
 
 import pyparsing as pp
 bnode = pp.Combine(pp.Suppress("_:") + pp.Regex('[^<>"{}|^`\\\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0A\x0B\x0C\x0D\x0E\x0F\x10\x11\x12\x13\x14\x15\x16\x17\x18\x19\x1A\x1B\x1C\x1D\x1E\x1F\x20]*'))
@@ -30,6 +28,7 @@ myRDFLiteral.add_parse_action(_compile_RDFLiteral)
 list_parser = pp.Forward()
 rdf_identifier = list_parser | iri | myRDFLiteral | bnode
 
+from .prettyprint import _pretty
 from rdflib import BNode, Literal, URIRef
 list_parser <<= pp.Suppress("{") + pp.ZeroOrMore(rdf_identifier) + pp.Suppress("}")
 

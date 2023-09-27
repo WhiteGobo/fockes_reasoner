@@ -25,6 +25,7 @@ from . import special_externals
 #from .machine_facts import frame, member, subclass, fact
 
 from . import default_externals as def_ext
+from .owl_facts import rdfs_subclass
 
 BINDING_DESCRIPTION = Mapping[tuple[bool], Callable]
 """Maps a tuple representing the position of unbound variables to a generator
@@ -72,6 +73,11 @@ class _pattern(abc_pattern):
 
     def __repr__(self) -> str:
         return "f(%s): %s" % (self.factname, self.pattern)
+
+    @classmethod
+    def from_fact(cls, factid: str, myfact, name: str) -> "_pattern":
+        d = {FACTTYPE: factid, **myfact}
+        return cls(d, name)
 
     def generate_rls(self,
                      bindings: MutableMapping[Variable, VARIABLE_LOCATOR],
@@ -347,7 +353,7 @@ class _base_durable_machine(abc_machine.machine):
                 except StopIteration:
                     return False
             else:
-                raise NotImplementedError()
+                raise NotImplementedError(f)
                 q = self._create_assignment_from_external(f.op, f.args)
                 if not _resolve(q, bindings):
                     return False
@@ -544,19 +550,46 @@ class _base_durable_machine(abc_machine.machine):
 
 class OWLmachine(_base_durable_machine):
     """Implements owl functionality"""
+    _registered_facttypes: Mapping[type[fact], str]\
+            = {**_base_durable_machine._registered_facttypes,
+               **{rdfs_subclass: rdfs_subclass.ID}}
+    _fact_generator_from_id: Mapping[str, type[fact]]\
+            = {**_base_durable_machine._fact_generator_from_id,
+               **{rdfs_subclass.ID: rdfs_subclass}}
+
     def __init__(self, loggername: str = __name__) -> None:
         super().__init__(loggername)
         self.__inconsistency_rules()
+        self.__rdfs_subclass_rule()
+
+    def __rdfs_subclass_rule(self) -> None:
+        sub_type = Variable("sub")
+        super_type = Variable("super")
+        inst = Variable("inst")
+        desc_subclass = _pattern.from_fact(
+                self._registered_facttypes[rdfs_subclass],
+                rdfs_subclass(sub_type, super_type),
+                "DescriptionSubclass")
+        desc_objMember = _pattern.from_fact(
+                self._registered_facttypes[frame],
+                frame(inst, RDF.type, sub_type),
+                "ObjMember")
+        newObjMember = frame(inst, RDF.type, super_type)
+        def assert_membership(bindings: BINDING) -> None:
+            try:
+                self.assert_fact(newObjMember, bindings)
+            except durable.engine.MessageObservedException:
+                pass
+        self._make_rule([desc_subclass, desc_objMember], assert_membership)
 
     def __inconsistency_rules(self) -> None:
         x = Variable("x")
         described_property = Variable("descprop")
         value = Variable("value")
-        desc_findObjectProperty = _pattern({
-            FACTTYPE: member.ID,
-            member.INSTANCE: described_property,
-            member.CLASS: OWL.ObjectProperty,
-            }, "findObjectProperty")
+        desc_findObjectProperty = _pattern.from_fact(
+                self._registered_facttypes[frame],
+                frame(described_property, RDF.type, OWL.ObjectProperty),
+                "findObjectProperty")
         desc_valueToProperty = _pattern({
             FACTTYPE: frame.ID,
             frame.FRAME_OBJ: x,
