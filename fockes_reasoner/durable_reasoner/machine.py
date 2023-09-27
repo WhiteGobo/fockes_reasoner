@@ -353,7 +353,6 @@ class _base_durable_machine(abc_machine.machine):
                 except StopIteration:
                     return False
             else:
-                raise NotImplementedError(f)
                 q = self._create_assignment_from_external(f.op, f.args)
                 if not _resolve(q, bindings):
                     return False
