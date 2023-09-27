@@ -409,7 +409,6 @@ tmp = files(Core_Safeness_3)
     pytest.param(PET_Guards_and_subtypes, id="guards and subtypes"),
     pytest.param(PET_IRI_from_RDF_Literal, id="IRI_from_RDF_Literal"),
     pytest.param(PET_Modeling_Brain_Anatomy,
-                 marks=mark.skip("No owl implemented yet."),
                  id="PET_Modeling_Brain_Anatomy"),
     pytest.param(PET_OWL_Combination_Vocabulary_Separation_Inconsistency_1,
                  marks=mark.skip("not knowledgable enough to understand, why "

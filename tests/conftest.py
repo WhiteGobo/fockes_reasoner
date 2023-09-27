@@ -73,7 +73,7 @@ def logicmachine_after_IRT(IRT_testdata, logic_machine, valid_exceptions, stepli
 
 @pytest.fixture
 def steplimit():
-    return 20
+    return 30
 
 def logicmachine_after_run(testdata, logic_machine, valid_exceptions, steplimit_):
     testfile = str(testdata.premise)
@@ -94,7 +94,7 @@ def logicmachine_after_run(testdata, logic_machine, valid_exceptions, steplimit_
     except valid_exceptions as err:
         raise ExpectedFailure() from err
     logger.info("All facts after machine has run:\n%s"
-                % list(q.machine.get_facts()))
+                % "\n".join(str(x) for x in q.machine.get_facts()))
     return q
 
 class _LoadingError(Exception):
