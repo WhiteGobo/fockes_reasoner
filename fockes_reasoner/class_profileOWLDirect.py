@@ -22,9 +22,9 @@ class profileOWLDirect(importProfile):
         location: Union[str, IdentifiedNode]
         def __call__(self, bindings: Any) -> None:
             infograph = self.machine.load_external_resource(self.location)
-            ontology_id, = infograph.subjects(RDF.type, OWL.Ontology)
-            infograph.remove((ontology_id, RDF.type, OWL.Ontology))
-            logger.debug("read owl information:\n%s" % infograph.serialize())
+            self.extract_annotations(infograph)
+            logger.debug("read owl information without annotations:\n%s"
+                         % infograph.serialize())
             constructs = self.load_constructs(infograph)
             mylists = self.extract_lists(infograph)
             self.load_ObjectProperties(infograph)
@@ -36,6 +36,15 @@ class profileOWLDirect(importProfile):
                 logger.warning("Didnt convert all information from owl "
                                "ontology:\n%s" % infograph.serialize())
             self.load_frames(infograph)
+
+        def extract_annotations(self, infograph: Graph) -> None:
+            ontology_id, = infograph.subjects(RDF.type, OWL.Ontology)
+            infograph.remove((ontology_id, RDF.type, OWL.Ontology))
+            for annotation_type in [OWL.OntologyProperty]:
+                for pred in infograph.subjects(RDF.type, annotation_type):
+                    infograph.remove((pred, RDF.type, annotation_type))
+                    for subj, obj in infograph.subject_objects(pred):
+                        infograph.remove((subj, pred, obj))
 
         def load_frames(self, infograph: Graph) -> None:
             for subj, pred, obj in infograph:
