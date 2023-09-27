@@ -443,7 +443,6 @@ def PET_testdata(request):
     param(NET_NestedListsAreNotFlatLists,
           id="NET NestedListsAreNotFlatLists"),
     param(NET_Non_Annotation_Entailment,
-          marks=mark.skip("Owl not yet implemented"),
           id="NET_Non_Annotation_Entailment"),
     param(NET_RDF_Combination_SubClass,
           id="NET_RDF_Combination_SubClass"),
