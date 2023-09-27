@@ -411,8 +411,7 @@ tmp = files(Core_Safeness_3)
     pytest.param(PET_Modeling_Brain_Anatomy,
                  id="PET_Modeling_Brain_Anatomy"),
     pytest.param(PET_OWL_Combination_Vocabulary_Separation_Inconsistency_1,
-                 marks=mark.skip("not knowledgable enough to understand, why "
-                                 "incosistency is the result"),
+                 marks=mark.skip("no incosistency rule yet"),
                  id="PET_OWL_Comb Vocabulary_Separation_Inconsistency_1"),
     pytest.param(PET_OWL_Combination_Vocabulary_Separation_Inconsistency_2,
                  id="PET_OWL_Comb Vocabulary_Separation_Inconsistency_2"),

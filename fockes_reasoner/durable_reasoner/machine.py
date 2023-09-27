@@ -606,6 +606,7 @@ class OWLmachine(_base_durable_machine):
         self._make_rule([desc_findObjectProperty, desc_valueToProperty],
                         evaluate_inconsistency)
 
+
 class RDFSmachine(_base_durable_machine):
     """Implements translation of as in RDF specified syntax for the machine
     """
