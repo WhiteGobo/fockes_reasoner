@@ -829,6 +829,7 @@ class durable_rule(abc_machine.implication, abc_machine.rule):
             elif isinstance(act, fact):
                 actions_.append(act)
             else:
+                act.__call__
                 actions_.append(act)
         if conditions:
             return [self._conditional_action(actions_, self.machine.logger,
