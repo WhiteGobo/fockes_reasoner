@@ -1,0 +1,40 @@
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rif: <http://www.w3.org/2007/rif#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+[] a rif:Document ;
+    rif:payload [ a rif:Group ;
+            rif:sentences ( [ a rif:Forall ;
+                        rif:formula [ a rif:Implies ;
+                                rif:if [ a rif:Frame ;
+                                        rif:object [ a rif:Var ;
+                                                rif:varname "X" ] ;
+                                        rif:slots ( [ a rif:Slot ;
+                                                    rif:slotkey [ a rif:Const ;
+                                                            rif:constIRI "http://example.org/example#status"^^xsd:anyURI ] ;
+                                                    rif:slotvalue [ a rif:Const ;
+                                                            rif:value "gold"^^xsd:string ] ] ) ] ;
+                                rif:then [ a rif:Do ;
+                                        rif:actions ( [ a rif:Assert ;
+                                                    rif:target [ a rif:Frame ;
+                                                            rif:object [ a rif:Var ;
+                                                                    rif:varname "X" ] ;
+                                                            rif:slots ( [ a rif:Slot ;
+                                                                        rif:slotkey [ a rif:Const ;
+                                                                                rif:constIRI "http://example.org/example#discount"^^xsd:anyURI ] ;
+                                                                        rif:slotvalue [ a rif:Const ;
+                                                                                rif:value "10"^^xsd:string ] ] ) ] ] [ a rif:Execute ;
+                                                    rif:target [ a rif:Atom ;
+                                                            rif:args ( [ a rif:Const ;
+                                                                        rif:value "Hello World"^^xsd:string ] ) ;
+                                                            rif:op [ a rif:Const ;
+                                                                    rif:constIRI "http://www.w3.org/2007/rif-builtin-action#print"^^xsd:anyURI ] ] ] ) ] ] ;
+                        rif:vars ( [ a rif:Var ;
+                                    rif:varname "X" ] ) ] [ a rif:Frame ;
+                        rif:object [ a rif:Const ;
+                                rif:constIRI "http://example.org/example#John"^^xsd:anyURI ] ;
+                        rif:slots ( [ a rif:Slot ;
+                                    rif:slotkey [ a rif:Const ;
+                                            rif:constIRI "http://example.org/example#status"^^xsd:anyURI ] ;
+                                    rif:slotvalue [ a rif:Const ;
+                                            rif:value "gold"^^xsd:string ] ] ) ] ) ] .

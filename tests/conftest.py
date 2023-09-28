@@ -75,13 +75,19 @@ def logicmachine_after_IRT(IRT_testdata, logic_machine, valid_exceptions, stepli
 def steplimit():
     return 30
 
+def _load_graph(testfile):
+    for f in ["rif", None, "rifps"]:
+        try:
+            return rdflib.Graph().parse(testfile, format=f)
+        except Exception: #rdflib.plugin.PluginException:
+            pass
+    pytest.skip("Need rdflib parser plugin to load RIF-file")
+
+
 def logicmachine_after_run(testdata, logic_machine, valid_exceptions, steplimit_):
     testfile = str(testdata.premise)
     logger.debug("Premise: %s" % testdata)
-    try:
-        g = rdflib.Graph().parse(testfile, format="rif")
-    except rdflib.plugin.PluginException:
-        pytest.skip("Need rdflib parser plugin to load RIF-file")
+    g = _load_graph(testfile)
     #logger.debug("premise in ttl:\n%s" % g.serialize())
 
     extra_documents = {uri: _import_graph(filepath)

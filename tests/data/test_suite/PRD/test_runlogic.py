@@ -4,13 +4,19 @@ from importlib.resources import files
 
 from ...blueprints_tests import blueprint_test_logicmachine
 from ....class_officialTestCases import PositiveEntailmentTest, NegativeEntailmentTest, ImportRejectionTest, PositiveSyntaxTest, NegativeSyntaxTest
-from .PositiveEntailmentTest import Assert, AssertRetract, AssertRetract2, Modify, Modify_loop
+from .PositiveEntailmentTest import Assert,Assert2, AssertRetract, AssertRetract2, Modify, Modify_loop
 from fockes_reasoner import PRD_logicMachine, AlgorithmRejection
 
 tmp = files(Assert)
 PET_Assert = PositiveEntailmentTest(
         tmp.joinpath("Assert-premise.rif"),
         tmp.joinpath("Assert-conclusion.rif"),
+        )
+
+tmp = files(Assert2)
+PET_Assert2 = PositiveEntailmentTest(
+        tmp.joinpath("Assert2-premise.ttl"),
+        tmp.joinpath("Assert2-conclusion.rif"),
         )
 
 tmp = files(AssertRetract)
@@ -55,6 +61,8 @@ NET_RDF_Combination_SubClass_5 = NegativeEntailmentTest(
 @pytest.fixture(params=[
     pytest.param(PET_Assert,
                  id="Assert"),
+    pytest.param(PET_Assert2,
+                 id="Assert2_with_executeprint"),
     pytest.param(PET_AssertRetract,
                  marks=mark.skip("implies not frame is not implemented."),
                  id="PET AssertRetract"),
