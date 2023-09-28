@@ -21,7 +21,6 @@ from fockes_reasoner.rif_dataobjects import (rif_forall,
                                              rif_exists,
                                              )
 import fockes_reasoner
-from fockes_reasoner.class_rdfmodel import rdfmodel
 
 
 from .data.test_suite import PET_Assert
@@ -41,6 +40,7 @@ def _import_graph(filepath) -> rdflib.Graph:
 
 def test_simpletestrun():
     """Small testrun for the machine and a simple task"""
+    pytest.skip("removed model")
     testfile = str(PET_Assert.premise)
     conclusionfile = str(PET_Assert.conclusion)
     try:
