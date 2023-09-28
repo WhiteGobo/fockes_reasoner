@@ -52,6 +52,17 @@ class external(abc_external):
         return "external %s(%s)" % (self.op,
                                     ", ".join(_pretty(x) for x in self.args))
 
+class executable(external):
+    def __init__(self, op: URIRef,
+                 args: Iterable[Union[TRANSLATEABLE_TYPES, "external", Variable]],
+                 machine: abc_machine.machine,
+                 ) -> None:
+        super().__init__(op, args)
+        self.machine = machine
+
+    def __call__(self, bindings: BINDING) -> None:
+        raise NotImplementedError()
+
 class machine_or(external):
     op: URIRef
     args: Iterable[Union[TRANSLATEABLE_TYPES, "external", Variable]]

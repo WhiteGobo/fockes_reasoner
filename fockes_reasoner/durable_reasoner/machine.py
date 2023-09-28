@@ -465,6 +465,15 @@ class _base_durable_machine(abc_machine.machine):
     def create_implication_builder(self) -> "durable_rule":
         return durable_rule(self)
 
+    def _create_executable_from_external(
+            self,
+            op: IdentifiedNode,
+            args: ATOM_ARGS,
+            ) -> Iterable[Tuple[Iterable[_pattern],
+                                Iterable[Callable[[BINDING], Literal]],
+                                Iterable[Variable]]]:
+        raise NotImplementedError()
+
     def _create_pattern_from_external(
             self,
             op: IdentifiedNode,
@@ -642,7 +651,7 @@ class durable_rule(abc_machine.implication, abc_machine.rule):
     bindings: MutableMapping[Variable, VARIABLE_LOCATOR]
     machine: _base_durable_machine
     conditions: list[Callable[[BINDING], Literal]]
-    action: Optional[Callable[[BINDING], None]] = None
+    actions: Iterable[Callable[[BINDING], None]]
     needed_variables: Iterable[Variable]
     finalized: bool = False
     _orig_pattern: list[Any]
@@ -650,7 +659,7 @@ class durable_rule(abc_machine.implication, abc_machine.rule):
     def __init__(self, machine: _base_durable_machine):
         self.machine = machine
         self.patterns = [getattr(rls.m, MACHINESTATE) == RUNNING_STATE]
-        #self.action = None
+        self.actions = []
         self.conditions = []
         #self.finalized = False
         self.bindings = {}
@@ -708,7 +717,7 @@ class durable_rule(abc_machine.implication, abc_machine.rule):
 
     @dataclass
     class _conditional_action:
-        action: Callable[[BINDING], None]
+        actions: Iterable[Callable[[BINDING], None]]
         logger: logging.Logger
         conditions: Iterable[Callable[[BINDING], Literal]]
         def __call__(self, bindings: BINDING) -> None:
@@ -725,24 +734,26 @@ class durable_rule(abc_machine.implication, abc_machine.rule):
                                  % (cond, bindings,
                                     traceback.format_exc()))
                     raise FailedInternalAction() from err
-            if self.action is None:
-                raise RuleNotComplete("action is missing")
-            try:
-                self.action(bindings)
-            except Exception as err:
-                self.logger.info("Failed at action %r with bindings %s.\n"
-                                 "Produced traceback:\n%s"
-                                 % (self.action, bindings,
-                                    traceback.format_exc()))
-                raise FailedInternalAction() from err
+            #if self.actions is None:
+            #    raise RuleNotComplete("action is missing")
+            for act in self.actions:
+                try:
+                    act(bindings)
+                except Exception as err:
+                    self.logger.info("Failed at action %r with bindings %s.\n"
+                                     "Produced traceback:\n%s"
+                                     % (self.act, bindings,
+                                        traceback.format_exc()))
+                    raise FailedInternalAction() from err
 
     @dataclass
     class _simple_action:
-        action: Callable[[BINDING], None]
+        actions: Iterable[Callable[[BINDING], None]]
         logger: logging.Logger
         def __call__(self, bindings: BINDING) -> None:
             self.logger.debug("execute %s" % self)
-            self.action(bindings)
+            for act in self.actions:
+                act(bindings)
 
     def _generate_action_prerequisites(
             self,
@@ -816,18 +827,24 @@ class durable_rule(abc_machine.implication, abc_machine.rule):
     def _generate_action(
             self,
             conditions: Iterable[Callable[[BINDING], Literal]],
-            action: Callable[[BINDING], None],
+            actions: Iterable[Union[Callable[[BINDING], None], external]],
             ) -> Callable[[BINDING], None]:
+        actions_ = []
+        for act in actions:
+            if isinstance(act, external):
+                raise NotImplementedError()
+            else:
+                actions_.append(act)
         if conditions:
-            return self._conditional_action(action, self.machine.logger,
+            return self._conditional_action(actions_, self.machine.logger,
                                             conditions)
         else:
-            return self._simple_action(action, self.machine.logger)
+            return self._simple_action(actions_, self.machine.logger)
 
     def finalize(self) -> None:
         if self.finalized:
             raise Exception()
-        if self.action is None:
+        if not self.actions:
             raise Exception()
         self.finalized = True
         logger.debug("Create rule %s" % self)
@@ -837,12 +854,12 @@ class durable_rule(abc_machine.implication, abc_machine.rule):
                 notbound = [x for x in self.needed_variables
                             if x not in bound_variables]
                 raise VariableNotBoundError(notbound)
-            action = self._generate_action(conditions, self.action)
+            action = self._generate_action(conditions, self.actions)
             self.machine._make_rule(patterns, action)
 
     def set_action(self, action: Callable[[BINDING], None],
                    needed_variables: Iterable[Variable]) -> None:
-        self.action = action
+        self.actions.append(action)
         self.needed_variables = list(needed_variables)
 
     def _process_external_as_pattern(
@@ -922,7 +939,7 @@ class durable_rule(abc_machine.implication, abc_machine.rule):
         return pattern_part
 
     def __repr__(self) -> str:
-        return f"rule: {self._orig_pattern}-> {self.action}"
+        return f"rule: {self._orig_pattern}-> {self.actions}"
 
 
 class _value_locator:

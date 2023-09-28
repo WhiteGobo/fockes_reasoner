@@ -4,7 +4,7 @@ logger = logging.getLogger(__name__)
 import uuid
 import itertools as it
 from .durable_reasoner import machine_facts, fact, NoPossibleExternal, _resolve, ATOM_ARGS, term_list, machine_list, pattern_generator, rule, machine_or, machine_and
-from .durable_reasoner.machine_facts import external, TRANSLATEABLE_TYPES
+from .durable_reasoner.machine_facts import external, TRANSLATEABLE_TYPES, executable
 import rdflib
 from rdflib import IdentifiedNode, Graph, Variable, Literal, URIRef, BNode
 import typing as typ
@@ -1123,7 +1123,8 @@ class rif_execute(_action_gen):
     def generate_action(self,
                         machine: durable_reasoner.machine,
                         ) -> Tuple[Callable[..., None], Iterable[Variable]]:
-        raise NotImplementedError()
+        return executable(self.target.op, self.target.args, machine),\
+                self.target.used_variables
 
     @classmethod
     def from_rdf(cls, infograph: rdflib.Graph,
