@@ -649,7 +649,7 @@ class rif_do(_action_gen):
                                            cls._do_action_generator)
             except KeyError as err:
                 raise ValueError("Cant generate target for %s." % cls) from err
-            assert isinstance(next_target, (rif_assert, rif_retract, rif_modify)), "got unexpected rif object. Invalid RIF document?"
+            assert isinstance(next_target, (rif_assert, rif_retract, rif_modify, rif_execute)), "got unexpected rif object. Invalid RIF document?"
             actions.append(next_target)
         return cls(actions)
 
@@ -1020,6 +1020,7 @@ class rif_modify(_action_gen):
 
 class rif_assert(_action_gen):
     fact: Union[rif_frame]
+    _fact_generator: Mapping[IdentifiedNode, Callable[[Graph, IdentifiedNode], ATOM]]
     def __init__(self, fact: Union[rif_frame]):
         self.fact = fact
 
@@ -1114,13 +1115,10 @@ class rif_list(_resolvable_gen):
         return machine_list(items)
 
 class rif_execute(_action_gen):
-    op: IdentifiedNode
-    args: Iterable[RIF_ATOM]
-    _op_generator: Mapping[IdentifiedNode, Callable[[Graph, IdentifiedNode], ATOM]]
-    _args_generator: Mapping[IdentifiedNode, Callable[[Graph, IdentifiedNode], ATOM]]
-    def __init__(self, op: IdentifiedNode, args: Iterable[RIF_ATOM]):
-        self.op = op
-        self.args = list(args)
+    target: rif_atom
+    _target_generator: Mapping[IdentifiedNode, Callable[[Graph, IdentifiedNode], ATOM]]
+    def __init__(self, target: rif_atom):
+        self.target = target
 
     def generate_action(self,
                         machine: durable_reasoner.machine,
@@ -1132,26 +1130,12 @@ class rif_execute(_action_gen):
                  rootnode: rdflib.IdentifiedNode,
                  extraDocuments: Mapping[IdentifiedNode, Graph] = {},
                  **kwargs: Any) -> "rif_execute":
-        op_node = infograph.value(rootnode, RIF.op)
-        assert isinstance(op_node, IdentifiedNode)
+        target: rdflib.IdentifiedNode = infograph.value(rootnode, RIF.target) #type: ignore[assignment]
         try:
-            op = _generate_object(infograph, op_node, cls._op_generator)
+            fact = _generate_object(infograph, target, cls._target_generator)
         except KeyError as err:
-            raise ValueError("Cant generate 'op' for %s." % cls) from err
-        assert isinstance(op, IdentifiedNode)
-        args = []
-        arg_list_node = infograph.value(rootnode, RIF.args)
-        if arg_list_node is not None:
-            arg_list = rdflib.collection.Collection(infograph, arg_list_node)
-            for x in arg_list:
-                assert isinstance(x, IdentifiedNode)
-                try:
-                    args.append(_generate_object(infograph, x,
-                                             cls._args_generator))
-                except KeyError as err:
-                    raise ValueError("Cant generate 'args' for %s."
-                                     % cls) from err
-        return cls(op, args)
+            raise ValueError("Cant generate 'fact' for %s." % cls) from err
+        return cls(fact, **kwargs)
 
 
 rif_implies._if_generators = {
@@ -1221,7 +1205,7 @@ rif_do._do_action_generator = {
         RIF.Atom: rif_atom.from_rdf,
         RIF.Member: rif_member.from_rdf,
         RIF.Subclass: rif_subclass.from_rdf,
-        #RIF.Execute: rif_execute.from_rdf,
+        RIF.Execute: rif_execute.from_rdf,
         }
 
 rif_assert._target_generator = {
@@ -1243,6 +1227,9 @@ rif_modify._target_generator = {
         RIF.Atom: rif_atom.from_rdf,
         RIF.Member: rif_member.from_rdf,
         RIF.Subclass: rif_subclass.from_rdf,
+        }
+rif_execute._target_generator = {
+        RIF.Atom: rif_atom.from_rdf,
         }
 
 
