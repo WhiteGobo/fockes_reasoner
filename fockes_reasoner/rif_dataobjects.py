@@ -930,12 +930,10 @@ class rif_retract(_action_gen):
     @classmethod
     def from_rdf(cls, infograph: rdflib.Graph,
                  rootnode: rdflib.IdentifiedNode,
-                 **kwargs: typ.Any) -> "rif_retract":
-        from .class_rdfmodel import rdfmodel
-        model = rdfmodel()
-        target_node: rdflib.IdentifiedNode = infograph.value(rootnode, RIF.target) #type: ignore[assignment]
-        target = model.generate_object(infograph, target_node)
-        return cls(target)
+                 **kwargs: typ.Any) -> "rif_modify":
+        target: rdflib.IdentifiedNode = infograph.value(rootnode, RIF.target) #type: ignore[assignment]
+        fact = _generate_object(infograph, target, cls._target_generator)
+        return cls(fact, **kwargs)
 
 
 class rif_ineg(_rif_check):
@@ -980,12 +978,8 @@ class rif_modify(_action_gen):
     def from_rdf(cls, infograph: rdflib.Graph,
                  rootnode: rdflib.IdentifiedNode,
                  **kwargs: typ.Any) -> "rif_modify":
-        from .class_rdfmodel import rdfmodel
-        model = rdfmodel()
         target: rdflib.IdentifiedNode = infograph.value(rootnode, RIF.target) #type: ignore[assignment]
-        target_type = infograph.value(target, RDF.type)
-        fact = model.generate_object(infograph, target)
-        assert isinstance(fact, rif_frame)
+        fact = _generate_object(infograph, target, cls._target_generator)
         return cls(fact, **kwargs)
 
     def __repr__(self) -> str:
@@ -1008,15 +1002,7 @@ class rif_assert(_action_gen):
                  rootnode: rdflib.IdentifiedNode,
                  **kwargs: typ.Any) -> "rif_assert":
         target: rdflib.IdentifiedNode = infograph.value(rootnode, RIF.target) #type: ignore[assignment]
-        target_type = infograph.value(target, RDF.type)
-        if target_type == RIF.Frame:
-            fact = rif_frame.from_rdf(infograph, target)
-        elif target_type == RIF.Member:
-            raise NotImplementedError()
-        elif target_type == RIF.Subclass:
-            raise NotImplementedError()
-        else:
-            raise NotImplementedError(target_type)
+        fact = _generate_object(infograph, target, cls._target_generator)
         return cls(fact, **kwargs)
 
     def __repr__(self) -> str:
@@ -1161,6 +1147,27 @@ rif_do._do_action_generator = {
         RIF.Member: rif_member.from_rdf,
         RIF.Subclass: rif_subclass.from_rdf,
         #RIF.Execute: rif_execute.from_rdf,
+        }
+
+rif_assert._target_generator = {
+        RIF.Frame: rif_frame.from_rdf,
+        RIF.Atom: rif_atom.from_rdf,
+        RIF.Member: rif_member.from_rdf,
+        RIF.Subclass: rif_subclass.from_rdf,
+        }
+rif_retract._target_generator = {
+        RIF.Frame: rif_frame.from_rdf,
+        RIF.Atom: rif_atom.from_rdf,
+        RIF.Member: rif_member.from_rdf,
+        RIF.Subclass: rif_subclass.from_rdf,
+        RIF.Const: slot2node,
+        RIF.Var: slot2node,
+        }
+rif_modify._target_generator = {
+        RIF.Frame: rif_frame.from_rdf,
+        RIF.Atom: rif_atom.from_rdf,
+        RIF.Member: rif_member.from_rdf,
+        RIF.Subclass: rif_subclass.from_rdf,
         }
 
 
