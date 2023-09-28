@@ -603,6 +603,7 @@ class rif_or(_rif_formula):
 
 class rif_do(_action_gen):
     target: List[Union["rif_assert", "rif_retract", "rif_modify"]]
+    _do_action_generator: Mapping[IdentifiedNode, Callable[[Graph, IdentifiedNode], ATOM]]
     def __init__(self, actions: Iterable[Union["rif_assert", "rif_retract", "rif_modify"]]):
         self.actions = list(actions)
 
@@ -629,8 +630,6 @@ class rif_do(_action_gen):
     def from_rdf(cls, infograph: rdflib.Graph,
                  rootnode: IdentifiedNode,
                  ) -> "rif_do":
-        from .class_rdfmodel import rdfmodel
-        model = rdfmodel()
         try:
             target_list_node, = infograph.objects(rootnode, RIF.actions)
         except ValueError as err:
@@ -638,7 +637,8 @@ class rif_do(_action_gen):
         target_list: Iterable[IdentifiedNode] = rdflib.collection.Collection(infograph, target_list_node) #type: ignore[assignment]
         actions: List[Union[rif_assert, "rif_retract", "rif_modify"]] = []
         for target_node in target_list:
-            next_target = model.generate_object(infograph, target_node)
+            next_target = _generate_object(infograph, target_node,
+                                           cls._do_action_generator)
             assert isinstance(next_target, (rif_assert, rif_retract, rif_modify)), "got unexpected rif object. Invalid RIF document?"
             actions.append(next_target)
         return cls(actions)
@@ -1151,6 +1151,17 @@ rif_list._item_generator = _term_generators
 
 rif_member._instance_generators = _term_generators
 rif_member._class_generators = _term_generators
+
+rif_do._do_action_generator = {
+        RIF.Assert: rif_assert.from_rdf,
+        RIF.Retract: rif_retract.from_rdf,
+        RIF.Modify: rif_modify.from_rdf,
+        RIF.Frame: rif_frame.from_rdf,
+        RIF.Atom: rif_atom.from_rdf,
+        RIF.Member: rif_member.from_rdf,
+        RIF.Subclass: rif_subclass.from_rdf,
+        #RIF.Execute: rif_execute.from_rdf,
+        }
 
 
 def _get_variables(targetlist: Iterable[ATOM]) -> Iterable[Variable]:
