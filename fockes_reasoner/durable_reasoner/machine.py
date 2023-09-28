@@ -748,15 +748,6 @@ class durable_rule(abc_machine.implication, abc_machine.rule):
                                         traceback.format_exc()))
                     raise FailedInternalAction() from err
 
-    @dataclass
-    class _simple_action:
-        actions: Iterable[Callable[[BINDING], None]]
-        logger: logging.Logger
-        def __call__(self, bindings: BINDING) -> None:
-            self.logger.debug("execute %s" % self)
-            for act in self.actions:
-                act(bindings)
-
     def _generate_action_prerequisites(
             self,
             ) -> Iterable[Tuple[Iterable[_pattern],
@@ -830,20 +821,23 @@ class durable_rule(abc_machine.implication, abc_machine.rule):
             self,
             conditions: Iterable[Callable[[BINDING], Literal]],
             actions: Iterable[Union[Callable[[BINDING], None], external]],
-            ) -> Callable[[BINDING], None]:
+            ) -> Iterable[Union[Callable[[BINDING], None], fact]]:
         actions_ = []
         for act in actions:
             if isinstance(act, external):
                 raise NotImplementedError()
+            elif isinstance(act, fact):
+                actions_.append(act)
             else:
                 actions_.append(act)
         if conditions:
-            return self._conditional_action(actions_, self.machine.logger,
-                                            conditions)
+            return [self._conditional_action(actions_, self.machine.logger,
+                                             conditions)]
         else:
-            return self._simple_action(actions_, self.machine.logger)
+            return actions_
 
     def finalize(self) -> None:
+        actions: Iterable[Union[Callable[[BINDING], None], fact]]
         if self.finalized:
             raise Exception()
         if not self.actions:
@@ -856,8 +850,8 @@ class durable_rule(abc_machine.implication, abc_machine.rule):
                 notbound = [x for x in self.needed_variables
                             if x not in bound_variables]
                 raise VariableNotBoundError(notbound)
-            action = self._generate_action(conditions, self.actions)
-            self.machine._make_rule(patterns, [action])
+            actions = self._generate_action(conditions, self.actions)
+            self.machine._make_rule(patterns, actions)
 
     def set_action(self, action: Callable[[BINDING], None],
                    needed_variables: Iterable[Variable]) -> None:
