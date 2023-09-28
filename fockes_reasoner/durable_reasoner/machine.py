@@ -375,8 +375,11 @@ class _base_durable_machine(abc_machine.machine):
             yield self._fact_generator_from_id[fact_id].from_fact(f)
 
     def _make_rule(self, patterns: Iterable[_pattern],
-                  action: Callable,
+                  actions: Iterable[Union[Callable, fact]],
                   error_message: str = "") -> None:
+        assert all(type(f) in self._registered_facttypes
+                   for f in actions
+                   if isinstance(f, fact))
         pats: List[rls.value] = []
         variable_locators: MutableMapping[Variable, VARIABLE_LOCATOR] = {}
         for p in patterns:
@@ -392,17 +395,26 @@ class _base_durable_machine(abc_machine.machine):
                     self.logger.info("failed loading bindings: %s"
                                      % traceback.format_exc())
                     raise FailedInternalAction(error_message) from err
-                try:
-                    with _closure_helper(self, c):
-                        action(bindings)
-                except FailedInternalAction:
-                    raise
-                except Exception as err:
-                    self.logger.info("Failed at action %r with bindings %s. "
-                                     "Produced traceback:\n%s"
-                                     % (action, bindings,
-                                        traceback.format_exc()))
-                    raise FailedInternalAction(error_message) from err
+                with _closure_helper(self, c):
+                    for act in actions:
+                        if isinstance(act, fact):
+                            try:
+                                self.assert_fact(act, bindings)
+                            except durable.engine.MessageObservedException:
+                                pass
+                        else:
+                            try:
+                                act(bindings)
+                            except FailedInternalAction:
+                                raise
+                            except Exception as err:
+                                self.logger.info("Failed at action %r with "
+                                                 "bindings %s. Produced "
+                                                 "traceback:\n%s"
+                                                 % (act, bindings,
+                                                    traceback.format_exc()))
+                                raise FailedInternalAction(error_message)\
+                                        from err
                 self._steps_left = self._steps_left - 1
                 if self._steps_left == 0:
                     c.retract_fact({MACHINESTATE: RUNNING_STATE})
@@ -583,12 +595,7 @@ class OWLmachine(_base_durable_machine):
                 frame(inst, RDF.type, sub_type),
                 "ObjMember")
         newObjMember = frame(inst, RDF.type, super_type)
-        def assert_membership(bindings: BINDING) -> None:
-            try:
-                self.assert_fact(newObjMember, bindings)
-            except durable.engine.MessageObservedException:
-                pass
-        self._make_rule([desc_subclass, desc_objMember], assert_membership)
+        self._make_rule([desc_subclass, desc_objMember], [newObjMember])
 
     def __inconsistency_rules(self) -> None:
         x = Variable("x")
@@ -613,7 +620,7 @@ class OWLmachine(_base_durable_machine):
                 logger.error(err_message)
                 raise FailedInternalAction(err_message)
         self._make_rule([desc_findObjectProperty, desc_valueToProperty],
-                        evaluate_inconsistency)
+                        [evaluate_inconsistency])
 
 
 class RDFSmachine(_base_durable_machine):
@@ -638,12 +645,7 @@ class RDFSmachine(_base_durable_machine):
             member.CLASS: sub_type,
             }, "ObjMember")
         newObjMember = member(inst, super_type)
-        def assert_membership(bindings: BINDING) -> None:
-            try:
-                self.assert_fact(newObjMember, bindings)
-            except durable.engine.MessageObservedException:
-                pass
-        self._make_rule([desc_subclass, desc_objMember], assert_membership)
+        self._make_rule([desc_subclass, desc_objMember], [newObjMember])
 
 
 class durable_rule(abc_machine.implication, abc_machine.rule):
@@ -855,7 +857,7 @@ class durable_rule(abc_machine.implication, abc_machine.rule):
                             if x not in bound_variables]
                 raise VariableNotBoundError(notbound)
             action = self._generate_action(conditions, self.actions)
-            self.machine._make_rule(patterns, action)
+            self.machine._make_rule(patterns, [action])
 
     def set_action(self, action: Callable[[BINDING], None],
                    needed_variables: Iterable[Variable]) -> None:
