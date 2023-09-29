@@ -1,5 +1,5 @@
 import typing as typ
-from typing import Union, Iterator, Iterable, Optional, Mapping
+from typing import Union, Iterator, Iterable, Optional, Mapping, Callable
 from .abc_machine import fact, BINDING, BINDING_WITH_BLANKS, CLOSURE_BINDINGS, VARIABLE_LOCATOR, TRANSLATEABLE_TYPES, ATOM_ARGS, RESOLVABLE, _resolve, abc_external
 from . import abc_machine
 from rdflib import Variable
@@ -19,6 +19,10 @@ class rdfs_subclass(fact):
                  ) -> None:
         self.sub_class = sub_class
         self.super_class = super_class
+
+    def create_fact_generator(cls, machine: "machine",
+                              ) -> Callable[[BINDING], "fact"]:
+        raise NotImplementedError()
 
     def __iter__(self) -> Iterator[str]:
         yield self.SUBCLASS_SUB

@@ -91,6 +91,16 @@ class fact(Mapping[str, Union[TRANSLATEABLE_TYPES, abc_external, Variable]],
     def from_fact(cls, fact: Mapping[str, str]) -> "fact":
         ...
 
+    @abc.abstractmethod
+    def create_fact_generator(self, machine: "machine",
+                              ) -> Callable[[BINDING], "fact"]:
+        ...
+
+    #@property
+    #def has_variable_attributes(self) -> bool:
+    #    return True
+
+
 class abc_action(abc.ABC):
     machine: "machine"
 

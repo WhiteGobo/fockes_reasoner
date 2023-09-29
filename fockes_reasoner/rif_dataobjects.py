@@ -120,7 +120,8 @@ class rif_fact(_rif_check, _action_gen, _rule_gen):
         """
         :TODO: Creation of variable is not safe
         """
-        return action_assert(self._create_facts(), machine)
+        #return action_assert(self._create_facts(), machine)
+        return external(special_externals.assert_fact.op, self._create_facts())
 
     def generate_retract_action(self,
                       machine: durable_reasoner.machine,

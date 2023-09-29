@@ -10,6 +10,7 @@ class action_assert(abc_action):
     machine: machine
     def __init__(self, facts: Iterable[fact], machine: abc_machine.machine,
                  ) -> None:
+        raise Exception()
         self.facts = list(facts)
         self.machine = machine
 

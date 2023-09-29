@@ -95,6 +95,17 @@ class subclass(_dict_fact):
         self.sub_class = sub_class
         self.super_class = super_class
 
+    def create_fact_generator(self, machine: "machine",
+                              ) -> Callable[[BINDING], "fact"]:
+        q = []
+        for x in (self.sub_class, self.super_class):
+            if isinstance(x, external):
+                q.append(machine._create_assignment_from_external(x.op,
+                                                                  x.args))
+            else:
+                q.append(x)
+        return _resolve_fact(type(self), q)
+
     def __iter__(self) -> Iterator[str]:
         yield self.SUBCLASS_SUB
         yield self.SUBCLASS_SUPER
@@ -156,6 +167,18 @@ class frame(fact):
         self.slotkey = slotkey
         self.slotvalue = slotvalue
         self._used_variables = None
+
+
+    def create_fact_generator(self, machine: "machine",
+                              ) -> Callable[[BINDING], fact]:
+        q = []
+        for x in (self.obj, self.slotkey, self.slotvalue):
+            if isinstance(x, external):
+                q.append(machine._create_assignment_from_external(x.op,
+                                                                  x.args))
+            else:
+                q.append(x)
+        return _resolve_fact(type(self), q)
 
     def __iter__(self) -> Iterator[str]:
         yield self.FRAME_OBJ
@@ -223,6 +246,17 @@ class member(_dict_fact):
         self.instance = instance
         self.cls = cls
 
+    def create_fact_generator(self, machine: "machine",
+                              ) -> Callable[[BINDING], "fact"]:
+        q = []
+        for x in (self.instance, self.cls):
+            if isinstance(x, external):
+                q.append(machine._create_assignment_from_external(x.op,
+                                                                  x.args))
+            else:
+                q.append(x)
+        return _resolve_fact(type(self), q)
+
     def __iter__(self) -> Iterator[str]:
         yield self.INSTANCE
         yield self.CLASS
@@ -279,6 +313,19 @@ class atom(fact):
                  ) -> None:
         self.op = op
         self.args = tuple(args)
+
+    def create_fact_generator(self, machine: "machine",
+                              ) -> Callable[[BINDING], "fact"]:
+        if isinstance(self.op, external):
+            op = machine._create_assignment_from_external(self.op.op,
+                                                              self.op.args)
+        else:
+            op = self.op
+        args = [machine._create_assignment_from_external(x.op, x.args)
+                if isinstance(x, external) else x
+                for x in self.args
+                ]
+        return _resolve_fact(type(self), (op, args))
 
     def __iter__(self) -> Iterator[str]:
         yield self.ATOM_OP
@@ -375,6 +422,12 @@ def _node2string(x: Union[TRANSLATEABLE_TYPES, Variable, str, abc_external],
         return rdflib2string(newnode)
     elif isinstance(x, str):
         return x
-    else:
-        raise NotImplementedError(type(x))
+    return rdflib2string(x(bindings))
 
+@dataclass
+class _resolve_fact:
+    facttype: type[fact]
+    args: Iterable[RESOLVABLE]
+    def __call__(self, bindings: BINDING) -> fact:
+        args_ = [_resolve(x, bindings) for x in self.args]
+        return self.facttype(*args_)

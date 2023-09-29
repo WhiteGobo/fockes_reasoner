@@ -3,7 +3,7 @@ from dataclasses import dataclass, field
 from .bridge_rdflib import term_list, _term_list
 from collections.abc import Iterable, Mapping, Callable
 from rdflib import Variable, URIRef, Literal, IdentifiedNode
-from .abc_machine import abc_external, TRANSLATEABLE_TYPES, RESOLVABLE, BINDING, _resolve
+from .abc_machine import abc_external, TRANSLATEABLE_TYPES, RESOLVABLE, BINDING, _resolve, fact
 from .machine_facts import _node2string
 from . import abc_machine
 from .default_externals import literal_equal
@@ -70,6 +70,26 @@ equality = _special_external(_id("rif equality"),
                              )
 
 @dataclass
+class _assert_fact_function:
+    machine: abc_machine.machine
+    facts: Iterable[Union[fact, Callable[[BINDING], fact]]]
+    def __init__(self, machine:abc_machine.machine,
+                 *facts: Union[fact, Callable[[BINDING], fact]],
+                 ) -> None:
+        self.machine = machine
+        self.facts = facts
+
+    def __call__(self, bindings: BINDING) -> None:
+        for f in self.facts:
+            if isinstance(f, fact):
+                self.machine.assert_fact(f, bindings)
+            else:
+                f_ = f(bindings)
+                self.machine.assert_fact(f_, bindings)
+assert_fact = _special_external(_id("assert_fact"),
+                                 asaction=(_assert_fact_function, False))
+
+@dataclass
 class _retract_object_function:
     machine: abc_machine.machine
     atom: Union[TRANSLATEABLE_TYPES, abc_external, Variable]
@@ -82,7 +102,7 @@ class _retract_object_function:
 
     def __repr__(self) -> str:
         return "Retract(%s)" % self.atom
-retract_object = _special_external(_id("retract"),
+retract_object = _special_external(_id("retract_object"),
                                    asaction=(_retract_object_function, False))
 
 class _do_function:

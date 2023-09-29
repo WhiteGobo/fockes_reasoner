@@ -210,6 +210,9 @@ def _transform_all_externals_to_calls(args: ATOM_ARGS,
         elif isinstance(arg, (Variable, Literal, IdentifiedNode)):
             useable_args.append(arg)
             continue
+        elif isinstance(arg, fact):
+            useable_args.append(arg.create_fact_generator(tmp_machine))
+            continue
         try:
             t_arg = arg#type: ignore[assignment]
             assert rdflib2string(t_arg)
@@ -218,7 +221,7 @@ def _transform_all_externals_to_calls(args: ATOM_ARGS,
         except (AssertionError, TypeError):
             pass
 
-        raise NotImplementedError()
+        raise NotImplementedError(arg)
         try:
             e_arg = arg#type: ignore[assignment]
             tmp_assign = tmp_machine._create_assignment_from_external(
@@ -470,11 +473,11 @@ class _base_durable_machine(abc_machine.machine):
 
     def add_init_action(self, action: Callable[[BINDING], None]) -> None:
         q = durable_rule(self)
-        def act(bindings: BINDING) -> None:
-            logger.debug("execute init: %s" % action)
-            action(bindings)
-        q.set_action(act, [])
-        #q.action = action
+        #def act(bindings: BINDING) -> None:
+        #    logger.debug("execute init: %s" % action)
+        #    action(bindings)
+        #q.set_action(act, [])
+        q.set_action(action, [])
         q.finalize()
 
     def create_rule_builder(self) -> "durable_rule":
@@ -773,7 +776,7 @@ class durable_rule(abc_machine.implication, abc_machine.rule):
                 except Exception as err:
                     self.logger.info("Failed at action %r with bindings %s.\n"
                                      "Produced traceback:\n%s"
-                                     % (self.act, bindings,
+                                     % (act, bindings,
                                         traceback.format_exc()))
                     raise FailedInternalAction() from err
 
@@ -859,6 +862,7 @@ class durable_rule(abc_machine.implication, abc_machine.rule):
                 actions_.append(act)
             else:
                 act.__call__
+                #raise Exception(act)
                 actions_.append(act)
         if conditions:
             return [self._conditional_action(actions_, self.machine.logger,
@@ -1019,6 +1023,7 @@ class _machine_default_externals(_base_durable_machine):
         self.register(**special_externals.create_list)
         self.register(**special_externals.retract_object)
         self.register(**special_externals.do)
+        self.register(**special_externals.assert_fact)
         self.register(RIF.Or, asassign=def_ext.rif_or)
         self.register(pred["numeric-equal"],
                       asassign=def_ext.numeric_equal)
