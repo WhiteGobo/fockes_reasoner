@@ -65,13 +65,13 @@ NET_RDF_Combination_SubClass_5 = NegativeEntailmentTest(
                  id="Assert2_with_executeprint"),
     pytest.param(PET_AssertRetract,
                  marks=mark.skip("implies not frame is not implemented."),
-                 id="PET AssertRetract"),
+                 id="PET_AssertRetract"),
     pytest.param(PET_AssertRetract2,
                  id="PET_AssertRetract2"),
     pytest.param(PET_Modify,
                  id="modify"),
     pytest.param(PET_Modify_loop,
-                 id="modify loop"),
+                 id="modify_loop"),
     ])
 def PET_testdata(request):
     return request.param
