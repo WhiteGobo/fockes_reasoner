@@ -34,10 +34,6 @@ class abc_external(abc.ABC):
     op: Any
     args: ATOM_ARGS
 
-    @abc.abstractmethod
-    def as_resolvable(self, machine: "machine") -> RESOLVABLE:
-        ...
-
 def _resolve(x: RESOLVABLE, bindings: BINDING,
              ) -> TRANSLATEABLE_TYPES:
     """Resolve variables and externals
@@ -173,8 +169,12 @@ class machine(abc.ABC):
         ...
 
     @abc.abstractmethod
-    def get_binding_action(self, op: IdentifiedNode, args: Iterable[RESOLVABLE]) -> RESOLVABLE:
-        """Resolve external atoms"""
+    def _create_assignment_from_external(
+            self,
+            op: IdentifiedNode,
+            args: ATOM_ARGS,
+            ) -> ASSIGNMENT:
+        ...
 
     @abc.abstractmethod
     def get_replacement_node(self, op: IdentifiedNode, args: Iterable[RESOLVABLE]) -> TRANSLATEABLE_TYPES:

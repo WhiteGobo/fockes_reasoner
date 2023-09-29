@@ -35,20 +35,6 @@ class external(abc_external):
         self.op = op
         self.args = list(args)
 
-    @dataclass
-    class __resolver:
-        parent: "external"
-        op: URIRef
-        args: Iterable[RESOLVABLE]
-        machine: abc_machine.machine
-        def __call__(self, bindings: BINDING) -> TRANSLATEABLE_TYPES:
-            args = [_resolve(arg, bindings) for arg in self.args]
-            return _resolve(self.machine.get_binding_action(self.op, args), bindings)
-
-    def as_resolvable(self, machine: abc_machine.machine) -> RESOLVABLE:
-        args = [arg.as_resolvable(machine) if isinstance(arg, external) else arg for arg in self.args]
-        return self.__resolver(self, self.op, args, machine)
-
     def __repr__(self) -> str:
         return "external %s(%s)" % (self.op,
                                     ", ".join(_pretty(x) for x in self.args))
@@ -91,19 +77,6 @@ class machine_list(external):
     @property
     def args(self) -> Iterable[Union[TRANSLATEABLE_TYPES, external, Variable]]:
         return self.items
-
-    @dataclass
-    class __resolver:
-        parent: "machine_list"
-        items: Iterable[RESOLVABLE]
-        machine: abc_machine.machine
-        def __call__(self, bindings: BINDING) -> term_list:
-            items = [_resolve(item, bindings) for item in self.items]
-            return _term_list(items)
-
-    def as_resolvable(self, machine: abc_machine.machine) -> RESOLVABLE:
-        items = [item.as_resolvable(machine) if isinstance(item, external) else item for item in self.items]
-        return self.__resolver(self, items, machine)
 
     def __repr__(self) -> str:
         return "m[%s]" % ", ".join(str(x) for x in self.items)
@@ -456,8 +429,8 @@ def _node2string(x: Union[TRANSLATEABLE_TYPES, Variable, str, abc_external],
     elif isinstance(x, external):
         assert None not in bindings.values()
         #cast(BINDING, bindings)
-        newnode = _resolve(x.as_resolvable(machine),
-                           bindings)#type: ignore[arg-type]
+        res = machine._create_assignment_from_external(x.op, x.args)
+        newnode = _resolve(res, bindings)
         return rdflib2string(newnode)
     elif isinstance(x, str):
         return x

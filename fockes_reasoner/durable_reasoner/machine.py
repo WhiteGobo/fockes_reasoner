@@ -318,16 +318,6 @@ class _base_durable_machine(abc_machine.machine):
                              ) -> TRANSLATEABLE_TYPES:
         raise NoPossibleExternal()
 
-    def get_binding_action(self,
-                           op: IdentifiedNode,
-                           args: Iterable[RESOLVABLE],
-                           ) -> RESOLVABLE:
-        try:
-            funcgen = self._registered_assignment_generator[op]
-        except KeyError as err:
-            raise NoPossibleExternal(op) from err
-        return funcgen(*args)
-
     def check_statement(self,
                         statement: Union[Collection[Union[machine_facts.fact, machine_facts.abc_external]], machine_facts.fact, machine_facts.abc_external],
                         bindings: BINDING_WITH_BLANKS = {},
