@@ -122,6 +122,11 @@ class rif_fact(_rif_check, _action_gen, _rule_gen):
         """
         return action_assert(self._create_facts(), machine)
 
+    def generate_retract_action(self,
+                      machine: durable_reasoner.machine,
+                      ) -> action_retract:
+        return action_retract(self._create_facts(), machine)
+
     def create_rules(self, machine: durable_reasoner.machine) -> None:
         """Is called, when frame is direct sub to a Group"""
         action = self.generate_assert_action(machine)
@@ -870,11 +875,6 @@ class rif_frame(rif_fact):
             sk = _try_as_machineterm(slotkey)
             sv = _try_as_machineterm(slotvalue)
             yield machine_facts.frame(obj, sk, sv)
-
-    def generate_retract_action(self,
-                      machine: durable_reasoner.machine,
-                      ) -> action_retract:
-        return action_retract(self._create_facts(), machine)
 
     def __repr__(self) -> str:
         name = type(self).__name__
