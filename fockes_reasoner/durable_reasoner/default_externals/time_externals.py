@@ -11,7 +11,7 @@ from ..bridge_rdflib import term_list, _term_list, TRANSLATEABLE_TYPES
 import datetime
 import isodate
 
-from ..abc_machine import BINDING, RESOLVABLE, _resolve, RESOLVER, abc_pattern, ATOM_ARGS, _assignment
+from ..abc_machine import BINDING, RESOLVABLE, _resolve, RESOLVER, abc_pattern, ATOM_ARGS
 from ...shared import pred, func
 from .shared import is_datatype, invert, assign_rdflib
 from .numeric_externals import literal_equal, pred_less_than, pred_greater_than

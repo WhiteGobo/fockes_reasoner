@@ -54,13 +54,7 @@ class NoPossibleExternal(ValueError):
     """
     ...
 
-class _assignment(abc.ABC):
-    """Class used for externals for use as condition"""
-    binds_variables: Iterable[Variable]
-
-    @abc.abstractmethod
-    def __call__(self, bindings: BINDING) -> Literal:
-        ...
+ASSIGNMENT = Callable[[BINDING], Literal]
 
 
 #class external(abc.ABC):

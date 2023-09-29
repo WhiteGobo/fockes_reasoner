@@ -8,7 +8,7 @@ from dataclasses import dataclass, field
 import math
 from ..bridge_rdflib import term_list, _term_list, TRANSLATEABLE_TYPES
 
-from ..abc_machine import BINDING, RESOLVABLE, _resolve, RESOLVER, abc_pattern, ATOM_ARGS, _assignment
+from ..abc_machine import BINDING, RESOLVABLE, _resolve, RESOLVER, abc_pattern, ATOM_ARGS
 from ...shared import pred, func
 from .numeric_externals import *
 from .list_externals import *
@@ -18,6 +18,7 @@ from .xml_externals import _register_xmlExternals
 from .anyURI_externals import _register_anyURIExternals
 from .string_externals import _register_stringExternals
 from .boolean_externals import _register_booleanExternals
+from .action_externals import _register_actionExternals
 from .shared import invert, assign_rdflib
 
 @dataclass

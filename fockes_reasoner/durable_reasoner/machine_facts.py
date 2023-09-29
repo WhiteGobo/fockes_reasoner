@@ -19,6 +19,7 @@ from .bridge_rdflib import *
 from .bridge_rdflib import term_list, _term_list
 from .abc_machine import fact
 from ..shared import _pretty
+from .special_externals import create_list
 
 class _NotBoundVar(KeyError):
     ...
@@ -82,9 +83,14 @@ class machine_and(external):
 
 
 class machine_list(external):
+    op = create_list.op
     items: Iterable[Union[TRANSLATEABLE_TYPES, external, Variable]]
     def __init__(self, items: Iterable[Union[TRANSLATEABLE_TYPES, external, Variable]]) -> None:
         self.items = list(items)
+
+    @property
+    def args(self) -> Iterable[Union[TRANSLATEABLE_TYPES, external, Variable]]:
+        return self.items
 
     @dataclass
     class __resolver:

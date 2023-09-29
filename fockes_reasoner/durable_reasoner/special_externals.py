@@ -1,7 +1,8 @@
 from typing import Any, Union, Optional
 from dataclasses import dataclass, field
+from .bridge_rdflib import term_list, _term_list
 from collections.abc import Iterable, Mapping, Callable
-from rdflib import Variable, URIRef, Literal
+from rdflib import Variable, URIRef, Literal, IdentifiedNode
 from .abc_machine import abc_external, TRANSLATEABLE_TYPES, RESOLVABLE, BINDING, _resolve
 from . import abc_machine
 from .default_externals import literal_equal
@@ -14,18 +15,19 @@ class _id:
 @dataclass
 class _special_external(Mapping):
     op: _id
+    asaction: Optional[Callable] = field(default=None)
     asassign: Optional[Callable] = field(default=None)
     aspattern: Optional[Callable] = field(default=None)
     asbinding: Optional[Mapping[tuple[bool], Callable]] = field(default=None)
 
     def __iter__(self):
-        for x in ["op", "asassign", "asbinding"]:
+        for x in ["op", "asassign", "asbinding", "asaction"]:
             if getattr(self, x, None) is not None:
                 yield x
 
     def __len__(self) -> int:
         i = 0
-        for x in ["op", "asassign", "asbinding"]:
+        for x in ["op", "asassign", "asbinding", "asaction"]:
             if getattr(self, x, None) is not None:
                 i += 1
         return i
@@ -36,16 +38,31 @@ class _special_external(Mapping):
         except AttributeError as err:
             raise KeyError(key) from err
 
+
 @dataclass
-class bind_first:
+class _create_list:
+    items: Iterable[RESOLVABLE]
+    def __init__(self, *items: Iterable[RESOLVABLE]):
+        self.items = items
+
+    def __call__(self, bindings: BINDING) -> term_list:
+        items = [_resolve(item, bindings) for item in self.items]
+        return _term_list(items)
+create_list = _special_external(_id("create_list"),
+                                asassign=_create_list,
+                                )
+
+
+@dataclass
+class _bind_first:
     left: Variable
     right: RESOLVABLE
 
-    def __call__(self, bindings:BINDING) -> Literal:
+    def __call__(self, bindings: BINDING) -> Literal:
         right = _resolve(self.right, bindings)
         bindings[self.left] = right
         return Literal(True)
 equality = _special_external(_id("rif equality"),
                              asassign=literal_equal,
-                             asbinding={(True, False): bind_first},
+                             asbinding={(True, False): _bind_first},
                              )

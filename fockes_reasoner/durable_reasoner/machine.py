@@ -13,7 +13,7 @@ import itertools as it
 import rdflib
 from rdflib import URIRef, Variable, Literal, BNode, Graph, IdentifiedNode, XSD
 from . import abc_machine
-from .abc_machine import TRANSLATEABLE_TYPES, FACTTYPE, BINDING, BINDING_WITH_BLANKS, VARIABLE_LOCATOR, NoPossibleExternal, importProfile, RESOLVABLE, ATOM_ARGS, abc_external, RESOLVER, RuleNotComplete, pattern_generator, VariableNotBoundError, abc_pattern, _resolve, _assignment
+from .abc_machine import TRANSLATEABLE_TYPES, FACTTYPE, BINDING, BINDING_WITH_BLANKS, VARIABLE_LOCATOR, NoPossibleExternal, importProfile, RESOLVABLE, ATOM_ARGS, abc_external, RESOLVER, RuleNotComplete, pattern_generator, VariableNotBoundError, abc_pattern, _resolve, ASSIGNMENT
 from ..class_profileOWLDirect import profileOWLDirect
 
 from .bridge_rdflib import rdflib2string, string2rdflib, term_list
@@ -203,7 +203,8 @@ def _transform_all_externals_to_calls(args: ATOM_ARGS,
     e_arg: abc_external
     for arg in args:
         if isinstance(arg, abc_external):
-            useable_args.append(arg.as_resolvable(tmp_machine))
+            useable_args.append(tmp_machine._create_assignment_from_external(arg.op,
+                                                                 arg.args))
             continue
         elif isinstance(arg, (Variable, Literal, IdentifiedNode)):
             useable_args.append(arg)
@@ -246,7 +247,7 @@ class _base_durable_machine(abc_machine.machine):
     _registered_action_generator: Dict[IdentifiedNode,
                                        Callable[..., RESOLVABLE]]
     _registered_assignment_generator: Dict[IdentifiedNode,
-                                           Callable[..., _assignment]]
+                                           Callable[..., ASSIGNMENT]]
     _registered_binding_generator: Dict[IdentifiedNode, BINDING_DESCRIPTION]
 
     _imported_locations: Set[Optional[IdentifiedNode]]
@@ -526,9 +527,10 @@ class _base_durable_machine(abc_machine.machine):
         except KeyError as err:
             raise NoPossibleExternal(op) from err
         try:
-            funcgen = binding_map[tuple(isinstance(x, Variable)
-                                        and x not in bound_variables
-                                        for x in args)]
+            _bound_var_positions = tuple(isinstance(x, Variable)
+                                         and x not in bound_variables
+                                         for x in args)
+            funcgen = binding_map[_bound_var_positions]
         except KeyError as err:
             raise NoPossibleExternal(op) from err
         args_: Iterable[RESOLVABLE]\
@@ -541,8 +543,7 @@ class _base_durable_machine(abc_machine.machine):
             self,
             op: IdentifiedNode,
             args: ATOM_ARGS,
-            bound_variables: Container[Variable] = [],
-            ) -> _assignment:
+            ) -> ASSIGNMENT:
         try:
             mygen = self._registered_assignment_generator[op]
         except KeyError as err:
@@ -554,8 +555,8 @@ class _base_durable_machine(abc_machine.machine):
             raise Exception(useable_args) from err
 
     def register(self, op: rdflib.URIRef,
-                 asaction: Optional[Callable] = None,
-                 asassign: Optional[Callable] = None,
+                 asaction: Optional[Callable[[BINDING], None]] = None,
+                 asassign: Optional[Callable[[BINDING], Literal]] = None,
                  aspattern: Optional[PATTERNGENERATOR] = None,
                  asbinding: Optional[BINDING_DESCRIPTION] = None,
                  ) -> None:
@@ -885,7 +886,7 @@ class durable_rule(abc_machine.implication, abc_machine.rule):
             return
         except NoPossibleExternal:
             pass
-        cond = self.machine._create_assignment_from_external(op, args, bound_variables)
+        cond = self.machine._create_assignment_from_external(op, args)
         yield [], [cond], []
 
     @property
@@ -985,7 +986,9 @@ class _machine_default_externals(_base_durable_machine):
         def_ext._register_xmlExternals(self)
         def_ext._register_anyURIExternals(self)
         def_ext._register_booleanExternals(self)
+        def_ext._register_actionExternals(self)
         self.register(**special_externals.equality)
+        self.register(**special_externals.create_list)
         self.register(RIF.Or, asassign=def_ext.rif_or)
         self.register(pred["numeric-equal"],
                       asassign=def_ext.numeric_equal)

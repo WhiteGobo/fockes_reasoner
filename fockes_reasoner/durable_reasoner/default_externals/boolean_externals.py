@@ -10,7 +10,7 @@ from ..bridge_rdflib import term_list, _term_list, TRANSLATEABLE_TYPES
 import re
 from .numeric_externals import numeric_equal, pred_less_than, pred_greater_than
 
-from ..abc_machine import BINDING, RESOLVABLE, _resolve, RESOLVER, abc_pattern, ATOM_ARGS, _assignment
+from ..abc_machine import BINDING, RESOLVABLE, _resolve, RESOLVER, abc_pattern, ATOM_ARGS
 from ...shared import pred, func
 from .shared import is_datatype, invert, assign_rdflib
 import locale
