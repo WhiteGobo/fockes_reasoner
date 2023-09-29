@@ -180,7 +180,8 @@ class _closure_helper(_context_helper):
             return self.c.get_facts() #type: ignore[no-any-return]
         else:
             return (f for f in self.c.get_facts() #type: ignore[no-any-return]
-                    if all(f[key] == val for key, val in fact_filter.items()))
+                    if all(f.get(key) == val
+                           for key, val in fact_filter.items()))
 
     def retract_fact(self, fact: Mapping[str, str]) -> None:
         for f in self.get_facts():
@@ -356,8 +357,22 @@ class _base_durable_machine(abc_machine.machine):
             d[key] = _node2string(x, self, bindings)
         self._current_context.assert_fact(d)
     
-    def retract_fact(self, fact: Mapping[str, str]) -> None:
-        self._current_context.retract_fact(fact)
+    def retract_object(self, obj: IdentifiedNode) -> None:
+        """
+        :TODO: rework this
+        """
+        d = {FACTTYPE: self._registered_facttypes[frame],
+             frame.FRAME_OBJ: obj}
+        for f in self.get_facts(d):
+            self._current_context.retract_fact(f)
+
+    def retract_fact(self, old_fact: abc_machine.fact, bindings: BINDING,
+                     ) -> None:
+        d = {FACTTYPE: self._registered_facttypes[type(old_fact)]}
+        for key, x in old_fact.items():
+            d[key] = _node2string(x, self, bindings)
+        for f in self.get_facts(d):
+            self._current_context.retract_fact(f)
 
     def get_facts(self, fact_filter: Optional[Mapping[str, str]] = None,
             ) -> Iterable[abc_machine.fact]:

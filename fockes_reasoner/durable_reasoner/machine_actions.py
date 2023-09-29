@@ -26,5 +26,4 @@ class action_retract(abc_action):
 
     def __call__(self, bindings: BINDING) -> None:
         for f in self.facts:
-            #self.machine.retract_fact(f, bindings)
-            f.retract_fact(self.machine, bindings)
+            self.machine.retract_fact(f, bindings)

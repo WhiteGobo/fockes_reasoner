@@ -133,16 +133,6 @@ class subclass(_dict_fact):
                    }
         return pattern
 
-    def retract_fact(self, c: abc_machine.machine,
-                bindings: BINDING = {},
-                ) -> None:
-        raise NotImplementedError()
-
-    def modify_fact(self, c: abc_machine.machine,
-               bindings: BINDING = {},
-               ) -> None:
-        raise NotImplementedError()
-
     @classmethod
     def from_fact(cls, fact: Mapping[str, str]) -> "subclass":
         sub_class = string2rdflib(fact[cls.SUBCLASS_SUB])
@@ -216,39 +206,10 @@ class frame(fact):
         self._used_variables = used_variables
         return used_variables
 
-    def retract_fact(self, c: abc_machine.machine,
-                bindings: BINDING = {},
-                external_resolution: Mapping[typ.Union[rdflib.URIRef, rdflib.BNode], external] = {},
-                ) -> None:
-        fact = {"type": self.ID}
-        for label, x, in [
-                (self.FRAME_OBJ, self.obj),
-                (self.FRAME_SLOTKEY, self.slotkey),
-                (self.FRAME_SLOTVALUE, self.slotvalue),
-                ]:
-            fact[label] = _node2string(x, c, bindings)
-
-        c.retract_fact(fact)
-
     def __repr__(self) -> str:
         return "%s[%s->%s]" % (_pretty(self.obj),
                                _pretty(self.slotkey),
                                _pretty(self.slotvalue))
-
-    def modify_fact(self, c: abc_machine.machine,
-               bindings: BINDING = {},
-               external_resolution: Mapping[typ.Union[rdflib.URIRef, rdflib.BNode], external] = {},
-               ) -> None:
-        fact = {"type": self.ID}
-        for label, x, in [
-                (self.FRAME_OBJ, self.obj),
-                (self.FRAME_SLOTKEY, self.slotkey),
-                (self.FRAME_SLOTVALUE, self.slotvalue),
-                ]:
-            fact[label] = _node2string(x, c, bindings)
-
-        c.retract_fact(fact)
-        c.assert_fact(self, bindings)
 
 
 class member(_dict_fact):
@@ -298,16 +259,6 @@ class member(_dict_fact):
                    self.CLASS: self.cls,
                    }
         return pattern
-
-    def retract_fact(self, c: abc_machine.machine,
-                bindings: BINDING = {},
-                ) -> None:
-        raise NotImplementedError()
-
-    def modify_fact(self, c: abc_machine.machine,
-               bindings: BINDING = {},
-               ) -> None:
-        raise NotImplementedError()
 
     @classmethod
     def from_fact(cls, fact: Mapping[str, str]) -> "member":
@@ -370,16 +321,6 @@ class atom(fact):
                 raise NotImplementedError()
             pattern[self.ATOM_ARGS % i] = arg
         return pattern
-
-    def retract_fact(self, c: abc_machine.machine,
-                bindings: BINDING = {},
-                ) -> None:
-        raise NotImplementedError()
-
-    def modify_fact(self, c: abc_machine.machine,
-               bindings: BINDING = {},
-               ) -> None:
-        raise NotImplementedError()
 
     @classmethod
     def from_fact(cls, fact: Mapping[str, str]) -> "atom":
@@ -446,8 +387,9 @@ class retract_object_function:
 
     def __call__(self, bindings: BINDING = {}) -> None:
         atom = _node2string(self.atom, self.machine, bindings)
-        fact = {"type": frame.ID, frame.FRAME_OBJ: atom}
-        self.machine.retract_fact(fact)
+        self.machine.retract_object(atom)
+        #fact = {"type": frame.ID, frame.FRAME_OBJ: atom}
+        #self.machine.retract_fact(fact, binding)
 
     def __repr__(self) -> str:
         return "Retract(%s)" % self.atom

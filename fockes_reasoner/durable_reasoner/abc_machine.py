@@ -85,17 +85,6 @@ class fact(Mapping[str, Union[TRANSLATEABLE_TYPES, abc_external, Variable]],
                 ) -> Mapping[str, Union[str, Variable, TRANSLATEABLE_TYPES]]:
         ...
 
-    @abc.abstractmethod
-    def retract_fact(self, c: "machine",
-                bindings: BINDING = {},
-                ) -> None:
-        ...
-
-    @abc.abstractmethod
-    def modify_fact(self, c: "machine",
-               bindings: BINDING = {},
-               ) -> None:
-        ...
 
     @classmethod
     @abc.abstractmethod
@@ -129,7 +118,8 @@ class machine(abc.ABC):
         ...
 
     @abc.abstractmethod
-    def retract_fact(self, fact: Mapping[str, str]) -> None:
+    def retract_fact(self, new_fact: fact, bindings: BINDING,
+                     ) -> None:
         """Retract all facts, that are matching with given fact.
         Eg {1:"a"} matches {1:"a", 2:"b"}
         """
