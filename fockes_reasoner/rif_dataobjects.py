@@ -3,7 +3,7 @@ import logging
 logger = logging.getLogger(__name__)
 import uuid
 import itertools as it
-from .durable_reasoner import machine_facts, fact, NoPossibleExternal, _resolve, ATOM_ARGS, term_list, machine_list, pattern_generator, rule, machine_or, machine_and
+from .durable_reasoner import machine_facts, fact, NoPossibleExternal, _resolve, ATOM_ARGS, term_list, pattern_generator, rule, machine_or, machine_and
 from .durable_reasoner.machine_facts import external, TRANSLATEABLE_TYPES, executable
 import rdflib
 from rdflib import IdentifiedNode, Graph, Variable, Literal, URIRef, BNode
@@ -14,7 +14,7 @@ from rdflib import RDF
 from . import durable_reasoner
 from .durable_reasoner import machine, action_assert, action_retract
 from .durable_reasoner import BINDING, RESOLVABLE, BINDING_WITH_BLANKS
-from .durable_reasoner import special_externals
+from .durable_reasoner import special_externals 
 from dataclasses import dataclass
 from collections.abc import Sequence
 
@@ -616,14 +616,17 @@ class rif_do(_action_gen):
 
     def generate_action(self,
                         machine: durable_reasoner.machine,
-                        ) -> Tuple[Callable[[BINDING], None], Iterable[Variable]]:
+                        ) -> Tuple[Union[Callable[[BINDING], None], external],
+                                   Iterable[Variable]]:
         self._all_actions = []
         used_variables: Set[Variable] = set()
         for act in self.actions:
             tmp_act, tmp_vars = act.generate_action(machine)
             self._all_actions.append(tmp_act)
             used_variables.update(tmp_vars)
-        return self._act, used_variables
+        return external(special_externals.do.op, list(self._all_actions)),\
+                used_variables
+        #return self._act, used_variables
 
     def _act(self, bindings: BINDING) -> None:
         for act in self._all_actions:
@@ -948,7 +951,11 @@ class rif_retract(_action_gen):
         if getattr(self, "fact", None) is not None:
             return self.fact.generate_retract_action(machine), self.used_variables
         else:
-            return machine_facts.retract_object_function(machine, self.atom), self.used_variables
+            op = special_externals.retract_object.op
+            if isinstance(self.atom, Variable):
+                return external(op, [self.atom]), [self.atom]
+            else:
+                return external(op, [self.atom]), []
 
     @classmethod
     def from_rdf(cls, infograph: rdflib.Graph,
@@ -1110,9 +1117,9 @@ class rif_list(_resolvable_gen):
     def as_resolvable(self, machine: durable_reasoner.machine) -> RESOLVABLE:
         raise NotImplementedError()
 
-    def as_machineterm(self) -> machine_list:
+    def as_machineterm(self) -> external:
         items = [_try_as_machineterm(x) for x in self.items]
-        return machine_list(items)
+        return external(special_externals.create_list.op, items)
 
 class rif_execute(_action_gen):
     target: rif_atom

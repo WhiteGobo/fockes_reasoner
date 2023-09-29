@@ -19,7 +19,7 @@ from .bridge_rdflib import *
 from .bridge_rdflib import term_list, _term_list
 from .abc_machine import fact
 from ..shared import _pretty
-from .special_externals import create_list
+#from .special_externals import create_list
 
 class _NotBoundVar(KeyError):
     ...
@@ -68,18 +68,18 @@ class machine_and(external):
         self.args = list(args)
 
 
-class machine_list(external):
-    op = create_list.op
-    items: Iterable[Union[TRANSLATEABLE_TYPES, external, Variable]]
-    def __init__(self, items: Iterable[Union[TRANSLATEABLE_TYPES, external, Variable]]) -> None:
-        self.items = list(items)
-
-    @property
-    def args(self) -> Iterable[Union[TRANSLATEABLE_TYPES, external, Variable]]:
-        return self.items
-
-    def __repr__(self) -> str:
-        return "m[%s]" % ", ".join(str(x) for x in self.items)
+#class machine_list(external):
+#    op = create_list.op
+#    items: Iterable[Union[TRANSLATEABLE_TYPES, external, Variable]]
+#    def __init__(self, items: Iterable[Union[TRANSLATEABLE_TYPES, external, Variable]]) -> None:
+#        self.items = list(items)
+#
+#    @property
+#    def args(self) -> Iterable[Union[TRANSLATEABLE_TYPES, external, Variable]]:
+#        return self.items
+#
+#    def __repr__(self) -> str:
+#        return "m[%s]" % ", ".join(str(x) for x in self.items)
 
 
 class subclass(_dict_fact):
@@ -378,18 +378,3 @@ def _node2string(x: Union[TRANSLATEABLE_TYPES, Variable, str, abc_external],
     else:
         raise NotImplementedError(type(x))
 
-class retract_object_function:
-    machine: abc_machine.machine
-    atom: typ.Union[TRANSLATEABLE_TYPES, external, Variable]
-    def __init__(self, machine: abc_machine.machine, atom: typ.Union[TRANSLATEABLE_TYPES, external, Variable]):
-        self.atom = atom
-        self.machine = machine
-
-    def __call__(self, bindings: BINDING = {}) -> None:
-        atom = _node2string(self.atom, self.machine, bindings)
-        self.machine.retract_object(atom)
-        #fact = {"type": frame.ID, frame.FRAME_OBJ: atom}
-        #self.machine.retract_fact(fact, binding)
-
-    def __repr__(self) -> str:
-        return "Retract(%s)" % self.atom

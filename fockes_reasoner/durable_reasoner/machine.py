@@ -246,7 +246,8 @@ class _base_durable_machine(abc_machine.machine):
     _registered_pattern_generator: Dict[IdentifiedNode,
                                         PATTERNGENERATOR]
     _registered_action_generator: Dict[IdentifiedNode,
-                                       Callable[..., RESOLVABLE]]
+                                       Tuple[Callable[..., RESOLVABLE],
+                                             bool]]
     _registered_assignment_generator: Dict[IdentifiedNode,
                                            Callable[..., ASSIGNMENT]]
     _registered_binding_generator: Dict[IdentifiedNode, BINDING_DESCRIPTION]
@@ -363,8 +364,7 @@ class _base_durable_machine(abc_machine.machine):
         """
         d = {FACTTYPE: self._registered_facttypes[frame],
              frame.FRAME_OBJ: obj}
-        for f in self.get_facts(d):
-            self._current_context.retract_fact(f)
+        self._current_context.retract_fact(d)
 
     def retract_fact(self, old_fact: abc_machine.fact, bindings: BINDING,
                      ) -> None:
@@ -543,6 +543,29 @@ class _base_durable_machine(abc_machine.machine):
         return [], [funcgen(*args_)], [x for x in args
                                       if (isinstance(x, Variable)
                                           and x not in bound_variables)]
+
+    def _create_action_from_external(
+            self,
+            op: IdentifiedNode,
+            args: ATOM_ARGS,
+            ) -> Callable[[BINDING], None]:
+        try:
+            mygen, expects_actions = self._registered_action_generator[op]
+        except KeyError as err:
+            raise NoPossibleExternal(op) from err
+        if expects_actions:
+            acts = []
+            for x in args:
+                if isinstance(x, external):
+                    acts.append(self._create_action_from_external(x.op, x.args))
+                elif isinstance(x, Callable):
+                    acts.append(x)
+                else:
+                    raise NotImplementedError(x)
+            return mygen(self, *acts)
+        else:
+            useable_args = _transform_all_externals_to_calls(args, self)
+            return mygen(self, *useable_args)
 
     def _create_assignment_from_external(
             self,
@@ -831,7 +854,7 @@ class durable_rule(abc_machine.implication, abc_machine.rule):
         actions_ = []
         for act in actions:
             if isinstance(act, external):
-                raise NotImplementedError()
+                actions_.append(self.machine._create_action_from_external(act.op, act.args))
             elif isinstance(act, fact):
                 actions_.append(act)
             else:
@@ -994,6 +1017,8 @@ class _machine_default_externals(_base_durable_machine):
         def_ext._register_actionExternals(self)
         self.register(**special_externals.equality)
         self.register(**special_externals.create_list)
+        self.register(**special_externals.retract_object)
+        self.register(**special_externals.do)
         self.register(RIF.Or, asassign=def_ext.rif_or)
         self.register(pred["numeric-equal"],
                       asassign=def_ext.numeric_equal)

@@ -1,7 +1,9 @@
 from dataclasses import dataclass
+from rdflib import Variable
+import typing as typ
 from collections.abc import Iterable
 from . import abc_machine
-from .abc_machine import abc_action, machine, fact, BINDING
+from .abc_machine import abc_action, machine, fact, BINDING, TRANSLATEABLE_TYPES, abc_external
 
 class action_assert(abc_action):
     facts: Iterable[fact]
@@ -27,3 +29,4 @@ class action_retract(abc_action):
     def __call__(self, bindings: BINDING) -> None:
         for f in self.facts:
             self.machine.retract_fact(f, bindings)
+
