@@ -33,7 +33,8 @@ def _import_graph(filepath) -> rdflib.Graph:
         try:
             return rdflib.Graph().parse(fp, format=f)
         except rdflib.plugin.PluginException as err:
-            logger.debug(traceback.format_exc())
+            logger.debug("Failed at loading '%s' with format %s. Cause:\n%s"
+                         %(filepath, f, traceback.format_exc()))
     raise Exception("No rdf plugin succesfull. See logging(debug) "
                     "for more info")
 
