@@ -4,6 +4,16 @@ from rdflib import IdentifiedNode, Literal, URIRef, BNode
 from typing import Union, Any
 from dataclasses import dataclass
 
+def import_profileSimpleEntailment(machine: machine,
+                                   location: Union[str, IdentifiedNode]):
+    infograph = machine.load_external_resource(location)
+    for subj, pred, obj in infograph:
+        assert isinstance(subj, (BNode, URIRef, Literal))
+        assert isinstance(pred, (BNode, URIRef, Literal))
+        assert isinstance(obj , (BNode, URIRef, Literal))
+        f = frame(subj, pred, obj)
+        machine.assert_fact(f, {})
+
 class profileSimpleEntailment(importProfile):
     """
     See `https://www.w3.org/TR/2013/REC-rif-rdf-owl-20130205/#RDF_Compatibility`_ for more information.

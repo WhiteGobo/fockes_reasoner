@@ -5,6 +5,9 @@ from rdflib import IdentifiedNode, Literal, URIRef, BNode, RDF, RDFS
 from typing import Union, Any, List, Dict, Mapping
 from dataclasses import dataclass
 
+def import_profileRDFSEntailment(machine, location):
+    helper = profileRDFSEntailment._initImport(machine, location)
+    helper({})
 
 class profileRDFSEntailment(importProfile):
     """

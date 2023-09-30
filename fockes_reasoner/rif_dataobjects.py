@@ -259,35 +259,25 @@ class rif_document:
 
 
 class rif_import:
-    extraDocuments: Mapping[IdentifiedNode, Graph]
-    profile: Optional[URIRef]
+    profile: Optional[Literal]
     location: URIRef
-    def __init__(self, extraDocuments: Mapping[IdentifiedNode, Graph],
-                 location: Union[URIRef, Literal],
-                 profile: Optional[URIRef] = None):
-        self.extraDocuments = dict(extraDocuments)
+    def __init__(self,
+                 location: Literal,
+                 profile: Optional[Literal] = None):
         if isinstance(location, IdentifiedNode):
             self.location = location
         else:
             self.location = URIRef(location)
-        if isinstance(profile, IdentifiedNode):
-            self.profile = profile
-        else:
-            self.profile = None
+        self.profile = profile
 
     def apply_to(self, machine: durable_reasoner.machine,
                  ) -> None:
-        try:
-            infograph = self.extraDocuments[self.location]
-        except Exception as err:
-            raise Exception(self.extraDocuments) from err
+        op = special_externals.import_data.op
         if self.profile is not None:
-            machine.import_data(infograph,
-                                self.location, self.profile,
-                                extraDocuments = self.extraDocuments)
+            args = [self.location, self.profile]
         else:
-            machine.import_data(infograph, self.location,
-                                extraDocuments = self.extraDocuments)
+            args = [self.location]
+        machine.apply(external(op, args))
 
     @classmethod
     def from_rdf(cls, infograph: rdflib.Graph,
@@ -295,17 +285,11 @@ class rif_import:
                  extraDocuments: Mapping[IdentifiedNode, Graph] = {},
                  **kwargs: Any) -> "rif_import":
         location, = infograph.objects(rootnode, RIF.location)
-        assert isinstance(location, Literal)
-        loc_as_uri = URIRef(location)
-        if loc_as_uri not in extraDocuments:
-            raise SyntaxError("Have the directive to import '%s' but it isnt "
-                              "in supplied extraDocuments %s"
-                              % (loc_as_uri, extraDocuments))
         profile = infograph.value(rootnode, RIF.profile)
         #assert isinstance(location, URIRef), repr(location)
         if profile:
-            return cls(extraDocuments, loc_as_uri, URIRef(profile))
-        return cls(extraDocuments, loc_as_uri)
+            return cls(location, profile)
+        return cls(location)
 
 
 class rif_group(_rule_gen):

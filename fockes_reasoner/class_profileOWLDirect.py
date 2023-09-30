@@ -9,6 +9,11 @@ from .shared import entailment, OWL, RDF, RDFS
 import logging
 logger = logging.getLogger(__name__)
 
+def import_profileOWLDirect(machine, location):
+    helper = profileOWLDirect._initImport(machine, location)
+    helper({})
+
+
 class profileOWLDirect(importProfile):
     """
     See `https://www.w3.org/TR/2013/REC-rif-rdf-owl-20130205/#RDF_Compatibility`_ for more information.

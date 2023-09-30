@@ -46,10 +46,18 @@ class importManager(Mapping[IdentifiedNode, Graph]):
 
 class simpleLogicMachine(PRD_logicMachine):
     document: rif_document
-    def __init__(self, document: rif_document):
+    def __init__(self, document: rif_document, extraDocuments):
         self.document = document
         #reset machine
         self.machine = machine()
+        for loc_id, information_graph in extraDocuments.items():
+            q = list(information_graph)
+            def get_graph() -> rdflib.Graph:
+                g = rdflib.Graph()
+                for x in q: 
+                    g.add(x)
+                return g
+            self.machine.register_information(loc_id, get_graph)
         try:
             self.document.create_rules(self.machine)
         except VariableNotBoundError as err:
@@ -73,7 +81,7 @@ class simpleLogicMachine(PRD_logicMachine):
                                      RIF.Document)
                                                 
         document = rif_document.from_rdf(infograph, rootdocument_node, **extraOptions)
-        return cls(document)
+        return cls(document, extraDocuments)
 
     def run(self, steps: Union[int, None] = None) -> None:
         try:

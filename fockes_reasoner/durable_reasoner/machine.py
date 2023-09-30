@@ -14,7 +14,9 @@ import rdflib
 from rdflib import URIRef, Variable, Literal, BNode, Graph, IdentifiedNode, XSD
 from . import abc_machine
 from .abc_machine import TRANSLATEABLE_TYPES, FACTTYPE, BINDING, BINDING_WITH_BLANKS, VARIABLE_LOCATOR, NoPossibleExternal, importProfile, RESOLVABLE, ATOM_ARGS, abc_external, RESOLVER, RuleNotComplete, pattern_generator, VariableNotBoundError, abc_pattern, _resolve, ASSIGNMENT
-from ..class_profileOWLDirect import profileOWLDirect
+from ..class_profileOWLDirect import import_profileOWLDirect
+from ..class_profileSimpleEntailment import import_profileSimpleEntailment
+from ..class_profileRDFSEntailment import import_profileRDFSEntailment
 
 from .bridge_rdflib import rdflib2string, string2rdflib, term_list
 
@@ -254,9 +256,10 @@ class _base_durable_machine(abc_machine.machine):
     _registered_assignment_generator: Dict[IdentifiedNode,
                                            Callable[..., ASSIGNMENT]]
     _registered_binding_generator: Dict[IdentifiedNode, BINDING_DESCRIPTION]
+    _registered_groundaction_generator: Dict[IdentifiedNode, Any]
 
     _imported_locations: Set[Optional[IdentifiedNode]]
-    _knownLocations: MutableMapping[IdentifiedNode, rdflib.Graph]
+    _knownLocations: MutableMapping[IdentifiedNode, Callable[[], rdflib.Graph]]
 
     _registered_facttypes: Mapping[type[fact], str] = {
             frame: frame.ID,
@@ -285,37 +288,34 @@ class _base_durable_machine(abc_machine.machine):
         self._registered_action_generator = {}
         self._registered_assignment_generator = {}
         self._registered_binding_generator = {}
+        self._registered_groundaction_generator = {}
+        self._registered_information = {}
 
         self._imported_locations = set()
         self.available_import_profiles = {}
         self._knownLocations = {}
         self._steps_left = 1
 
-    def import_data(self,
-                    infograph: Graph,
-                    location: IdentifiedNode,
-                    profile: Union[IdentifiedNode, None] = None,
-                    extraDocuments: Mapping[IdentifiedNode, Graph] = {},
-                    ) -> None:
-        if location in self._imported_locations:
-            logger.debug("Already import %s" % location)
-            return
-        usedImportProfile = self.available_import_profiles[profile]
-        logger.debug("import data %s" % profile)
-        usedImportProfile.create_rules(self, location)
-        self._imported_locations.add(location)
-        for key, g in extraDocuments.items():
-            if isinstance(key, str):
-                self._knownLocations[URIRef(key)] = g
-            else:
-                self._knownLocations[key] = g
+    def apply(self, ext_order: abc_external) -> None:
+        registering_action\
+                = self._registered_groundaction_generator[ext_order.op]
+        registering_action(self, *ext_order.args)
 
-    def load_external_resource(self, location: Union[str, IdentifiedNode],
+    def register_information(self,
+                             location: Union[str, Literal],
+                             graph_getter: Callable[[], rdflib.Graph],
+                             ) -> None:
+        self._knownLocations[str(location)] = graph_getter
+
+    def import_data(self,
+                    location: Union[str, Literal],
+                    profile: Union[IdentifiedNode, None] = None,
+                    ) -> None:
+        raise NotImplementedError()
+
+    def load_external_resource(self, location: Union[str, Literal],
                                ) -> rdflib.Graph:
-        if isinstance(location, str):
-            return self._knownLocations[URIRef(location)]
-        else:
-            return self._knownLocations[location]
+        return self._knownLocations[str(location)]()
 
     def get_replacement_node(self,
                              op: IdentifiedNode,
@@ -590,6 +590,7 @@ class _base_durable_machine(abc_machine.machine):
                  asassign: Optional[Callable[[BINDING], Literal]] = None,
                  aspattern: Optional[PATTERNGENERATOR] = None,
                  asbinding: Optional[BINDING_DESCRIPTION] = None,
+                 asgroundaction: Optional[Any] = None,
                  ) -> None:
         if asaction is not None:
             self._registered_action_generator[op] = asaction
@@ -599,6 +600,8 @@ class _base_durable_machine(abc_machine.machine):
             self._registered_pattern_generator[op] = aspattern
         if asbinding is not None:
             self._registered_binding_generator[op] = asbinding
+        if asgroundaction is not None:
+            self._registered_groundaction_generator[op] = asgroundaction
 
 class OWLmachine(_base_durable_machine):
     """Implements owl functionality"""
@@ -862,7 +865,7 @@ class durable_rule(abc_machine.implication, abc_machine.rule):
                 actions_.append(act)
             else:
                 act.__call__
-                #raise Exception(act)
+                raise Exception(act)
                 actions_.append(act)
         if conditions:
             return [self._conditional_action(actions_, self.machine.logger,
@@ -1008,7 +1011,14 @@ class _machine_default_externals(_base_durable_machine):
         self.__register_importProfiles()
 
     def __register_importProfiles(self) -> None:
-        self.available_import_profiles[entailment["OWL-Direct"]] = profileOWLDirect()
+        self.available_import_profiles[str(entailment["OWL-Direct"])]\
+                = import_profileOWLDirect
+        self.available_import_profiles[str(entailment["RDF"])]\
+                = import_profileRDFSEntailment
+        self.available_import_profiles[str(entailment["RDFS"])]\
+                = import_profileRDFSEntailment
+        self.available_import_profiles[str(entailment["Simple"])]\
+                = import_profileSimpleEntailment
 
     def __register_externals(self) -> None:
         from .default_externals import invert
@@ -1024,6 +1034,7 @@ class _machine_default_externals(_base_durable_machine):
         self.register(**special_externals.retract_object)
         self.register(**special_externals.do)
         self.register(**special_externals.assert_fact)
+        self.register(**special_externals.import_data)
         self.register(RIF.Or, asassign=def_ext.rif_or)
         self.register(pred["numeric-equal"],
                       asassign=def_ext.numeric_equal)

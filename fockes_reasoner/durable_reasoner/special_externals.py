@@ -4,9 +4,11 @@ from .bridge_rdflib import term_list, _term_list
 from collections.abc import Iterable, Mapping, Callable
 from rdflib import Variable, URIRef, Literal, IdentifiedNode
 from .abc_machine import abc_external, TRANSLATEABLE_TYPES, RESOLVABLE, BINDING, _resolve, fact
-from .machine_facts import _node2string
+from .machine_facts import _node2string, external
 from . import abc_machine
 from .default_externals import literal_equal
+import logging
+logger = logging.getLogger(__name__)
 
 @dataclass(frozen=True)
 class _id:
@@ -21,15 +23,16 @@ class _special_external(Mapping):
     asassign: Optional[Callable] = field(default=None)
     aspattern: Optional[Callable] = field(default=None)
     asbinding: Optional[Mapping[tuple[bool], Callable]] = field(default=None)
+    asgroundaction: Optional[Any] = field(default=None)
 
     def __iter__(self):
-        for x in ["op", "asassign", "asbinding", "asaction"]:
+        for x in ["op", "asassign", "asbinding", "asaction", "asgroundaction"]:
             if getattr(self, x, None) is not None:
                 yield x
 
     def __len__(self) -> int:
         i = 0
-        for x in ["op", "asassign", "asbinding", "asaction"]:
+        for x in ["op", "asassign", "asbinding", "asaction", "asgroundaction"]:
             if getattr(self, x, None) is not None:
                 i += 1
         return i
@@ -118,3 +121,37 @@ class _do_function:
 
 do = _special_external(_id("do"),
                        asaction=(_do_function, True))
+
+_import_id = _id("import")
+def _register_import_as_init_action(machine: abc_machine.machine,
+                                    location: str,
+                                    profile: Optional[str] = None,
+                                    ) -> None:
+    if location in machine._imported_locations:
+        logger.debug("Already import %s" % location)
+        return
+    logger.debug("import data %s" % profile)
+    args = [location] if profile is None else [location, profile] 
+    machine.add_init_action(external(_import_id, args))
+
+@dataclass
+class _import_action:
+    machine: abc_machine.machine
+    location: Literal
+    profile: Literal = field(default=None)
+
+    def __call__(self, bindings: BINDING) -> None:
+        try:
+            usedImportProfile\
+                    = self.machine.available_import_profiles[str(self.profile)]
+        except KeyError:
+            raise Exception("Import rejected because profile is not "
+                            "registered", str(self.profile))
+        usedImportProfile(self.machine, self.location)
+import_data = _special_external(_import_id,
+                                asaction=(_import_action, False),
+                                asgroundaction=_register_import_as_init_action,
+                                )
+
+
+

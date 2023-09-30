@@ -139,6 +139,9 @@ class pred(DefinedNamespace):
 class entailment(DefinedNamespace):
     _extras = [
             "OWL-Direct",
+            "RDF",
+            "RDFS",
+            "Simple",
             ]
     _NS = Namespace("http://www.w3.org/ns/entailment/")
 
