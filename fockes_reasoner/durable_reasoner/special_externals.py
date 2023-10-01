@@ -10,6 +10,7 @@ from .default_externals import literal_equal
 from .machine_patterns import _pattern, generate_action_prerequisites, RUNNING_STATE, MACHINESTATE
 import logging
 logger = logging.getLogger(__name__)
+import traceback
 
 _special_externals: List["_special_external"]
     
@@ -160,26 +161,37 @@ import_data = _special_external(_import_id,
                                 )
 
 
+@dataclass
+class _StopRunning_action:
+    machine: abc_machine.machine
+    conditions: Iterable[Callable[[BINDING], Literal]]
+    stopmessage: str
+    def __call__(self, bindings: BINDING) -> None:
+        try:
+            for cond in self.conditions:
+                if not cond(bindings):
+                    return
+            self.machine._current_context.retract_fact(
+                    {MACHINESTATE: RUNNING_STATE})
+            raise abc_machine.StopRunning(self.stopmessage)
+        except Exception:
+            logger.critical(traceback.format_exc())
+            raise
+
 def _register_stop_condition(machine: abc_machine.machine,
                              *required_facts: Iterable[fact],
                              ) -> None:
-    def raise_StopRunning(bindings: BINDING) -> None:
-        machine._current_context.retract_fact({MACHINESTATE: RUNNING_STATE})
-        #logger.critical(len(list(machine._current_context.get_facts())))
-        raise abc_machine.StopRunning("stop conditions reached: %s"
-                                      % (str(myfacts)))
 
     myfacts = []
     patterns = []
     for patterns, conditions, bound_variables in generate_action_prerequisites(machine, list(required_facts)):
-        if not patterns:
-            raise NotImplementedError("Doesnt produce any patterns but "
-                                      "currently i need some.")
-        if conditions:
-            raise NotImplementedError("doesnt support conditions in stopping"
-                                      "condition, yet.")
-        machine._make_rule(patterns, [raise_StopRunning], priority=3)
-
+        #if len(patterns) == 1:#always contains machinestate: running
+        #    raise NotImplementedError("Doesnt produce any patterns but "
+        #                              "currently i need some.")
+        msg = "stop conditions reached: %s" % (str(myfacts))
+        machine._make_rule(patterns,
+                           [_StopRunning_action(machine, conditions, msg)],
+                           priority=3)
 
     return
     raise Exception(q, w)
