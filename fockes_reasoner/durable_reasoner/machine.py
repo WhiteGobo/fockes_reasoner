@@ -13,7 +13,7 @@ import itertools as it
 import rdflib
 from rdflib import URIRef, Variable, Literal, BNode, Graph, IdentifiedNode, XSD
 from . import abc_machine
-from .abc_machine import TRANSLATEABLE_TYPES, FACTTYPE, BINDING, BINDING_WITH_BLANKS, VARIABLE_LOCATOR, NoPossibleExternal, importProfile, RESOLVABLE, ATOM_ARGS, abc_external, RESOLVER, RuleNotComplete, pattern_generator, VariableNotBoundError, abc_pattern, _resolve, ASSIGNMENT
+from .abc_machine import TRANSLATEABLE_TYPES, FACTTYPE, BINDING, BINDING_WITH_BLANKS, VARIABLE_LOCATOR, NoPossibleExternal, importProfile, RESOLVABLE, ATOM_ARGS, abc_external, RESOLVER, RuleNotComplete, pattern_generator, VariableNotBoundError, abc_pattern, _resolve, ASSIGNMENT, StopRunning
 from ..class_profileOWLDirect import import_profileOWLDirect
 from ..class_profileSimpleEntailment import import_profileSimpleEntailment
 from ..class_profileRDFSEntailment import import_profileRDFSEntailment
@@ -57,6 +57,7 @@ class FailedInternalAction(Exception):
 
 class ReachedStepLimit(Exception):
     ...
+
 
 class _pattern(abc_pattern):
     pattern: Mapping[str, Union[Variable, str, TRANSLATEABLE_TYPES]]
@@ -414,6 +415,8 @@ class _base_durable_machine(abc_machine.machine):
                         else:
                             try:
                                 act(bindings)
+                            except StopRunning:
+                                c.retract_fact({MACHINESTATE: RUNNING_STATE})
                             except FailedInternalAction:
                                 raise
                             except Exception as err:

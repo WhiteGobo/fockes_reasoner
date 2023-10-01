@@ -9,7 +9,8 @@ from .abc_logicMachine import PRD_logicMachine, SyntaxReject, AlgorithmRejection
 
 from .rif_dataobjects import rif_document, rif_fact
 from .class_machineWithImport import machineWithImport as machine
-from .durable_reasoner import VariableNotBoundError
+from .durable_reasoner import VariableNotBoundError, external
+from .durable_reasoner import special_externals
 
 class importManager(Mapping[IdentifiedNode, Graph]):
     documents: Mapping[IdentifiedNode, Graph]
@@ -64,8 +65,8 @@ class simpleLogicMachine(PRD_logicMachine):
             raise SyntaxReject() from err
 
     def add_stop_condition(self, rif_facts: Iterable[rif_fact]) -> bool:
-        raise NotImplementedError()
-
+        ext = external(special_externals.stop_condition.op, rif_facts)
+        self.machine.apply(ext)
 
     def check(self, rif_facts: Iterable[rif_fact]) -> bool:
         checks = {f: f.check(self.machine) for f in rif_facts}

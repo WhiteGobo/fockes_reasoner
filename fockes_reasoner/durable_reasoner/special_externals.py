@@ -157,7 +157,27 @@ import_data = _special_external(_import_id,
                                 )
 
 
+def _register_stop_condition(machine: abc_machine.machine,
+                             *required_facts: Iterable[fact],
+                             ) -> None:
+    from .machine import _pattern
+    myfacts = []
+    patterns = []
+    for i, f in enumerate(required_facts):
+        patterns.append(_pattern.from_fact(
+            machine._registered_facttypes[type(f)],
+            f,
+            "fact%d" % i))
+        myfacts.append(f)
+    if not patterns:
+        raise ValueError("for stop condition needs at least one fact")
+    def raise_StopRunning(bindings: BINDING) -> None:
+        raise abc_machine.StopRunning("stop conditions reached: %s"
+                                      % (str(myfacts)))
+    machine._make_rule(patterns, [raise_StopRunning])
+
 stop_condition = _special_external(_id("stop_condition"),
+                                   asgroundaction=_register_stop_condition
                                    )
 
 _special_externals = [

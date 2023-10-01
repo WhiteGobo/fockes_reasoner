@@ -30,6 +30,9 @@ class RuleNotComplete(Exception):
 class VariableNotBoundError(Exception):
     """If a rules doesnt bound Variables as expected by the action."""
 
+class StopRunning(Exception):
+    ...
+
 class abc_external(abc.ABC):
     op: Any
     args: ATOM_ARGS

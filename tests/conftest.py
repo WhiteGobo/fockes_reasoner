@@ -1,4 +1,6 @@
 import pytest
+import itertools as it
+from typing import Iterable
 import rdflib
 from rdflib import RDF
 import logging
@@ -32,10 +34,18 @@ def logic_machine(request):
 
 
 @pytest.fixture
-def logicmachine_after_PET(PET_testdata, logic_machine, valid_exceptions, steplimit):
+def logicmachine_after_PET(PET_testdata, logic_machine, valid_exceptions,
+                           steplimit,
+                           rif_facts_PET: Iterable["rif_fact"]):
+    def _q(f):
+        try:
+            return f._create_facts()
+        except AttributeError:
+            return []
+    expected_facts = list(it.chain.from_iterable(_q(f) for f in rif_facts_PET))
     try:
         return logicmachine_after_run(PET_testdata, logic_machine,
-                                  valid_exceptions, steplimit)
+                                  valid_exceptions, steplimit, expected_facts)
     except ExpectedFailure as err:
         return err
 
@@ -84,7 +94,7 @@ def _load_graph(testfile):
     pytest.skip("Need rdflib parser plugin to load RIF-file")
 
 
-def logicmachine_after_run(testdata, logic_machine, valid_exceptions, steplimit_):
+def logicmachine_after_run(testdata, logic_machine, valid_exceptions, steplimit_, stop_conditions=[]):
     testfile = str(testdata.premise)
     logger.debug("Premise: %s" % testdata)
     g = _load_graph(testfile)
@@ -95,6 +105,8 @@ def logicmachine_after_run(testdata, logic_machine, valid_exceptions, steplimit_
                        in testdata.importedDocuments.items()}
     try:
         q = logic_machine.from_rdf(g, extra_documents)
+        if stop_conditions:
+            q.add_stop_condition(stop_conditions)
         logger.debug("Running Machine ... ")
         myfacts = q.run(steplimit_)
     except valid_exceptions as err:
@@ -106,8 +118,9 @@ def logicmachine_after_run(testdata, logic_machine, valid_exceptions, steplimit_
 class _LoadingError(Exception):
     ...
 
+#def rif_facts_PET(logicmachine_after_PET, PET_testdata):
 @pytest.fixture
-def rif_facts_PET(logicmachine_after_PET, PET_testdata):
+def rif_facts_PET(PET_testdata):
     conclusionfile = str(PET_testdata.conclusion)
     logger.debug("Conclusion: %s" % conclusionfile)
     try:
