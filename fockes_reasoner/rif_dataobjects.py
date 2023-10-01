@@ -136,11 +136,13 @@ class rif_fact(_rif_check, _action_gen, _rule_gen):
 def _try_as_machineterm(x: Union[TRANSLATEABLE_TYPES, external, Variable, _resolvable_gen, rif_fact, _rif_check],
                         ) -> Union[TRANSLATEABLE_TYPES, external, Variable]:
     if isinstance(x, _resolvable_gen):
-        return x.as_machineterm()
-    elif isinstance(x, (rif_fact, _rif_check)):
+        yield x.as_machineterm()
+    elif isinstance(x, rif_fact):
+        raise NotImplementedError()
+    elif isinstance(x, _rif_check):
         raise NotImplementedError()
     else:
-        return x
+        yield x
 
 def _generate_object(infograph: Graph, target: IdentifiedNode,
                      type_to_generator: Mapping[IdentifiedNode, Callable[[Graph, IdentifiedNode], Any]]) -> Any:
@@ -527,7 +529,8 @@ class rif_and(_resolvable_gen, _rif_check):
         self.formulas = list(formulas)
 
     def as_machineterm(self) -> Union[external, TRANSLATEABLE_TYPES]:
-        args = [_try_as_machineterm(x) for x in self.formulas]
+        args = list(it.chain.from_iterable(_try_as_machineterm(x)
+                                           for x in self.formulas))
         return machine_and(RIF.And, args)
 
     def as_resolvable(self, machine: durable_reasoner.machine) -> RESOLVABLE:
@@ -580,7 +583,8 @@ class rif_or(_rif_formula):
         raise NotImplementedError()
 
     def as_machineterm(self) -> machine_or:
-        args = [_try_as_machineterm(x) for x in self.formulas]
+        args = list(it.chain.from_iterable(_try_as_machineterm(x)
+                                           for x in self.formulas))
         return machine_or(RIF.Or, args)
 
     @classmethod
@@ -663,7 +667,8 @@ class rif_atom(rif_fact):
         return _get_variables((self.op, *self.args))
 
     def _create_facts(self) -> Iterable[fact]:
-        args = [_try_as_machineterm(arg) for arg in self.args]
+        args = list(it.chain.from_iterable(_try_as_machineterm(arg)
+                                           for arg in self.args))
         yield machine_facts.atom(self.op, args)
 
     @classmethod
@@ -705,7 +710,8 @@ class rif_external(_resolvable_gen, _rif_check):
             machine: durable_reasoner.machine,
             bindings: BINDING_WITH_BLANKS = {},
             ) -> bool:
-        args = [_try_as_machineterm(x) for x in self.args]
+        args = list(it.chain.from_iterable(_try_as_machineterm(arg)
+                                           for arg in self.args))
         q = external(self.op, args)
         return machine.check_statement([q], bindings)
 
@@ -714,7 +720,8 @@ class rif_external(_resolvable_gen, _rif_check):
         return _get_variables((self.op, *self.args))
 
     def as_machineterm(self) -> external:
-        args = [_try_as_machineterm(x) for x in self.args]
+        args = list(it.chain.from_iterable(_try_as_machineterm(arg)
+                                           for arg in self.args))
         return external(self.op, args)
 
     def as_resolvable(self, machine: durable_reasoner.machine) -> RESOLVABLE:
@@ -780,8 +787,8 @@ class rif_member(rif_fact):
         self.cls = cls
 
     def _create_facts(self) -> Iterable[machine_facts.member]:
-        cls = _try_as_machineterm(self.cls)
-        instance = _try_as_machineterm(self.instance)
+        cls, = _try_as_machineterm(self.cls)
+        instance, = _try_as_machineterm(self.instance)
         yield machine_facts.member(instance, cls)
 
     @classmethod
@@ -817,8 +824,8 @@ class rif_subclass(rif_fact):
         return _get_variables((self.sub_class, self.super_class))
 
     def _create_facts(self) -> Iterable[fact]:
-        sub_class = _try_as_machineterm(self.sub_class)
-        super_class = _try_as_machineterm(self.super_class)
+        sub_class, = _try_as_machineterm(self.sub_class)
+        super_class, = _try_as_machineterm(self.super_class)
         yield machine_facts.subclass(sub_class, super_class)
 
     @classmethod
@@ -855,10 +862,10 @@ class rif_frame(rif_fact):
         return _get_variables(it.chain((self.obj,), it.chain(*self.slots)))
 
     def _create_facts(self) -> Iterable[fact]:
-        obj = _try_as_machineterm(self.obj)
+        obj, = _try_as_machineterm(self.obj)
         for slotkey, slotvalue in self.slots:
-            sk = _try_as_machineterm(slotkey)
-            sv = _try_as_machineterm(slotvalue)
+            sk, = _try_as_machineterm(slotkey)
+            sv, = _try_as_machineterm(slotvalue)
             yield machine_facts.frame(obj, sk, sv)
 
     def __repr__(self) -> str:
@@ -1103,7 +1110,8 @@ class rif_list(_resolvable_gen):
         raise NotImplementedError()
 
     def as_machineterm(self) -> external:
-        items = [_try_as_machineterm(x) for x in self.items]
+        items = list(it.chain.from_iterable(_try_as_machineterm(x)
+                                            for x in self.items))
         return external(special_externals.create_list.op, items)
 
 class rif_execute(_action_gen):
