@@ -63,6 +63,7 @@ class machine_and(external):
     op: URIRef
     args: Iterable[Union[TRANSLATEABLE_TYPES, "external", Variable]]
     def __init__(self, op: URIRef, args: Iterable[Union[TRANSLATEABLE_TYPES, "external", Variable]]) -> None:
+        raise Exception()
         assert op == URIRef("http://www.w3.org/2007/rif#And")
         self.op = op
         self.args = list(args)

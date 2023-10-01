@@ -531,7 +531,8 @@ class rif_and(_resolvable_gen, _rif_check):
     def as_machineterm(self) -> Union[external, TRANSLATEABLE_TYPES]:
         args = list(it.chain.from_iterable(_try_as_machineterm(x)
                                            for x in self.formulas))
-        return machine_and(RIF.And, args)
+        return external(special_externals.condition_and.op, args)
+        #return machine_and(RIF.And, args)
 
     def as_resolvable(self, machine: durable_reasoner.machine) -> RESOLVABLE:
         raise NotImplementedError()

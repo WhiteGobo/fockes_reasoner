@@ -1,12 +1,13 @@
 from typing import Any, Union, Optional, Tuple, List
 from dataclasses import dataclass, field
 from .bridge_rdflib import term_list, _term_list
-from collections.abc import Iterable, Mapping, Callable
+from collections.abc import Iterable, Mapping, Callable, Container
 from rdflib import Variable, URIRef, Literal, IdentifiedNode
-from .abc_machine import abc_external, TRANSLATEABLE_TYPES, RESOLVABLE, BINDING, _resolve, fact
+from .abc_machine import abc_external, TRANSLATEABLE_TYPES, RESOLVABLE, BINDING, _resolve, fact, abc_pattern
 from .machine_facts import _node2string, external
 from . import abc_machine
 from .default_externals import literal_equal
+from .machine_patterns import _pattern, generate_action_prerequisites, RUNNING_STATE, MACHINESTATE
 import logging
 logger = logging.getLogger(__name__)
 
@@ -29,13 +30,15 @@ class _special_external(Mapping):
     asgroundaction: Optional[Any] = field(default=None)
 
     def __iter__(self):
-        for x in ["op", "asassign", "asbinding", "asaction", "asgroundaction"]:
+        for x in ["op", "asassign", "asbinding", "asaction", "asgroundaction",
+                  "aspattern"]:
             if getattr(self, x, None) is not None:
                 yield x
 
     def __len__(self) -> int:
         i = 0
-        for x in ["op", "asassign", "asbinding", "asaction", "asgroundaction"]:
+        for x in ["op", "asassign", "asbinding", "asaction", "asgroundaction",
+                  "aspattern"]:
             if getattr(self, x, None) is not None:
                 i += 1
         return i
@@ -160,9 +163,26 @@ import_data = _special_external(_import_id,
 def _register_stop_condition(machine: abc_machine.machine,
                              *required_facts: Iterable[fact],
                              ) -> None:
-    from .machine import _pattern
+    def raise_StopRunning(bindings: BINDING) -> None:
+        machine._current_context.retract_fact({MACHINESTATE: RUNNING_STATE})
+        #logger.critical(len(list(machine._current_context.get_facts())))
+        raise abc_machine.StopRunning("stop conditions reached: %s"
+                                      % (str(myfacts)))
+
     myfacts = []
     patterns = []
+    for patterns, conditions, bound_variables in generate_action_prerequisites(machine, list(required_facts)):
+        if not patterns:
+            raise NotImplementedError("Doesnt produce any patterns but "
+                                      "currently i need some.")
+        if conditions:
+            raise NotImplementedError("doesnt support conditions in stopping"
+                                      "condition, yet.")
+        machine._make_rule(patterns, [raise_StopRunning], priority=3)
+
+
+    return
+    raise Exception(q, w)
     for i, f in enumerate(required_facts):
         patterns.append(_pattern.from_fact(
             machine._registered_facttypes[type(f)],
@@ -171,14 +191,34 @@ def _register_stop_condition(machine: abc_machine.machine,
         myfacts.append(f)
     if not patterns:
         raise ValueError("for stop condition needs at least one fact")
-    def raise_StopRunning(bindings: BINDING) -> None:
-        raise abc_machine.StopRunning("stop conditions reached: %s"
-                                      % (str(myfacts)))
-    machine._make_rule(patterns, [raise_StopRunning])
+    machine._make_rule(patterns, [raise_StopRunning], priority=3)
 
 stop_condition = _special_external(_id("stop_condition"),
                                    asgroundaction=_register_stop_condition
                                    )
+
+
+def _pattern_generator_and(
+        machine,
+        args: Iterable[Union[fact, abc_external]],
+        bound_variables: Container[Variable],
+        ) -> Iterable[Tuple[Iterable[abc_pattern],
+                            Tuple["pred_iri_string"],
+                            Iterable[Variable]]]:
+    patterns, conditions, bound_variables = [], [], set()
+    for formula in args:
+        if isinstance(formula, fact):
+            id_ = machine._registered_facttypes[type(formula)]
+            patterns.append(_pattern.from_fact(id_, formula))
+            bound_variables.update(formula.used_variables)
+        elif isinstance(formula, abc_external):
+            raise NotImplementedError("externals not yet supported", formula)
+        else:
+            raise TypeError("only supports fact and abc_external", formula)
+    yield patterns, conditions, bound_variables
+condition_and = _special_external(_id("rif_and"),
+                                  aspattern=_pattern_generator_and,
+                                  )
 
 _special_externals = [
         equality,
@@ -188,4 +228,5 @@ _special_externals = [
         assert_fact,
         import_data,
         stop_condition,
+        condition_and,
         ]

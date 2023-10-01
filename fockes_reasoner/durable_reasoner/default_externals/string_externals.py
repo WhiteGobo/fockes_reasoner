@@ -383,6 +383,7 @@ class iri_string:
     @classmethod
     def pattern_generator(
             cls,
+            machine,
             args: Iterable[RESOLVABLE],
             bound_variables: Container[Variable],
             ) -> Iterable[Tuple[Iterable[abc_pattern],

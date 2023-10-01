@@ -8,7 +8,6 @@ import traceback
 from typing import Union, Mapping, Iterable, Callable, Any, MutableMapping, Optional, Container, Dict, Set, get_args, Tuple, List, Iterator
 from collections.abc import Collection
 from dataclasses import dataclass
-from hashlib import sha1
 import itertools as it
 import rdflib
 from rdflib import URIRef, Variable, Literal, BNode, Graph, IdentifiedNode, XSD
@@ -28,6 +27,7 @@ from . import special_externals
 
 from . import default_externals as def_ext
 from .owl_facts import rdfs_subclass
+from .machine_patterns import _pattern, _value_locator, MACHINESTATE, RUNNING_STATE, INIT_STATE
 
 BINDING_DESCRIPTION = Mapping[tuple[bool], Callable]
 """Maps a tuple representing the position of unbound variables to a generator
@@ -39,9 +39,6 @@ PATTERNGENERATOR\
                                   Iterable[Callable[[BINDING], Literal]],
                                   Iterable[Variable]]]]
 
-MACHINESTATE = "machinestate"
-RUNNING_STATE = "running"
-INIT_STATE = "init"
 
 LIST = "list"
 """All facts that represent :term:`list` are labeled with this."""
@@ -58,66 +55,6 @@ class FailedInternalAction(Exception):
 class ReachedStepLimit(Exception):
     ...
 
-
-class _pattern(abc_pattern):
-    pattern: Mapping[str, Union[Variable, str, TRANSLATEABLE_TYPES]]
-    factname: str
-    def __init__(
-            self,
-            pattern: Mapping[str, Union[Variable, str, TRANSLATEABLE_TYPES]],
-            factname: Optional[str] = None,
-            ) -> None:
-        self.pattern = pattern
-        if factname is None:
-            _as_string = repr(sorted(pattern.items()))
-            self.factname = "f%s" % sha1(_as_string.encode("utf8")).hexdigest()
-        else:
-            self.factname = factname
-
-    def __repr__(self) -> str:
-        return "f(%s): %s" % (self.factname, self.pattern)
-
-    @classmethod
-    def from_fact(cls, factid: str, myfact, name: str) -> "_pattern":
-        d = {FACTTYPE: factid, **myfact}
-        return cls(d, name)
-
-    def generate_rls(self,
-                     bindings: MutableMapping[Variable, VARIABLE_LOCATOR],
-                     ) -> rls.value:
-        next_constraint: rls.value
-        constraint: Union[rls.value, None] = None
-        for key, value in self.pattern.items():
-            next_constraint = None
-            if type(value) == str:
-                next_constraint = getattr(rls.m, key) == value
-            elif isinstance(value, rdflib.Variable):
-                if value in bindings:
-                    loc = bindings[value]
-                    newpattern = getattr(rls.m, key) == loc(rls.c)
-                    #log.append(f"rls.m.{fact_label} == {loc}")
-                else:
-                    loc = _value_locator(self.factname, key)
-                    bindings[value] = loc
-                    next_constraint = None
-                    #logger.debug("bind: %r-> %r" % (value, loc))
-            elif isinstance(value, (URIRef, BNode, Literal)):
-                next_constraint = getattr(rls.m, key) == rdflib2string(value)
-            elif isinstance(value, external):
-                raise NotImplementedError()
-                #newnode = value.serialize(c, bindings, external_resolution)
-                #next_constraint = getattr(rls.m, key) == newnode
-            else:
-                raise NotImplementedError(value, type(value))
-            if next_constraint is not None:
-                if constraint is None:
-                    constraint = next_constraint
-                else:
-                    constraint = constraint & next_constraint
-        if constraint is None:
-            raise Exception("Cant handle %s" % self.pattern)
-        pattern_part = getattr(rls.c, self.factname) << constraint
-        return pattern_part
 
 
 class _context_helper(abc.ABC):
@@ -385,12 +322,14 @@ class _base_durable_machine(abc_machine.machine):
             yield self._fact_generator_from_id[fact_id].from_fact(f)
 
     def _make_rule(self, patterns: Iterable[_pattern],
-                  actions: Iterable[Union[Callable, fact]],
-                  error_message: str = "") -> None:
+                   actions: Iterable[Union[Callable, fact]],
+                   error_message: str = "",
+                   priority: int = 5) -> None:
+        assert 0 < priority < 10, "expect priorities within 1-9"
         assert all(type(f) in self._registered_facttypes
                    for f in actions
                    if isinstance(f, fact))
-        pats: List[rls.value] = []
+        pats: List[rls.value] = [rls.pri(priority)]
         variable_locators: MutableMapping[Variable, VARIABLE_LOCATOR] = {}
         for p in patterns:
             pats.append(p.generate_rls(variable_locators))
@@ -416,7 +355,8 @@ class _base_durable_machine(abc_machine.machine):
                             try:
                                 act(bindings)
                             except StopRunning:
-                                c.retract_fact({MACHINESTATE: RUNNING_STATE})
+                                logger.critical("qwer")
+                                self._current_context.retract_fact({MACHINESTATE: RUNNING_STATE})
                             except FailedInternalAction:
                                 raise
                             except Exception as err:
@@ -433,7 +373,7 @@ class _base_durable_machine(abc_machine.machine):
 
     def __set_basic_rules(self) -> None:
         with self._ruleset:
-            @rls.when_all(rls.pri(-3), +rls.s.exception)
+            @rls.when_all(rls.pri(1), +rls.s.exception)
             def second(c: durable.engine.Closure) -> None:
                 self.logger.critical(c.s.exception)
                 self.errors.append(str(c.s.exception))
@@ -443,11 +383,11 @@ class _base_durable_machine(abc_machine.machine):
                 except Exception:
                     pass
 
-            @rls.when_all(+getattr(rls.m, FACTTYPE))
+            @rls.when_all(rls.pri(2),+getattr(rls.m, FACTTYPE))
             def accept_all_frametypes(c: durable.engine.Closure) -> None:
                 pass
 
-            @rls.when_all(+rls.m.machinestate)
+            @rls.when_all(rls.pri(2),+rls.m.machinestate)
             def accept_every_machinestate(c: durable.engine.Closure) -> None:
                 pass
 
@@ -518,7 +458,7 @@ class _base_durable_machine(abc_machine.machine):
         for a in args:
             assert not isinstance(a, abc_external)
             args_.append(a)
-        for tmp_pattern, cond, new_bound_vars in mygen(args_, bound_variables):
+        for tmp_pattern, cond, new_bound_vars in mygen(self, args_, bound_variables):
             tmp_pattern_: list[_pattern] = []
             for _x in tmp_pattern:
                 assert isinstance(_x, _pattern)
@@ -978,32 +918,6 @@ class durable_rule(abc_machine.implication, abc_machine.rule):
         return f"rule: {self._orig_pattern}-> {self.actions}"
 
 
-class _value_locator:
-    factname: str
-    """Name of the fact, where the variable is defined"""
-    in_fact_label: str
-    """Position in fact, where the variable is defined"""
-    def __init__(self, factname: str, in_fact_label: str):
-        self.factname = factname
-        self.in_fact_label = in_fact_label
-
-    def __call__(self,
-                 c: Union[durable.engine.Closure, rls.closure],
-                 ) -> Union[TRANSLATEABLE_TYPES, rls.value]:
-        fact = getattr(c, self.factname)
-        try:
-            val = getattr(fact, self.in_fact_label)
-        except Exception:
-            logger.critical("In facts(%s) value locator failed: %s" % (c._m, self))
-            raise
-        if isinstance(val, str):
-            return string2rdflib(val)
-        else:
-            return val
-
-    def __repr__(self) -> str:
-        return f"%s(c.{self.factname}.{self.in_fact_label})"\
-                % type(self).__name__
 
 class _machine_default_externals(_base_durable_machine):
     """Implements all default externals
