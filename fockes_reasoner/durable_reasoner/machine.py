@@ -1029,12 +1029,8 @@ class _machine_default_externals(_base_durable_machine):
         def_ext._register_anyURIExternals(self)
         def_ext._register_booleanExternals(self)
         def_ext._register_actionExternals(self)
-        self.register(**special_externals.equality)
-        self.register(**special_externals.create_list)
-        self.register(**special_externals.retract_object)
-        self.register(**special_externals.do)
-        self.register(**special_externals.assert_fact)
-        self.register(**special_externals.import_data)
+        for ext in special_externals._special_externals:
+            self.register(**ext)
         self.register(RIF.Or, asassign=def_ext.rif_or)
         self.register(pred["numeric-equal"],
                       asassign=def_ext.numeric_equal)

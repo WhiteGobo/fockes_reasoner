@@ -1,4 +1,4 @@
-from typing import Any, Union, Optional, Tuple
+from typing import Any, Union, Optional, Tuple, List
 from dataclasses import dataclass, field
 from .bridge_rdflib import term_list, _term_list
 from collections.abc import Iterable, Mapping, Callable
@@ -9,6 +9,9 @@ from . import abc_machine
 from .default_externals import literal_equal
 import logging
 logger = logging.getLogger(__name__)
+
+_special_externals: List["_special_external"]
+    
 
 @dataclass(frozen=True)
 class _id:
@@ -154,4 +157,15 @@ import_data = _special_external(_import_id,
                                 )
 
 
+stop_condition = _special_external(_id("stop_condition"),
+                                   )
 
+_special_externals = [
+        equality,
+        create_list,
+        retract_object,
+        do,
+        assert_fact,
+        import_data,
+        stop_condition,
+        ]

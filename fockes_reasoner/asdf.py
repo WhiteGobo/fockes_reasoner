@@ -63,6 +63,10 @@ class simpleLogicMachine(PRD_logicMachine):
         except VariableNotBoundError as err:
             raise SyntaxReject() from err
 
+    def add_stop_condition(self, rif_facts: Iterable[rif_fact]) -> bool:
+        raise NotImplementedError()
+
+
     def check(self, rif_facts: Iterable[rif_fact]) -> bool:
         checks = {f: f.check(self.machine) for f in rif_facts}
         logger.debug("Checks: %s" % checks)
