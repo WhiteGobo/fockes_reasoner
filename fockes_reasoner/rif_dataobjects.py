@@ -136,13 +136,13 @@ class rif_fact(_rif_check, _action_gen, _rule_gen):
 def _try_as_machineterm(x: Union[TRANSLATEABLE_TYPES, external, Variable, _resolvable_gen, rif_fact, _rif_check],
                         ) -> Union[TRANSLATEABLE_TYPES, external, Variable]:
     if isinstance(x, _resolvable_gen):
-        yield x.as_machineterm()
+        return [x.as_machineterm()]
     elif isinstance(x, rif_fact):
-        raise NotImplementedError()
+        return x._create_facts()
     elif isinstance(x, _rif_check):
         raise NotImplementedError()
     else:
-        yield x
+        return [x]
 
 def _generate_object(infograph: Graph, target: IdentifiedNode,
                      type_to_generator: Mapping[IdentifiedNode, Callable[[Graph, IdentifiedNode], Any]]) -> Any:
