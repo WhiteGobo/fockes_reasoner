@@ -1,8 +1,11 @@
 import pytest
 from ..conftest import ExpectedFailure
+import logging
+logger = logging.getLogger(__name__)
 
 class blueprint_test_logicmachine:
     def test_check_facts(self, logicmachine_after_PET, rif_facts_PET):
+        logger.debug("expected facts:\n%s" % rif_facts_PET)
         if isinstance(logicmachine_after_PET, ExpectedFailure):
             return
         assert rif_facts_PET, "couldnt load conclusion rif_facts directly"

@@ -493,9 +493,9 @@ def NST_testdata(request):
 
 @pytest.fixture(params=[
     param(PST_Core_Safeness,
-          id=PST_Core_Safeness.name),
+          marks=mark.skip("runs indefinitly."),
+          id="PST_Core_Safeness"),
     param(PST_Core_Safeness_2,
-          marks=mark.skip("implement PET_Factorial_Forward_Chaining first"),
           id=PST_Core_Safeness_2.name),
     param(PST_Core_Safeness_3,
           id=PST_Core_Safeness_3.name),

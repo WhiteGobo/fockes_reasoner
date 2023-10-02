@@ -1,6 +1,6 @@
 import pytest
 import itertools as it
-from typing import Iterable
+from typing import Iterable, Any
 import rdflib
 from rdflib import RDF
 import logging
@@ -41,7 +41,12 @@ def logicmachine_after_PET(PET_testdata, logic_machine, valid_exceptions,
         try:
             return f._create_facts()
         except AttributeError:
-            return []
+            pass
+        try:
+            return [f.as_machineterm()]
+        except AttributeError:
+            pass
+        return []
     expected_facts = list(it.chain.from_iterable(_q(f) for f in rif_facts_PET))
     try:
         return logicmachine_after_run(PET_testdata, logic_machine,
@@ -94,7 +99,10 @@ def _load_graph(testfile):
     pytest.skip("Need rdflib parser plugin to load RIF-file")
 
 
-def logicmachine_after_run(testdata, logic_machine, valid_exceptions, steplimit_, stop_conditions=[]):
+def logicmachine_after_run(testdata, logic_machine,
+                           valid_exceptions, steplimit_,
+                           stop_conditions=[],
+                           ) -> Any:
     testfile = str(testdata.premise)
     logger.debug("Premise: %s" % testdata)
     g = _load_graph(testfile)
@@ -108,7 +116,7 @@ def logicmachine_after_run(testdata, logic_machine, valid_exceptions, steplimit_
         if stop_conditions:
             q.add_stop_condition(stop_conditions)
         logger.debug("Running Machine ... ")
-        myfacts = q.run(steplimit_)
+        myfacts = q.run()
     except valid_exceptions as err:
         raise ExpectedFailure() from err
     logger.info("All facts after machine has run:\n%s"
