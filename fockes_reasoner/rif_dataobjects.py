@@ -3,7 +3,7 @@ import logging
 logger = logging.getLogger(__name__)
 import uuid
 import itertools as it
-from .durable_reasoner import machine_facts, fact, NoPossibleExternal, _resolve, ATOM_ARGS, term_list, pattern_generator, rule, machine_or, machine_and
+from .durable_reasoner import machine_facts, fact, NoPossibleExternal, _resolve, ATOM_ARGS, term_list, pattern_generator, rule
 from .durable_reasoner.machine_facts import external, TRANSLATEABLE_TYPES, executable
 import rdflib
 from rdflib import IdentifiedNode, Graph, Variable, Literal, URIRef, BNode
@@ -565,44 +565,6 @@ class rif_and(_resolvable_gen, _rif_check):
             formulas.append(next_formula)
         return cls(formulas)
 
-class rif_or(_rif_formula):
-    formulas: Iterable[_rif_formula]
-    _formulas_generators: Mapping[IdentifiedNode, Callable[[Graph, IdentifiedNode], _rif_check]]
-    def __init__(self, formulas: Iterable[_rif_formula]):
-        self.formulas = list(formulas)
-
-    def check(self,
-            machine: durable_reasoner.machine,
-            bindings: BINDING_WITH_BLANKS = {},
-            ) -> bool:
-        return any(f.check(machine, bindings) for f in self.formulas)
-
-    def _add_pattern(self, rule: durable_reasoner.rule) -> None:
-        rule.orig_pattern.append(self.as_machineterm())
-
-    def as_resolvable(self, machine: durable_reasoner.machine) -> RESOLVABLE:
-        raise NotImplementedError()
-
-    def as_machineterm(self) -> machine_or:
-        args = list(it.chain.from_iterable(_try_as_machineterm(x)
-                                           for x in self.formulas))
-        return machine_or(RIF.Or, args)
-
-    @classmethod
-    def from_rdf(cls, infograph: rdflib.Graph,
-                 rootnode: IdentifiedNode,
-                 ) -> "rif_or":
-        try:
-            formula_list_node, = infograph.objects(rootnode, RIF.formulas)
-        except ValueError as err:
-            raise Exception("Syntaxerror of RIF document") from err
-        formula_list: Iterable[IdentifiedNode] = rdflib.collection.Collection(infograph, formula_list_node) #type: ignore[assignment]
-        formulas: list[_rif_formula] = []
-        for formula_node in formula_list:
-            next_formula = _generate_object(infograph, formula_node, cls._formulas_generators)
-            formulas.append(next_formula)
-        return cls(formulas)
-
 class rif_do(_action_gen):
     target: List[Union["rif_assert", "rif_retract", "rif_modify"]]
     _do_action_generator: Mapping[IdentifiedNode, Callable[[Graph, IdentifiedNode], ATOM]]
@@ -766,6 +728,45 @@ class rif_external(_resolvable_gen, _rif_check):
 
     def __repr__(self) -> str:
         return "external %s (%s)" % (self.op, ", ".join(str(x) for x in self.args))
+
+
+class rif_or(rif_external, _rif_formula):
+    args: Iterable[_rif_formula]
+    _formulas_generators: Mapping[IdentifiedNode, Callable[[Graph, IdentifiedNode], _rif_check]]
+    op: Any = special_externals.condition_or.op
+    def __init__(self, formulas: Iterable[_rif_formula]):
+        self.args = list(formulas)
+
+    @property
+    def formulas(self) -> Iterable[_rif_formula]:
+        return self.args
+
+    def check(self,
+            machine: durable_reasoner.machine,
+            bindings: BINDING_WITH_BLANKS = {},
+            ) -> bool:
+        return any(f.check(machine, bindings) for f in self.formulas)
+
+    def _add_pattern(self, rule: durable_reasoner.rule) -> None:
+        rule.orig_pattern.append(self.as_machineterm())
+
+    def as_resolvable(self, machine: durable_reasoner.machine) -> RESOLVABLE:
+        raise NotImplementedError()
+
+    @classmethod
+    def from_rdf(cls, infograph: rdflib.Graph,
+                 rootnode: IdentifiedNode,
+                 ) -> "rif_or":
+        try:
+            formula_list_node, = infograph.objects(rootnode, RIF.formulas)
+        except ValueError as err:
+            raise Exception("Syntaxerror of RIF document") from err
+        formula_list: Iterable[IdentifiedNode] = rdflib.collection.Collection(infograph, formula_list_node) #type: ignore[assignment]
+        formulas: list[_rif_formula] = []
+        for formula_node in formula_list:
+            next_formula = _generate_object(infograph, formula_node, cls._formulas_generators)
+            formulas.append(next_formula)
+        return cls(formulas)
 
 
 class rif_member(rif_fact):

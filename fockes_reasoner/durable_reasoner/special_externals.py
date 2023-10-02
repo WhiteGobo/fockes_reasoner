@@ -228,9 +228,20 @@ def _pattern_generator_and(
         else:
             raise TypeError("only supports fact and abc_external", formula)
     yield patterns, conditions, bound_variables
+
+class _and_assignment:
+    args: Iterable
+    def __init__(self, *args):
+        self.args = args
+    def __call__(self, bindings: BINDING) -> Literal:
+        args = (_resolve(x, bindings) for x in self.args)
+        return Literal(all(args))
 condition_and = _special_external(_id("rif_and"),
                                   aspattern=_pattern_generator_and,
+                                  asassign=_and_assignment,
                                   )
+
+condition_or = _special_external(_id("rif_or"))
 
 _special_externals = [
         equality,

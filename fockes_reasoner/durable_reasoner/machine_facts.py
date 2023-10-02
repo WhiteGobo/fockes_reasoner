@@ -50,24 +50,6 @@ class executable(external):
     def __call__(self, bindings: BINDING) -> None:
         raise NotImplementedError()
 
-class machine_or(external):
-    op: URIRef
-    args: Iterable[Union[TRANSLATEABLE_TYPES, "external", Variable]]
-    def __init__(self, op: URIRef, args: Iterable[Union[TRANSLATEABLE_TYPES, "external", Variable]]) -> None:
-        assert op == URIRef("http://www.w3.org/2007/rif#Or")
-        self.op = op
-        self.args = list(args)
-
-
-class machine_and(external):
-    op: URIRef
-    args: Iterable[Union[TRANSLATEABLE_TYPES, "external", Variable]]
-    def __init__(self, op: URIRef, args: Iterable[Union[TRANSLATEABLE_TYPES, "external", Variable]]) -> None:
-        raise Exception()
-        assert op == URIRef("http://www.w3.org/2007/rif#And")
-        self.op = op
-        self.args = list(args)
-
 
 #class machine_list(external):
 #    op = create_list.op
