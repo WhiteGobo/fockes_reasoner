@@ -4,7 +4,7 @@ from rdflib import  Variable, URIRef, BNode, Literal, IdentifiedNode
 from hashlib import sha1
 import durable.lang as rls
 import durable.engine
-from .abc_machine import abc_pattern, TRANSLATEABLE_TYPES, VARIABLE_LOCATOR, FACTTYPE, BINDING, abc_external, ATOM_ARGS, NoPossibleExternal
+from .abc_machine import abc_pattern, TRANSLATEABLE_TYPES, VARIABLE_LOCATOR, FACTTYPE, BINDING, abc_external, ATOM_ARGS, NoPossibleExternal, VariableNotBoundError
 from .bridge_rdflib import rdflib2string
 from .machine_facts import frame, member, subclass, atom, fact, external, rdflib2string, _node2string, string2rdflib
 import logging

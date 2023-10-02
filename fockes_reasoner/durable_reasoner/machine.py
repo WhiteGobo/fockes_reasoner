@@ -725,75 +725,6 @@ class durable_rule(abc_machine.implication, abc_machine.rule):
                                         traceback.format_exc()))
                     raise FailedInternalAction() from err
 
-    def _generate_action_prerequisites(
-            self,
-            ) -> Iterable[Tuple[Iterable[_pattern],
-                                Iterable[Callable[[BINDING], Literal]],
-                                Iterable[Variable]]]:
-        p: List[Union[fact, abc_external]] = list(self.orig_pattern)
-        conditions: List[Callable[[BINDING], Literal]]
-        patterns: List[_pattern]
-        bound_variables: Set[Variable]
-        for patterns, conditions, bound_variables in self._generate_action_prerequisites_inner(p, [], [], set()):
-            if len(patterns) == 0 and len(conditions) == 0:
-                #create rule as initialisation rule
-                patterns.insert(0, _pattern({MACHINESTATE: INIT_STATE}))
-            elif len(patterns) > 0:
-                patterns.insert(0, _pattern({MACHINESTATE: RUNNING_STATE}))
-            else:
-                #TODO : This rule lacks any trigger. 
-                patterns.insert(0, _pattern({MACHINESTATE: RUNNING_STATE}))
-            yield patterns, conditions, bound_variables
-
-    def _generate_action_prerequisites_inner(
-            self,
-            pattern_parts: List[Union[fact, abc_external]],
-            patterns: list[_pattern],
-            conditions: List[Callable[[BINDING], Literal]],
-            bound_variables: Set[Variable],
-            ) -> Iterable[Tuple[List[_pattern],
-                                List[Callable[[BINDING], Literal]],
-                                Set[Variable]]]:
-        """
-        :TODO: The rules are not garantueed to be in the same sequence as
-            binding the variables would be required. For this case
-        """
-        #sorting cause patterns always bind succesfully -> more Success chance
-        pattern_parts = sorted(pattern_parts,
-                               key=lambda x: 0 if isinstance(x, fact) else 1)
-        for i, q in enumerate(pattern_parts):
-            if isinstance(q, fact):
-                logger.debug("appends %s as pattern." % q)
-                patterns.append(_pattern(q.as_dict()))
-                bound_variables.update(q.used_variables)
-            elif isinstance(q, abc_external):
-                for tmp_p, tmp_c, tmp_v\
-                        in self._process_external_as_pattern(q.op, q.args,
-                                                             bound_variables):
-                    logger.debug("uses %s to append:\npattern: %s\ncondition: %s"
-                                 %(q, tmp_p, tmp_c))
-                    new_bound_variables = bound_variables.union(tmp_v)
-                    if any(x not in new_bound_variables for x in q.args
-                           if isinstance(x, Variable)):
-                        raise VariableNotBoundError(
-                                "Condition (%s) uses unbound variables %s "
-                                "but doesnt bind it."
-                                % (q.op, [x for x in q.args
-                                          if isinstance(x, Variable)
-                                          and x not in new_bound_variables]))
-                    next_gen = self._generate_action_prerequisites_inner(
-                            pattern_parts[i+1:],
-                            [*patterns, *tmp_p],
-                            [*conditions, *tmp_c],
-                            new_bound_variables,
-                            )
-                    for x in next_gen:
-                        yield x
-                return
-            else:
-                raise Exception(type(q))
-        yield patterns, conditions, bound_variables
-
     def _generate_action(
             self,
             conditions: Iterable[Callable[[BINDING], Literal]],
@@ -823,8 +754,12 @@ class durable_rule(abc_machine.implication, abc_machine.rule):
             raise Exception()
         self.finalized = True
         logger.debug("Create rule %s" % self)
-        for patterns, conditions, bound_variables\
-                in self._generate_action_prerequisites():
+        #for patterns, conditions, bound_variables\
+        #        in self._generate_action_prerequisites():
+        from .machine_patterns import generate_action_prerequisites
+        q = generate_action_prerequisites(self.machine,
+                                          list(self.orig_pattern))
+        for patterns, conditions, bound_variables in q:
             if not all(x in bound_variables for x in self.needed_variables):
                 notbound = [x for x in self.needed_variables
                             if x not in bound_variables]

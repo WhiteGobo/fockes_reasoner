@@ -195,7 +195,8 @@ def _register_stop_condition(machine: abc_machine.machine,
 
     myfacts = []
     patterns = []
-    for patterns, conditions, bound_variables in generate_action_prerequisites(machine, list(required_facts)):
+    for patterns, conditions, bound_variables\
+            in generate_action_prerequisites(machine, list(required_facts)):
         logger.critical(patterns)
         #if len(patterns) == 1:#always contains machinestate: running
         #    raise NotImplementedError("Doesnt produce any patterns but "
