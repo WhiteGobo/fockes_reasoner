@@ -1,5 +1,6 @@
 import durable.lang as rls
 import durable.engine
+import json
 import uuid
 import abc
 import logging
@@ -232,7 +233,7 @@ class _base_durable_machine(abc_machine.machine):
         self._imported_locations = set()
         self.available_import_profiles = {}
         self._knownLocations = {}
-        self._steps_left = 1
+        self._steps_left = -1
 
     def apply(self, ext_order: abc_external) -> None:
         registering_action\
@@ -369,19 +370,17 @@ class _base_durable_machine(abc_machine.machine):
                                         from err
                 self._steps_left = self._steps_left - 1
                 if self._steps_left == 0:
+                    logger.debug("Stopping... maximal steplimit")
                     c.retract_fact({MACHINESTATE: RUNNING_STATE})
 
     def __set_basic_rules(self) -> None:
         with self._ruleset:
             @rls.when_all(rls.pri(1), +rls.s.exception)
             def second(c: durable.engine.Closure) -> None:
-                self.logger.critical(c.s.exception)
+                self.logger.critical(c.s.exception.replace("\\n", "\n"))
                 self.errors.append(str(c.s.exception))
                 c.s.exception = None
-                try:
-                    c.retract_state({MACHINESTATE: RUNNING_STATE})
-                except Exception:
-                    pass
+                c.retract_fact({MACHINESTATE: RUNNING_STATE})
 
             @rls.when_all(rls.pri(2),+getattr(rls.m, FACTTYPE))
             def accept_all_frametypes(c: durable.engine.Closure) -> None:
@@ -573,7 +572,7 @@ class OWLmachine(_base_durable_machine):
                 frame(inst, RDF.type, sub_type),
                 "ObjMember")
         newObjMember = frame(inst, RDF.type, super_type)
-        self._make_rule([desc_subclass, desc_objMember], [newObjMember])
+        self._make_rule([desc_subclass, desc_objMember], [newObjMember], 3)
 
     def __inconsistency_rules(self) -> None:
         x = Variable("x")
@@ -598,7 +597,7 @@ class OWLmachine(_base_durable_machine):
                 logger.error(err_message)
                 raise FailedInternalAction(err_message)
         self._make_rule([desc_findObjectProperty, desc_valueToProperty],
-                        [evaluate_inconsistency])
+                        [evaluate_inconsistency], 3)
 
 
 class RDFSmachine(_base_durable_machine):
@@ -623,7 +622,7 @@ class RDFSmachine(_base_durable_machine):
             member.CLASS: sub_type,
             }, "ObjMember")
         newObjMember = member(inst, super_type)
-        self._make_rule([desc_subclass, desc_objMember], [newObjMember])
+        self._make_rule([desc_subclass, desc_objMember], [newObjMember], 3)
 
 
 class durable_rule(abc_machine.implication, abc_machine.rule):

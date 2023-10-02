@@ -171,6 +171,7 @@ class _StopRunning_action:
             for cond in self.conditions:
                 if not cond(bindings):
                     return
+            logger.critical("Stopping ...")
             self.machine._current_context.retract_fact(
                     {MACHINESTATE: RUNNING_STATE})
             raise abc_machine.StopRunning(self.stopmessage)
@@ -185,6 +186,7 @@ def _register_stop_condition(machine: abc_machine.machine,
     myfacts = []
     patterns = []
     for patterns, conditions, bound_variables in generate_action_prerequisites(machine, list(required_facts)):
+        logger.critical(patterns)
         #if len(patterns) == 1:#always contains machinestate: running
         #    raise NotImplementedError("Doesnt produce any patterns but "
         #                              "currently i need some.")
@@ -192,18 +194,6 @@ def _register_stop_condition(machine: abc_machine.machine,
         machine._make_rule(patterns,
                            [_StopRunning_action(machine, conditions, msg)],
                            priority=3)
-
-    return
-    raise Exception(q, w)
-    for i, f in enumerate(required_facts):
-        patterns.append(_pattern.from_fact(
-            machine._registered_facttypes[type(f)],
-            f,
-            "fact%d" % i))
-        myfacts.append(f)
-    if not patterns:
-        raise ValueError("for stop condition needs at least one fact")
-    machine._make_rule(patterns, [raise_StopRunning], priority=3)
 
 stop_condition = _special_external(_id("stop_condition"),
                                    asgroundaction=_register_stop_condition
