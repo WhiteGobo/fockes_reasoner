@@ -1057,16 +1057,6 @@ class rif_equal(rif_external):
     def right(self) -> ATOM:
         return self.args[1]
 
-    @dataclass
-    class _condition(_child_action):
-        parent: "rif_equal"
-        left: Callable[[BINDING], Literal]
-        right: Callable[[BINDING], Literal]
-        def __call__(self, bindings: BINDING) -> bool:
-            left = _resolve(self.left, bindings)
-            right = _resolve(self.right, bindings)
-            return Literal(left == right)#type: ignore[return-value]
-
     def __repr__(self) -> str:
         return "(%s = %s)" % (self.left, self.right)
 
