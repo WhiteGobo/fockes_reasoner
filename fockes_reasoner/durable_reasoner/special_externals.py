@@ -241,7 +241,37 @@ condition_and = _special_external(_id("rif_and"),
                                   asassign=_and_assignment,
                                   )
 
-condition_or = _special_external(_id("rif_or"))
+def _pattern_generator_or(
+        machine,
+        args: Iterable[Union[fact, abc_external]],
+        bound_variables: Container[Variable],
+        ) -> Iterable[Tuple[Iterable[abc_pattern],
+                            Tuple["pred_iri_string"],
+                            Iterable[Variable]]]:
+    #patterns, conditions, bound_variables = [], [], set()
+    for formula in args:
+        if isinstance(formula, fact):
+            id_ = machine._registered_facttypes[type(formula)]
+            patterns = [_pattern.from_fact(id_, formula)]
+            bound_variables = formula.used_variables
+            conditions = []
+        elif isinstance(formula, abc_external):
+            raise NotImplementedError("externals not yet supported", formula)
+        else:
+            raise TypeError("only supports fact and abc_external", formula)
+        yield patterns, conditions, bound_variables
+
+class _or_assignment:
+    args: Iterable
+    def __init__(self, *args):
+        self.args = args
+    def __call__(self, bindings: BINDING) -> Literal:
+        args = (_resolve(x, bindings) for x in self.args)
+        return Literal(any(args))
+condition_or = _special_external(_id("rif_or"),
+                                 aspattern=_pattern_generator_or,
+                                 asassign=_and_assignment,
+                                 )
 
 _special_externals = [
         equality,
@@ -252,4 +282,5 @@ _special_externals = [
         import_data,
         stop_condition,
         condition_and,
+        condition_or,
         ]
