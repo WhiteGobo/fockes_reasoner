@@ -74,9 +74,19 @@ class _bind_first:
         right = _resolve(self.right, bindings)
         bindings[self.left] = right
         return Literal(True)
+@dataclass
+class _bind_second:
+    left: RESOLVABLE
+    right: Variable
+
+    def __call__(self, bindings: BINDING) -> Literal:
+        left = _resolve(self.left, bindings)
+        bindings[self.right] = left
+        return Literal(True)
 equality = _special_external(_id("rif equality"),
                              asassign=literal_equal,
-                             asbinding={(True, False): _bind_first},
+                             asbinding={(True, False): _bind_first,
+                                        (False, True): _bind_second},
                              )
 
 @dataclass
