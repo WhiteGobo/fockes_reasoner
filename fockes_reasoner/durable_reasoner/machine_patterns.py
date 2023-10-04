@@ -117,16 +117,21 @@ def generate_action_prerequisites(
     conditions: List[Callable[[BINDING], Literal]]
     patterns: List[_pattern]
     bound_variables: Set[Variable]
-    for patterns, conditions, bound_variables in _generate_action_prerequisites_inner(machine, p, [], [], set()):
-        if len(patterns) == 0 and len(conditions) == 0:
-            #create rule as initialisation rule
-            patterns.insert(0, _pattern({MACHINESTATE: INIT_STATE}))
-        elif len(patterns) > 0:
-            patterns.insert(0, _pattern({MACHINESTATE: RUNNING_STATE}))
-        else:
-            #TODO : This rule lacks any trigger. 
-            patterns.insert(0, _pattern({MACHINESTATE: RUNNING_STATE}))
-        yield patterns, conditions, bound_variables
+    try:
+        for patterns, conditions, bound_variables in _generate_action_prerequisites_inner(machine, p, [], [], set()):
+            if len(patterns) == 0 and len(conditions) == 0:
+                #create rule as initialisation rule
+                patterns.insert(0, _pattern({MACHINESTATE: INIT_STATE}))
+            elif len(patterns) > 0:
+                patterns.insert(0, _pattern({MACHINESTATE: RUNNING_STATE}))
+            else:
+                #TODO : This rule lacks any trigger. 
+                patterns.insert(0, _pattern({MACHINESTATE: RUNNING_STATE}))
+            yield patterns, conditions, bound_variables
+    except VariableNotBoundError:
+        raise
+    except Exception as err:
+        raise Exception(p) from err
 
 def _generate_action_prerequisites_inner(
         machine,

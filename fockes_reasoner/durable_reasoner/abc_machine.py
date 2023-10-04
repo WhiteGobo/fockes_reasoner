@@ -1,8 +1,8 @@
 import abc
 import logging
 import typing as typ
-from typing import MutableMapping, Mapping, Union, Iterable, Optional, overload, Any
-from collections.abc import MutableSequence, Callable, Collection
+from typing import MutableMapping, Mapping, Union, Iterable, Optional, overload, Any, Tuple
+from collections.abc import MutableSequence, Callable, Collection, Container
 import rdflib
 from rdflib import IdentifiedNode, Graph, Literal, Variable
 
@@ -124,6 +124,70 @@ class machine(abc.ABC):
         :TODO: currently facts are only simple facts like a frame. But check
             should support complex statement like 'Xor'
         """
+
+    @abc.abstractmethod
+    def _create_pattern_from_external(
+            self,
+            op: IdentifiedNode,
+            args: ATOM_ARGS,
+            bound_variables: Container[Variable],
+            ) -> Iterable[Tuple[Iterable[fact],
+                                Iterable[Callable[[BINDING], Literal]],
+                                Iterable[Variable]]]:
+        ...
+
+    @abc.abstractmethod
+    def _create_binding_from_external(
+            self,
+            op: IdentifiedNode,
+            args: ATOM_ARGS,
+            bound_variables: Container[Variable] = [],
+            ) -> Tuple[Iterable[fact],
+                       Iterable[Callable[[BINDING], Literal]],
+                       Iterable[Variable]]:
+        ...
+
+    @abc.abstractmethod
+    def _create_assignment_from_external(
+            self,
+            op: IdentifiedNode,
+            args: ATOM_ARGS,
+            ) -> ASSIGNMENT:
+        ...
+
+    def create_internal_and_python_conditions(
+            self,
+            info: Union[fact, abc_external],
+            ) -> Iterable[Union[Iterable[fact],
+                                Iterable[Callable[[BINDING], Literal]],
+                                Container[Variable]]]:
+        if isinstance(info, fact):
+            assert all(not isinstance(x, abc_external) for x in info.values())
+            yield (info, [], info.used_variables)
+            return
+        try:
+            info.op, info.args
+            assert isinstance(info, abc_external)
+        except AttributeError:
+            raise TypeError("Can only translate registered facts and"
+                            " externals")
+        try:
+            q = self._create_pattern_from_external(info.op, info.args,
+                                                   bound_variables)
+            for x in q:
+                yield x
+            return
+        except NoPossibleExternal:
+            pass
+        try:
+            yield self._create_binding_from_external(info.op, info.args,
+                                                     bound_variables)
+            return
+        except NoPossibleExternal:
+            pass
+        cond = machine._create_assignment_from_external(op, args)
+        yield [], [cond], []
+
 
     @abc.abstractmethod
     def assert_fact(self, new_fact: fact, bindings: BINDING,

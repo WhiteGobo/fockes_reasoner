@@ -251,16 +251,8 @@ def _pattern_generator_or(
                             Iterable[Variable]]]:
     #patterns, conditions, bound_variables = [], [], set()
     for formula in args:
-        if isinstance(formula, fact):
-            id_ = machine._registered_facttypes[type(formula)]
-            patterns = [_pattern.from_fact(id_, formula)]
-            bound_variables = formula.used_variables
-            conditions = []
-        elif isinstance(formula, abc_external):
-            raise NotImplementedError("externals not yet supported", formula)
-        else:
-            raise TypeError("only supports fact and abc_external", formula)
-        yield patterns, conditions, bound_variables
+        for patterns, conditions, bound_variables in generate_action_prerequisites(machine, [args]):
+            yield patterns, conditions, bound_variables
 
 class _or_assignment:
     args: Iterable

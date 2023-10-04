@@ -455,7 +455,7 @@ class _base_durable_machine(abc_machine.machine):
             raise NoPossibleExternal()
         args_ = []
         for a in args:
-            assert not isinstance(a, abc_external)
+            assert not isinstance(a, abc_external), a
             args_.append(a)
         for tmp_pattern, cond, new_bound_vars in mygen(self, args_, bound_variables):
             tmp_pattern_: list[_pattern] = []
