@@ -102,6 +102,7 @@ def _load_graph(testfile):
 def logicmachine_after_run(testdata, logic_machine,
                            valid_exceptions, steplimit_,
                            stop_conditions=[],
+                           step_limit=None,
                            ) -> Any:
     testfile = str(testdata.premise)
     logger.debug("Premise: %s" % testdata)

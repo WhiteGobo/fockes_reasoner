@@ -492,7 +492,7 @@ def NST_testdata(request):
 
 @pytest.fixture(params=[
     param(PST_Core_Safeness,
-          marks=mark.skip("runs indefinitly."),
+          marks=mark.skip("will run indefinitly when run"),
           id="PST_Core_Safeness"),
     param(PST_Core_Safeness_2,
           id=PST_Core_Safeness_2.name),
