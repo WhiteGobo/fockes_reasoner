@@ -453,11 +453,7 @@ class _base_durable_machine(abc_machine.machine):
             mygen = self._registered_pattern_generator[op]
         except KeyError:
             raise NoPossibleExternal()
-        args_ = []
-        for a in args:
-            assert not isinstance(a, abc_external), a
-            args_.append(a)
-        for tmp_pattern, cond, new_bound_vars in mygen(self, args_, bound_variables):
+        for tmp_pattern, cond, new_bound_vars in mygen(self, args, bound_variables):
             tmp_pattern_: list[_pattern] = []
             for _x in tmp_pattern:
                 assert isinstance(_x, _pattern)
@@ -704,14 +700,14 @@ class durable_rule(abc_machine.implication, abc_machine.rule):
             for cond in self.conditions:
                 try:
                     if not cond(bindings):
-                        self.logger.debug("Stopped rule because %s"
+                        self.logger.debug("Stopped rule because:\n%s"
                                                   % cond)
                         return
                 except Exception as err:
-                    self.logger.info("Failed at condition %r with "
-                                "bindings %s.\n Produced traceback:\n%s"
-                                 % (cond, bindings,
-                                    traceback.format_exc()))
+                    self.logger.info("Failed with bindings %s at condition:\n"
+                                     "%s\nProduced traceback:\n%s"
+                                     % (bindings, cond,
+                                        traceback.format_exc()))
                     raise FailedInternalAction() from err
             #if self.actions is None:
             #    raise RuleNotComplete("action is missing")
@@ -798,8 +794,12 @@ class durable_rule(abc_machine.implication, abc_machine.rule):
             return
         except NoPossibleExternal:
             pass
+        #if all(x in bound_variables for x in args if isinstance(x, Variable)):
         cond = self.machine._create_assignment_from_external(op, args)
         yield [], [cond], []
+        #    return
+        #else:
+        #    raise Exception()
 
     @property
     def logger(self) -> logging.Logger:

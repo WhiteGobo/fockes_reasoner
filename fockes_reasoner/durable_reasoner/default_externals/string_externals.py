@@ -9,7 +9,7 @@ from dataclasses import dataclass, field
 from ..bridge_rdflib import term_list, _term_list, TRANSLATEABLE_TYPES
 import re
 
-from ..abc_machine import BINDING, RESOLVABLE, _resolve, RESOLVER, abc_pattern, ATOM_ARGS
+from ..abc_machine import BINDING, RESOLVABLE, _resolve, RESOLVER, abc_pattern, ATOM_ARGS, NoPossibleExternal
 from ...shared import pred, func
 from .shared import is_datatype, invert, assign_rdflib
 import locale
@@ -390,11 +390,16 @@ class iri_string:
                                 Tuple["pred_iri_string"],
                                 Iterable[Variable]]]:
         target_var, source_string = args
-        if all(x in bound_variables for x in (target_var, source_string)
-               if isinstance(x, Variable)):
+        not_bound_vars = [x for x in args
+                          if isinstance(x, Variable)
+                          and x not in bound_variables]
+        if source_string in not_bound_vars:
+            raise NoPossibleExternal()
+        if not not_bound_vars:
             condition = cls(target_var, source_string)
             yield tuple(), (condition,), tuple()
-        elif isinstance(target_var, Variable) and target_var not in bound_variables:
+        elif isinstance(target_var, Variable)\
+                and target_var not in bound_variables:
             condition = cls(target_var, source_string, _is_binding=True)
             yield tuple(), (condition,), [target_var]
         else:

@@ -49,7 +49,8 @@ def _resolve(x: RESOLVABLE, bindings: BINDING,
 
 
 class NoPossibleExternal(ValueError):
-    """Raise this, if wanted functionality is not implemented for this external
+    """InternalError.
+    Raise this, if wanted functionality is not implemented for this external
     """
     ...
 
@@ -158,9 +159,11 @@ class machine(abc.ABC):
     def create_internal_and_python_conditions(
             self,
             info: Union[fact, abc_external],
+            bound_variables: Container[Variable] = [],
             ) -> Iterable[Union[Iterable[fact],
                                 Iterable[Callable[[BINDING], Literal]],
                                 Container[Variable]]]:
+        _was_found = False
         if isinstance(info, fact):
             assert all(not isinstance(x, abc_external) for x in info.values())
             yield (info, [], info.used_variables)
@@ -170,22 +173,36 @@ class machine(abc.ABC):
             assert isinstance(info, abc_external)
         except AttributeError:
             raise TypeError("Can only translate registered facts and"
-                            " externals")
+                            " externals", info)
         try:
             q = self._create_pattern_from_external(info.op, info.args,
                                                    bound_variables)
             for x in q:
                 yield x
             return
-        except NoPossibleExternal:
+        except NoPossibleExternal as err:
+            #_was_found = err.was_implemented
             pass
         try:
             yield self._create_binding_from_external(info.op, info.args,
                                                      bound_variables)
             return
         except NoPossibleExternal:
+            #_was_found = err.was_implemented
             pass
-        cond = machine._create_assignment_from_external(op, args)
+        not_bound_vars = [x for x in info.args
+                          if isinstance(x, Variable)
+                          and x not in bound_variables]
+        if not_bound_vars:
+            if not _was_found:
+                try:
+                    self._create_assignment_from_external(info.op, info.args)
+                except NoPossibleExternal as err:
+                    raise NoPossibleExternal("The external '%s' isnt "
+                                             "implemented." % info.op) from err
+            raise VariableNotBoundError("The following external cant be used"
+                                        "here", info)
+        cond = self._create_assignment_from_external(info.op, info.args)
         yield [], [cond], []
 
 

@@ -251,7 +251,10 @@ def _pattern_generator_or(
                             Iterable[Variable]]]:
     #patterns, conditions, bound_variables = [], [], set()
     for formula in args:
-        for patterns, conditions, bound_variables in generate_action_prerequisites(machine, [args]):
+        #for patterns, conditions, bound_variables in generate_action_prerequisites(machine, [args]):
+        q = machine.create_internal_and_python_conditions(formula,
+                                                          bound_variables)
+        for patterns, conditions, bound_variables in q:
             yield patterns, conditions, bound_variables
 
 class _or_assignment:

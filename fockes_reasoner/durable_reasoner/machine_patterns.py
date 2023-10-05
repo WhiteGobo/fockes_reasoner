@@ -130,8 +130,6 @@ def generate_action_prerequisites(
             yield patterns, conditions, bound_variables
     except VariableNotBoundError:
         raise
-    except Exception as err:
-        raise Exception(p) from err
 
 def _generate_action_prerequisites_inner(
         machine,
