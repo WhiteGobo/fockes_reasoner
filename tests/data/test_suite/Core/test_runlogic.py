@@ -426,7 +426,6 @@ tmp = files(Core_Safeness_3)
     pytest.param(PET_RDF_Combination_Constant_Equivalence_4,
                  id="PET_RDF_Combination_Constant_Equivalence_4"),
     pytest.param(PET_RDF_Combination_Constant_Equivalence_Graph_Entailment,
-                 marks=mark.skip("The test uses conclusion format ttl"),
                  id="PET_RDF_Combination_Constant_Equivalence_Graph_Entailment"),
     pytest.param(PET_RDF_Combination_SubClass_2,
                  id="PET_RDF_Combination_SubClass_2"),

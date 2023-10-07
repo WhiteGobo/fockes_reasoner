@@ -152,6 +152,9 @@ def rif_facts(conclusionfile):
     except rdflib.plugin.PluginException:
         pytest.skip("Need rdflib parser plugin to load RIF-file %s"
                     % conclusionfile)
+    except Exception:
+        logger.critical("failed at when loading %s" % conclusionfile)
+        raise
     #logger.debug("Expected conclusions in ttl:\n%s" % conc_graph.serialize())
     rif_facts = []
 
@@ -162,6 +165,8 @@ def rif_facts(conclusionfile):
             t, = conc_graph.objects(fact_root, RDF.type)
             generator = _rif_type_to_constructor[t]
         except (KeyError, ValueError) as err:
+            logger.critical(conc_graph.serialize())
+            logger.critical(conclusionfile)
             raise _LoadingError("Couldnt find constructur for rootnode %r"
                                 % fact_root) from err
         rif_facts.append(generator(conc_graph, fact_root))
