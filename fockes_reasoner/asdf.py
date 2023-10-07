@@ -68,10 +68,13 @@ class simpleLogicMachine(PRD_logicMachine):
         ext = external(special_externals.stop_condition.op, rif_facts)
         self.machine.apply(ext)
 
-    def check(self, rif_facts: Iterable[rif_fact]) -> bool:
-        checks = {f: f.check(self.machine) for f in rif_facts}
-        logger.debug("Checks: %s" % checks)
-        return all(checks.values())
+    def check(self, rif_facts: Union[Graph, Iterable[rif_fact]]) -> bool:
+        if isinstance(rif_facts, Graph):
+            raise NotImplementedError()
+        else:
+            checks = {f: f.check(self.machine) for f in rif_facts}
+            logger.debug("Checks: %s" % checks)
+            return all(checks.values())
 
     @classmethod
     def from_rdf(cls, infograph: rdflib.Graph,
