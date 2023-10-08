@@ -9,14 +9,15 @@ def import_profileRDFSEntailment(machine, location):
     helper = profileRDFSEntailment._initImport(machine, location)
     helper({})
 
-def export_profileRDFEntailment(machine):
+def export_profileRDFEntailment(machine) -> Graph:
+    g = Graph()
     data = machine.get_facts()
     for tmp_fact in data:
         if isinstance(tmp_fact, frame):
             axiom = (tmp_fact.obj, tmp_fact.slotkey, tmp_fact.slotvalue)
             if any(not isinstance(x, Node) for x in axiom):
                 raise NotImplementedError("lists are not yet supported")
-            yield axiom
+            g.add(axiom)
         elif isinstance(tmp_fact, atom):
             raise NotImplementedError()
         elif isinstance(tmp_fact, subclass):
@@ -25,6 +26,7 @@ def export_profileRDFEntailment(machine):
             raise NotImplementedError()
         else:
             raise Exception(tmp_fact)
+    return g
 
 
 class profileRDFSEntailment(importProfile):

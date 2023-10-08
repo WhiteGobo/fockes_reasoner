@@ -71,12 +71,10 @@ class simpleLogicMachine(PRD_logicMachine):
         self.machine.apply(ext)
 
     def export_data(self, format="rdflib") -> Any:
-        if format != "rdflib":
+        if format == "rdflib":
+            return export_profileRDFEntailment(self.machine)
+        else:
             raise NotImplementedError()
-        g = Graph()
-        for ax in export_profileRDFEntailment(self.machine):
-            g.add(ax)
-        return g
 
     def check(self, rif_facts: Union[Graph, Iterable[rif_fact]]) -> bool:
         checks = {f: f.check(self.machine) for f in rif_facts}
