@@ -1,11 +1,12 @@
 import pytest
 import itertools as it
-from typing import Iterable, Any
+from typing import Iterable, Any, Union, Optional
 import rdflib
-from rdflib import RDF
+from rdflib import RDF, Graph
 import logging
 logger = logging.getLogger(__name__)
 from pytest import param, mark, skip, raises
+import rdflib_rif
 import fockes_reasoner
 from .test_rif_basic import _import_graph
 from .class_officialTestCases import PositiveEntailmentTest, NegativeEntailmentTest, ImportRejectionTest, PositiveSyntaxTest, NegativeSyntaxTest
@@ -36,7 +37,7 @@ def logic_machine(request):
 @pytest.fixture
 def logicmachine_after_PET(PET_testdata, logic_machine, valid_exceptions,
                            steplimit,
-                           rif_facts_PET: Iterable["rif_fact"]):
+                           rif_facts_PET: Union[Iterable["rif_fact"], Graph]):
     def _q(f):
         try:
             return f._create_facts()
@@ -47,12 +48,22 @@ def logicmachine_after_PET(PET_testdata, logic_machine, valid_exceptions,
         except AttributeError:
             pass
         return []
-    expected_facts = list(it.chain.from_iterable(_q(f) for f in rif_facts_PET))
-    try:
-        return logicmachine_after_run(PET_testdata, logic_machine,
-                                  valid_exceptions, steplimit, expected_facts)
-    except ExpectedFailure as err:
-        return err
+    if isinstance(rif_facts_PET, Graph):
+        try:
+            return logicmachine_after_run(PET_testdata, logic_machine,
+                                          valid_exceptions, steplimit,
+                                          [], compare_graph=rif_facts_PET)
+        except ExpectedFailure as err:
+            return err
+    else:
+        expected_facts = list(it.chain.from_iterable(_q(f)
+                                                     for f in rif_facts_PET))
+        try:
+            return logicmachine_after_run(PET_testdata, logic_machine,
+                                          valid_exceptions, steplimit,
+                                          expected_facts)
+        except ExpectedFailure as err:
+            return err
 
 @pytest.fixture
 def logicmachine_after_NET(NET_testdata, logic_machine, valid_exceptions, steplimit):
@@ -103,6 +114,7 @@ def logicmachine_after_run(testdata, logic_machine,
                            valid_exceptions, steplimit_,
                            stop_conditions=[],
                            step_limit=None,
+                           compare_graph: Optional[Graph] = None,
                            ) -> Any:
     testfile = str(testdata.premise)
     logger.debug("Premise: %s" % testdata)
@@ -134,8 +146,13 @@ def rif_facts_PET(PET_testdata):
     logger.debug("Conclusion: %s" % conclusionfile)
     try:
         return rif_facts(conclusionfile)
+    except rdflib_rif.BadSyntax as err:
+        pass
     except _LoadingError as err1:
         raise
+
+    g = rdflib.Graph().parse(conclusionfile)
+    return g
 
 @pytest.fixture
 def rif_facts_NET(logicmachine_after_NET, NET_testdata):
@@ -152,6 +169,8 @@ def rif_facts(conclusionfile):
     except rdflib.plugin.PluginException:
         pytest.skip("Need rdflib parser plugin to load RIF-file %s"
                     % conclusionfile)
+    except rdflib_rif.BadSyntax:
+        raise
     except Exception:
         logger.critical("failed at when loading %s" % conclusionfile)
         raise

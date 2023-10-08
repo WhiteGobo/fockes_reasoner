@@ -1,16 +1,28 @@
 import pytest
 from ..conftest import ExpectedFailure
+from typing import Union, Iterable
+from rdflib import Graph
+from rdflib.compare import to_isomorphic, graph_diff
+
 import logging
 logger = logging.getLogger(__name__)
 
 class blueprint_test_logicmachine:
-    def test_check_facts(self, logicmachine_after_PET, rif_facts_PET):
+    def test_check_facts(self, logicmachine_after_PET,
+                         rif_facts_PET: Union[Graph, Iterable["rif_fact"]]):
         logger.debug("expected facts:\n%s" % rif_facts_PET)
         if isinstance(logicmachine_after_PET, ExpectedFailure):
             return
         assert rif_facts_PET, "couldnt load conclusion rif_facts directly"
-        assert logicmachine_after_PET.check(rif_facts_PET),\
-                "Missing expected conclusions"
+        if isinstance(rif_facts_PET, Graph):
+            datagraph = logicmachine_after_PET.export_data(format="rdflib")
+            isodata = to_isomorphic(datagraph)
+            isocomp = to_isomorphic(rif_facts_PET)
+            in_both, in_data, in_comp = graph_diff(isodata, isocomp)
+            assert not list(in_data) and not list(in_comp)
+        else:
+            assert logicmachine_after_PET.check(rif_facts_PET),\
+                    "Missing expected conclusions"
 
     def test_check_nonfacts(self, logicmachine_after_NET, rif_facts_NET):
         if isinstance(logicmachine_after_NET, ExpectedFailure):
