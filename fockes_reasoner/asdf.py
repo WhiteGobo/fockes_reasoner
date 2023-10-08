@@ -12,6 +12,8 @@ from .class_machineWithImport import machineWithImport as machine
 from .durable_reasoner import VariableNotBoundError, external
 from .durable_reasoner import special_externals
 
+from .class_profileRDFSEntailment import export_profileRDFEntailment
+
 class importManager(Mapping[IdentifiedNode, Graph]):
     documents: Mapping[IdentifiedNode, Graph]
     def __init__(self,
@@ -69,7 +71,12 @@ class simpleLogicMachine(PRD_logicMachine):
         self.machine.apply(ext)
 
     def export_data(self, format="rdflib") -> Any:
-        raise NotImplementedError()
+        if format != "rdflib":
+            raise NotImplementedError()
+        g = Graph()
+        for ax in export_profileRDFEntailment(self.machine):
+            g.add(ax)
+        return g
 
     def check(self, rif_facts: Union[Graph, Iterable[rif_fact]]) -> bool:
         checks = {f: f.check(self.machine) for f in rif_facts}

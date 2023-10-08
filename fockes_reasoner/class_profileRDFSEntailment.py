@@ -1,5 +1,5 @@
 from rdflib import Graph, IdentifiedNode
-from rdflib.term import Node
+from rdflib.term import Node, Node
 from .durable_reasoner import importProfile, machine, fact, frame, TRANSLATEABLE_TYPES, subclass, member
 from rdflib import IdentifiedNode, Literal, URIRef, BNode, RDF, RDFS
 from typing import Union, Any, List, Dict, Mapping
@@ -8,6 +8,24 @@ from dataclasses import dataclass
 def import_profileRDFSEntailment(machine, location):
     helper = profileRDFSEntailment._initImport(machine, location)
     helper({})
+
+def export_profileRDFEntailment(machine):
+    data = machine.get_facts()
+    for tmp_fact in data:
+        if isinstance(tmp_fact, frame):
+            axiom = (tmp_fact.obj, tmp_fact.slotkey, tmp_fact.slotvalue)
+            if any(not isinstance(x, Node) for x in axiom):
+                raise NotImplementedError("lists are not yet supported")
+            yield axiom
+        elif isinstance(tmp_fact, atom):
+            raise NotImplementedError()
+        elif isinstance(tmp_fact, subclass):
+            raise NotImplementedError()
+        elif isinstance(tmp_fact, member):
+            raise NotImplementedError()
+        else:
+            raise Exception(tmp_fact)
+
 
 class profileRDFSEntailment(importProfile):
     """
