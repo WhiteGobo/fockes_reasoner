@@ -1,4 +1,4 @@
-from typing import Union, Iterable, Optional, Iterator
+from typing import Union, Iterable, Optional, Iterator, Any
 import rdflib
 from rdflib import RDF, IdentifiedNode, Graph, URIRef
 from .shared import RIF
@@ -68,13 +68,13 @@ class simpleLogicMachine(PRD_logicMachine):
         ext = external(special_externals.stop_condition.op, rif_facts)
         self.machine.apply(ext)
 
+    def export_data(self, format="rdflib") -> Any:
+        raise NotImplementedError()
+
     def check(self, rif_facts: Union[Graph, Iterable[rif_fact]]) -> bool:
-        if isinstance(rif_facts, Graph):
-            raise NotImplementedError()
-        else:
-            checks = {f: f.check(self.machine) for f in rif_facts}
-            logger.debug("Checks: %s" % checks)
-            return all(checks.values())
+        checks = {f: f.check(self.machine) for f in rif_facts}
+        logger.debug("Checks: %s" % checks)
+        return all(checks.values())
 
     @classmethod
     def from_rdf(cls, infograph: rdflib.Graph,
