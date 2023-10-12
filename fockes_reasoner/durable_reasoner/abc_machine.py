@@ -22,6 +22,17 @@ VARIABLE_LOCATOR = Callable[[typ.Any], TRANSLATEABLE_TYPES]
 CLOSURE_BINDINGS = MutableMapping[rdflib.Variable, VARIABLE_LOCATOR]
 ATOM_ARGS = Iterable[Union[TRANSLATEABLE_TYPES, Variable, "abc_external"]]
 
+BINDING_DESCRIPTION = Mapping[tuple[bool], Callable]
+"""Maps a tuple representing the position of unbound variables to a generator
+"""
+
+PATTERNGENERATOR\
+        = Callable[[Iterable[RESOLVABLE], Container[Variable]],
+                   Iterable[Tuple[Iterable["abc_pattern"],
+                                  Iterable[Callable[[BINDING], Literal]],
+                                  Iterable[Variable]]]]
+
+
 class RuleNotComplete(Exception):
     """Rules are objects, that are worked on. So if you finalize a rule
     There may not be all needed information. Raise this error in that case
@@ -265,6 +276,19 @@ class machine(abc.ABC):
         """
         :TODO: Seems indifferent to get_binding_action but doesnt work if used as replacement. Have to rework the resolution of externals
         """
+
+class extensible_machine(machine):
+    """This machine can be extended with python code
+    """
+    @abc.abstractmethod
+    def register(self, op: rdflib.URIRef,
+                 asaction: Optional[Callable[[BINDING], None]] = None,
+                 asassign: Optional[Callable[[BINDING], Literal]] = None,
+                 aspattern: Optional[PATTERNGENERATOR] = None,
+                 asbinding: Optional[BINDING_DESCRIPTION] = None,
+                 asgroundaction: Optional[Any] = None,
+                 ) -> None:
+        ...
 
 class action:
     action: Optional[Callable]

@@ -48,7 +48,11 @@ class importManager(Mapping[IdentifiedNode, Graph]):
 
 
 class simpleLogicMachine(PRD_logicMachine):
+    """
+    To extend the machine you have to use self.machine.register method
+    """
     document: rif_document
+    machine: machine
     def __init__(self, document: rif_document, extraDocuments):
         self.document = document
         #reset machine

@@ -29,16 +29,7 @@ from . import special_externals
 from . import default_externals as def_ext
 from .owl_facts import rdfs_subclass
 from .machine_patterns import _pattern, _value_locator, MACHINESTATE, RUNNING_STATE, INIT_STATE
-
-BINDING_DESCRIPTION = Mapping[tuple[bool], Callable]
-"""Maps a tuple representing the position of unbound variables to a generator
-"""
-
-PATTERNGENERATOR\
-        = Callable[[Iterable[RESOLVABLE], Container[Variable]],
-                   Iterable[Tuple[Iterable[abc_pattern],
-                                  Iterable[Callable[[BINDING], Literal]],
-                                  Iterable[Variable]]]]
+from .abc_machine import BINDING_DESCRIPTION, PATTERNGENERATOR
 
 
 LIST = "list"
@@ -174,7 +165,7 @@ def _transform_all_externals_to_calls(args: ATOM_ARGS,
         raise NotImplementedError(arg, type(arg))
     return useable_args
 
-class _base_durable_machine(abc_machine.machine):
+class _base_durable_machine(abc_machine.extensible_machine):
     _ruleset: rls.ruleset
     logger: logging.Logger
     """Logger for specific output, expected from the machine, eg execute:print.
