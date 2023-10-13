@@ -286,7 +286,7 @@ class extensible_machine(machine):
                  asassign: Optional[Callable[[BINDING], Literal]] = None,
                  aspattern: Optional[PATTERNGENERATOR] = None,
                  asbinding: Optional[BINDING_DESCRIPTION] = None,
-                 asgroundaction: Optional[Any] = None,
+                 #asgroundaction: Optional[Any] = None,
                  ) -> None:
         ...
 

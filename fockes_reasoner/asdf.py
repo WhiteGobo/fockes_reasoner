@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 from .abc_logicMachine import PRD_logicMachine, SyntaxReject, AlgorithmRejection, ImportReject, StuckWithIncosistentInformation
 
 from .rif_dataobjects import rif_document, rif_fact
-from .class_machineWithImport import machineWithImport as machine
+from .class_machineWithImport import machineWithImport
 from .durable_reasoner import VariableNotBoundError, external
 from .durable_reasoner import special_externals
 
@@ -52,11 +52,15 @@ class simpleLogicMachine(PRD_logicMachine):
     To extend the machine you have to use self.machine.register method
     """
     document: rif_document
-    machine: machine
-    def __init__(self, document: rif_document, extraDocuments):
+    machine: machineWithImport
+    def __init__(self, document: rif_document, extraDocuments,
+                 machine: Optional[machineWithImport] = None):
         self.document = document
         #reset machine
-        self.machine = machine()
+        if machine is None:
+            self.machine = machineWithImport()
+        else:
+            self.machine = machine
         for loc_id, information_graph in extraDocuments.items():
             q = list(information_graph)
             def get_graph() -> rdflib.Graph:
@@ -88,6 +92,7 @@ class simpleLogicMachine(PRD_logicMachine):
     @classmethod
     def from_rdf(cls, infograph: rdflib.Graph,
                  extraDocuments: Optional[Mapping[str, rdflib.Graph]] = None,
+                 **kwargs,
                  ) -> "simpleLogicMachine":
         extraOptions = {}
         if extraDocuments is not None:
@@ -98,7 +103,7 @@ class simpleLogicMachine(PRD_logicMachine):
                                      RIF.Document)
                                                 
         document = rif_document.from_rdf(infograph, rootdocument_node, **extraOptions)
-        return cls(document, extraDocuments)
+        return cls(document, extraDocuments, **kwargs)
 
     def run(self, steps: Union[int, None] = None) -> None:
         try:
