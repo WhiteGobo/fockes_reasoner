@@ -13,6 +13,7 @@ import isodate
 import locale
 
 from ..abc_machine import BINDING, RESOLVABLE, _resolve, RESOLVER, abc_pattern, ATOM_ARGS
+from .. import abc_machine
 from ...shared import pred, func
 from .shared import is_datatype, invert, assign_rdflib
 from .numeric_externals import literal_equal, pred_less_than
@@ -22,7 +23,7 @@ _datatypes: Iterable[URIRef] = [
         RDF.PlainLiteral,
         ]
 
-def _register_plainLiteralExternals(machine):
+def _register_plainLiteralExternals(machine: abc_machine.extensible_machine) -> None:
     for dt in _datatypes:
         machine.register(dt, asassign=assign_rdflib.gen(dt))
     for x in _externals:
@@ -38,28 +39,28 @@ def _register_plainLiteralExternals(machine):
 
 @dataclass
 class is_literal_PlainLiteral:
-    op = pred["is-literal-PlainLiteral"]
     asassign = None
     target: RESOLVABLE
+    op: URIRef = pred["is-literal-PlainLiteral"]
     def __call__(self, bindings: BINDING) -> Literal:
         t = _resolve(self.target, bindings)
+        assert isinstance(t, Literal)
         if t.datatype is None:
             return Literal(True)
         return Literal(t.datatype == RDF.PlainLiteral)
 
 
-@dataclass
 class is_literal_not_PlainLiteral:
-    op = pred["is-literal-not-PlainLiteral"]
+    op: URIRef = pred["is-literal-not-PlainLiteral"]
     asassign = invert.gen(is_literal_PlainLiteral)
 
 
 @dataclass
 class PlainLiteral_from_string_lang:
-    op = func["PlainLiteral-from-string-lang"]
     asassign = None
     target: RESOLVABLE
     lang: RESOLVABLE
+    op: URIRef = func["PlainLiteral-from-string-lang"]
     def __call__(self, bindings: BINDING) -> Literal:
         t = _resolve(self.target, bindings)
         lang = _resolve(self.lang, bindings)
@@ -68,9 +69,9 @@ class PlainLiteral_from_string_lang:
 
 @dataclass
 class string_from_PlainLiteral:
-    op = func["string-from-PlainLiteral"]
     asassign = None
     target: RESOLVABLE
+    op: URIRef = func["string-from-PlainLiteral"]
     def __call__(self, bindings: BINDING) -> Literal:
         t = _resolve(self.target, bindings)
         return Literal(str(t), datatype=XSD.string)
@@ -78,11 +79,12 @@ class string_from_PlainLiteral:
 
 @dataclass
 class lang_from_PlainLiteral:
-    op = func["lang-from-PlainLiteral"]
     asassign = None
     target: RESOLVABLE
+    op: URIRef = func["lang-from-PlainLiteral"]
     def __call__(self, bindings: BINDING) -> Literal:
         t = _resolve(self.target, bindings)
+        assert isinstance(t, Literal)
         if t.language is not None:
             return Literal(str(t.language), datatype=XSD.language)
         else:
@@ -93,24 +95,26 @@ class PlainLiteral_compare:
     """Return an -1, 0 or 1 depending on the alphabetical order of the two
     Literals. See :term:`codepoint collation` for more information.
     """
-    op = func["PlainLiteral-compare"]
     asassign = None
     left: RESOLVABLE
     right: RESOLVABLE
+    op: URIRef = func["PlainLiteral-compare"]
     def __call__(self, bindings: BINDING) -> Literal:
         l = _resolve(self.left, bindings)
         r = _resolve(self.right, bindings)
+        assert isinstance(l, Literal)
+        assert isinstance(r, Literal)
         return Literal(locale.strcoll(l, r))
 
 @dataclass
 class matches_language_range:
-    op = pred["matches-language-range"]
     asassign = None
     target: RESOLVABLE
     language_range: RESOLVABLE
+    op: URIRef = pred["matches-language-range"]
     def __call__(self, bindings: BINDING) -> Literal:
         t = _resolve(self.target, bindings)
-        lang_range = _resolve(self.language_range, bindings).value
+        #lang_range = _resolve(self.language_range, bindings).value
         raise NotImplementedError("No ability to match language spaces to language")
 
 _externals = [

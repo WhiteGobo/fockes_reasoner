@@ -61,6 +61,6 @@ Document(
     mek = logic_machine.from_rdf(g, {}, machine=mymachine)
     mek.run()
 
-    datagraph = mek.export_data(format="rdflib")
+    datagraph = mek.export_rdflib()
     assert True in asd
     #assert Literal("Hello World", datatype=XSD.string) in asd

@@ -1,5 +1,5 @@
 from typing import Any
-from .durable_reasoner.machine import durable_machine as machine
+from .durable_reasoner.machine import durableMachine
 from .durable_reasoner.abc_machine import importProfile
 from .class_profileSimpleEntailment import profileSimpleEntailment
 from .class_profileRDFSEntailment import profileRDFSEntailment
@@ -7,7 +7,7 @@ from .class_profileRDFSEntailment import profileRDFSEntailment
 from rdflib import URIRef, Namespace, IdentifiedNode
 RIF_ENTAILMENT = Namespace("http://www.w3.org/ns/entailment/")
 
-class machineWithImport(machine):
+class machineWithImport(durableMachine):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         q = profileSimpleEntailment()

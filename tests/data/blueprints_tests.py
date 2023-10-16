@@ -15,7 +15,7 @@ class blueprint_test_logicmachine:
             return
         assert rif_facts_PET, "couldnt load conclusion rif_facts directly"
         if isinstance(rif_facts_PET, Graph):
-            datagraph = logicmachine_after_PET.export_data(format="rdflib")
+            datagraph = logicmachine_after_PET.export_rdflib()
             isodata = to_isomorphic(datagraph)
             isocomp = to_isomorphic(rif_facts_PET)
             in_both, in_data, in_comp = graph_diff(isodata, isocomp)

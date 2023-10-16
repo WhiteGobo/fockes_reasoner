@@ -12,6 +12,7 @@ import datetime
 import isodate
 
 from ..abc_machine import BINDING, RESOLVABLE, _resolve, RESOLVER, abc_pattern, ATOM_ARGS
+from .. import abc_machine
 from ...shared import pred, func
 from .shared import is_datatype, invert, assign_rdflib
 from .numeric_externals import literal_equal, pred_less_than, pred_greater_than
@@ -26,7 +27,7 @@ _datatypes: Iterable[URIRef] = [
         XSD.yearMonthDuration,
         ]
 
-def _register_timeExternals(machine):
+def _register_timeExternals(machine: abc_machine.extensible_machine) -> None:
     for dt in _datatypes:
         machine.register(dt, asassign=assign_rdflib.gen(dt))
     for x in _externals:
@@ -42,224 +43,230 @@ def _register_timeExternals(machine):
 
 @dataclass
 class is_literal_date:
-    op = pred["is-literal-date"]
     #asassign = lambda dt: is_datatype(XSD.date, dt)
     asassign = None
     target: RESOLVABLE
+    op: URIRef = pred["is-literal-date"]
     def __call__(self, bindings: BINDING) -> Literal:
         t = _resolve(self.target, bindings)
-        logger.error(repr(t))
+        assert isinstance(t, Literal)
         return Literal(t.datatype == XSD.date)
 
 
 @dataclass
 class is_literal_not_date:
-    op = pred["is-literal-not-date"]
     asassign = invert.gen(lambda dt: is_datatype(XSD.date, dt))
+    op: URIRef = pred["is-literal-not-date"]
 
 @dataclass
 class is_literal_dateTime:
-    op = pred["is-literal-dateTime"]
     asassign = lambda dt: is_datatype(XSD.dateTime, dt)
+    op: URIRef = pred["is-literal-dateTime"]
 
 @dataclass
 class is_literal_not_dateTime:
-    op = pred["is-literal-not-dateTime"]
     asassign = invert.gen(lambda dt: is_datatype(XSD.dateTime, dt))
+    op: URIRef = pred["is-literal-not-dateTime"]
 
 @dataclass
 class is_literal_dateTimeStamp:
-    op = pred["is-literal-dateTimeStamp"]
     asassign = lambda dt: is_datatype(XSD.dateTimeStamp, dt)
+    op: URIRef = pred["is-literal-dateTimeStamp"]
 
 @dataclass
 class is_literal_not_dateTimeStamp:
-    op = pred["is-literal-not-dateTimeStamp"]
     asassign = invert.gen(lambda dt: is_datatype(XSD.dateTimeStamp, dt))
+    op: URIRef = pred["is-literal-not-dateTimeStamp"]
 
 @dataclass
 class is_literal_time:
-    op = pred["is-literal-time"]
     asassign = lambda dt: is_datatype(XSD.time, dt)
+    op: URIRef = pred["is-literal-time"]
 
 @dataclass
 class is_literal_not_time:
-    op = pred["is-literal-not-time"]
     asassign = invert.gen(lambda dt: is_datatype(XSD.time, dt))
+    op: URIRef = pred["is-literal-not-time"]
 
 @dataclass
 class is_literal_dayTimeDuration:
-    op = pred["is-literal-dayTimeDuration"]
     asassign = lambda dt: is_datatype(XSD.dayTimeDuration, dt)
+    op: URIRef = pred["is-literal-dayTimeDuration"]
 
 @dataclass
 class is_literal_not_dayTimeDuration:
-    op = pred["is-literal-not-dayTimeDuration"]
     asassign = invert.gen(lambda dt: is_datatype(XSD.dayTimeDuration, dt))
+    op: URIRef = pred["is-literal-not-dayTimeDuration"]
 
 @dataclass
 class is_literal_yearMonthDuration:
-    op = pred["is-literal-yearMonthDuration"]
     asassign = lambda dt: is_datatype(XSD.yearMonthDuration, dt)
+    op: URIRef = pred["is-literal-yearMonthDuration"]
 
 @dataclass
 class is_literal_not_yearMonthDuration:
-    op = pred["is-literal-not-yearMonthDuration"]
     asassign = invert.gen(lambda dt: is_datatype(XSD.yearMonthDuration, dt))
+    op: URIRef = pred["is-literal-not-yearMonthDuration"]
 
 @dataclass
 class year_from_dateTime:
-    op = func["year-from-dateTime"]
     asassign = None
     target: RESOLVABLE
+    op: URIRef = func["year-from-dateTime"]
     def __call__(self, bindings: BINDING) -> Literal:
         t = _resolve(self.target, bindings)
-        return Literal(t.value.year)
+        #assert isinstance(t, Literal)
+        return Literal(t.value.year) #type: ignore[union-attr]
 
 
 @dataclass
 class month_from_dateTime:
-    op = func["month-from-dateTime"]
     asassign = None
     target: RESOLVABLE
+    op: URIRef = func["month-from-dateTime"]
     def __call__(self, bindings: BINDING) -> Literal:
         t = _resolve(self.target, bindings)
-        return Literal(t.value.month)
+        return Literal(t.value.month) #type: ignore[union-attr]
 
 @dataclass
 class day_from_dateTime:
-    op = func["day-from-dateTime"]
     asassign = None
     target: RESOLVABLE
+    op: URIRef = func["day-from-dateTime"]
     def __call__(self, bindings: BINDING) -> Literal:
         t = _resolve(self.target, bindings)
-        return Literal(t.value.day)
+        return Literal(t.value.day) #type: ignore[union-attr]
 
 @dataclass
 class hours_from_dateTime:
-    op = func["hours-from-dateTime"]
     asassign = None
     target: RESOLVABLE
+    op: URIRef = func["hours-from-dateTime"]
     def __call__(self, bindings: BINDING) -> Literal:
         t = _resolve(self.target, bindings)
-        return Literal(t.value.hour)
+        return Literal(t.value.hour) #type: ignore[union-attr]
 
 @dataclass
 class minutes_from_dateTime:
-    op = func["minutes-from-dateTime"]
     asassign = None
     target: RESOLVABLE
+    op: URIRef = func["minutes-from-dateTime"]
     def __call__(self, bindings: BINDING) -> Literal:
         t = _resolve(self.target, bindings)
-        return Literal(t.value.minute)
+        return Literal(t.value.minute) #type: ignore[union-attr]
 
 @dataclass
 class seconds_from_dateTime:
-    op = func["seconds-from-dateTime"]
     asassign = None
     target: RESOLVABLE
+    op: URIRef = func["seconds-from-dateTime"]
     def __call__(self, bindings: BINDING) -> Literal:
         t = _resolve(self.target, bindings)
-        return Literal(t.value.second)
+        return Literal(t.value.second) #type: ignore[union-attr]
 
 @dataclass
 class year_from_date:
-    op = func["year-from-date"]
     asassign = None
     target: RESOLVABLE
+    op: URIRef = func["year-from-date"]
     def __call__(self, bindings: BINDING) -> Literal:
         t = _resolve(self.target, bindings)
-        return Literal(t.value.year)
+        return Literal(t.value.year) #type: ignore[union-attr]
 
 @dataclass
 class month_from_date:
-    op = func["month-from-date"]
     asassign = None
     target: RESOLVABLE
+    op: URIRef = func["month-from-date"]
     def __call__(self, bindings: BINDING) -> Literal:
         t = _resolve(self.target, bindings)
-        return Literal(t.value.month)
+        return Literal(t.value.month) #type: ignore[union-attr]
 
 @dataclass
 class day_from_date:
-    op = func["day-from-date"]
     asassign = None
     target: RESOLVABLE
+    op: URIRef = func["day-from-date"]
     def __call__(self, bindings: BINDING) -> Literal:
         t = _resolve(self.target, bindings)
-        return Literal(t.value.day)
+        return Literal(t.value.day) #type: ignore[union-attr]
 
 @dataclass
 class hours_from_time:
-    op = func["hours-from-time"]
     asassign = None
     target: RESOLVABLE
+    op: URIRef = func["hours-from-time"]
     def __call__(self, bindings: BINDING) -> Literal:
         t = _resolve(self.target, bindings)
-        return Literal(t.value.hour)
+        return Literal(t.value.hour) #type: ignore[union-attr]
 
 @dataclass
 class minutes_from_time:
-    op = func["minutes-from-time"]
     asassign = None
     target: RESOLVABLE
+    op: URIRef = func["minutes-from-time"]
     def __call__(self, bindings: BINDING) -> Literal:
         t = _resolve(self.target, bindings)
-        return Literal(t.value.minute)
+        return Literal(t.value.minute) #type: ignore[union-attr]
 
 @dataclass
 class seconds_from_time:
-    op = func["seconds-from-time"]
     asassign = None
     target: RESOLVABLE
+    op: URIRef = func["seconds-from-time"]
     def __call__(self, bindings: BINDING) -> Literal:
         t = _resolve(self.target, bindings)
-        return Literal(t.value.second)
+        return Literal(t.value.second) #type: ignore[union-attr]
 
 @dataclass
 class timezone_from_dateTime:
-    op = func["timezone-from-dateTime"]
     asassign = None
     target: RESOLVABLE
+    op: URIRef = func["timezone-from-dateTime"]
     def __call__(self, bindings: BINDING) -> Literal:
         t = _resolve(self.target, bindings)
-        v: datetime.datetime = t.value
+        v: datetime.datetime = t.value #type: ignore[union-attr]
         timezone: isodate.tzinfo.tzinfo = v.tzinfo
         q: datetime.timedelta = timezone.utcoffset(None)
         return Literal(q)
 
-@dataclass
 class timezone_from_time:
-    op = func["timezone-from-time"]
+    op: URIRef = func["timezone-from-time"]
     asassign = timezone_from_dateTime
 
 @dataclass
 class years_from_duration:
-    op = func["years-from-duration"]
     asassign = None
     target: RESOLVABLE
+    op: URIRef = func["years-from-duration"]
     def __call__(self, bindings: BINDING) -> Literal:
         t = _resolve(self.target, bindings)
-        return Literal(int(t.value.years + int(t.value.months/12)))
+        y, m = t.value.years, t.value.months #type: ignore[union-attr]
+        return Literal(int(y + int(m/12)))
 
 @dataclass
 class months_from_duration:
-    op = func["months-from-duration"]
     asassign = None
     target: RESOLVABLE
+    op: URIRef = func["months-from-duration"]
     def __call__(self, bindings: BINDING) -> Literal:
         t = _resolve(self.target, bindings)
-        dur: Union[isodate.duration.Duration, datetime.timedelta] = t.value
-        return Literal(int(t.value.months%12))
+        dur: Union[isodate.duration.Duration, datetime.timedelta]\
+                = t.value #type: ignore[union-attr]
+        if isinstance(dur, datetime.timedelta):
+            raise NotImplementedError()
+        else:
+            return Literal(int(dur.months%12))
 
 @dataclass
 class days_from_duration:
-    op = func["days-from-duration"]
     asassign = None
     target: RESOLVABLE
+    op: URIRef = func["days-from-duration"]
     def __call__(self, bindings: BINDING) -> Literal:
         t = _resolve(self.target, bindings)
-        dur: Union[isodate.duration.Duration, datetime.timedelta] = t.value
+        dur: Union[isodate.duration.Duration, datetime.timedelta]\
+                = t.value #type: ignore[union-attr]
         if isinstance(dur, datetime.timedelta):
             return Literal(dur.days)
         elif isinstance(dur, isodate.duration.Duration):
@@ -269,31 +276,34 @@ class days_from_duration:
             else:
                 return Literal(q)
         raise NotImplementedError(repr(dur), repr(t))
+
 @dataclass
 class hours_from_duration:
-    op = func["hours-from-duration"]
     asassign = None
     target: RESOLVABLE
+    op: URIRef = func["hours-from-duration"]
     def __call__(self, bindings: BINDING) -> Literal:
         t = _resolve(self.target, bindings)
-        return Literal(int(t.value.seconds/3600))
+        return Literal(int(t.value.seconds/3600)) #type: ignore[union-attr]
+
 @dataclass
 class minutes_from_duration:
-    op = func["minutes-from-duration"]
     asassign = None
     target: RESOLVABLE
+    op: URIRef = func["minutes-from-duration"]
     def __call__(self, bindings: BINDING) -> Literal:
         t = _resolve(self.target, bindings)
-        return Literal(int(t.value.seconds/60)%60 )
+        return Literal(int(t.value.seconds/60)%60 ) #type: ignore[union-attr]
 @dataclass
 class seconds_from_duration:
-    op = func["seconds-from-duration"]
     asassign = None
     target: RESOLVABLE
+    op: URIRef = func["seconds-from-duration"]
     def __call__(self, bindings: BINDING) -> Literal:
         t = _resolve(self.target, bindings)
-        ms_in_seconds = Decimal(t.value.microseconds) / 1000000
-        q = Decimal(t.value.seconds) % 60 + ms_in_seconds
+        sec, msec = t.value.seconds, t.value.microseconds#type: ignore[union-attr]
+        ms_in_seconds = Decimal(msec) / 1000000
+        q = Decimal(sec) % 60 + ms_in_seconds
         if q.as_integer_ratio()[1] == 1:
             return Literal(int(q))
         else:
@@ -302,37 +312,43 @@ class seconds_from_duration:
 
 @dataclass
 class subtract_dateTimes:
-    op = func["subtract-dateTimes"]
     asassign = None
     left: RESOLVABLE
     right: RESOLVABLE
+    op: URIRef = func["subtract-dateTimes"]
     def __call__(self, bindings: BINDING) -> Literal:
         left = _resolve(self.left, bindings)
         right = _resolve(self.right, bindings)
+        assert isinstance(left, Literal)
+        assert isinstance(right, Literal)
         first: datetime.datetime = left.value
         second: datetime.datetime = right.value
         return Literal(first - second)
 
 @dataclass
 class subtract_dates:
-    op = func["subtract-dates"]
     asassign = None
     left: RESOLVABLE
     right: RESOLVABLE
+    op: URIRef = func["subtract-dates"]
     def __call__(self, bindings: BINDING) -> Literal:
         left = _resolve(self.left, bindings)
         right = _resolve(self.right, bindings)
+        assert isinstance(left, Literal)
+        assert isinstance(right, Literal)
         return Literal(left.value - right.value)
 
 @dataclass
 class subtract_times:
-    op = func["subtract-times"]
     asassign = None
     left: RESOLVABLE
     right: RESOLVABLE
+    op: URIRef = func["subtract-times"]
     def __call__(self, bindings: BINDING) -> Literal:
         left = _resolve(self.left, bindings)
         right = _resolve(self.right, bindings)
+        assert isinstance(left, Literal)
+        assert isinstance(right, Literal)
         date_l = datetime.datetime.combine(datetime.date(2,1,1), left.value)
         date_r = datetime.datetime.combine(datetime.date(2,1,1), right.value)
         dt = date_l - date_r
@@ -340,13 +356,15 @@ class subtract_times:
 
 @dataclass
 class add_yearMonthDurations:
-    op = func["add-yearMonthDurations"]
     asassign = None
     left: RESOLVABLE
     right: RESOLVABLE
+    op: URIRef = func["add-yearMonthDurations"]
     def __call__(self, bindings: BINDING) -> Literal:
         left = _resolve(self.left, bindings)
         right = _resolve(self.right, bindings)
+        assert isinstance(left, Literal)
+        assert isinstance(right, Literal)
         q: isodate.duration.Duration = left.value + right.value
         q.years = q.years + int(q.months/12)
         q.months = q.months%12
@@ -354,13 +372,15 @@ class add_yearMonthDurations:
 
 @dataclass
 class subtract_yearMonthDurations:
-    op = func["subtract-yearMonthDurations"]
     asassign = None
     left: RESOLVABLE
     right: RESOLVABLE
+    op: URIRef = func["subtract-yearMonthDurations"]
     def __call__(self, bindings: BINDING) -> Literal:
         left = _resolve(self.left, bindings)
         right = _resolve(self.right, bindings)
+        assert isinstance(left, Literal)
+        assert isinstance(right, Literal)
         q: isodate.duration.Duration = left.value - right.value
         q.years = q.years + int(q.months/12)
         q.months = q.months%12
@@ -372,14 +392,14 @@ class subtract_yearMonthDurations:
 
 @dataclass
 class divide_yearMonthDuration:
-    op = func["divide-yearMonthDuration"]
     asassign = None
     left: RESOLVABLE
     right: RESOLVABLE
+    op: URIRef = func["divide-yearMonthDuration"]
     def __call__(self, bindings: BINDING) -> Literal:
         left = _resolve(self.left, bindings)
         right = _resolve(self.right, bindings)
-        months = (left.value.months + (left.value.years * 12)) / right.value
+        months = (left.value.months + (left.value.years * 12)) / right.value# type: ignore[union-attr]
         if months > 0:
             q = isodate.duration.Duration(
                     years=int(months/12),
@@ -392,13 +412,15 @@ class divide_yearMonthDuration:
 
 @dataclass
 class multiply_yearMonthDuration:
-    op = func["multiply-yearMonthDuration"]
     asassign = None
     left: RESOLVABLE
     right: RESOLVABLE
+    op: URIRef = func["multiply-yearMonthDuration"]
     def __call__(self, bindings: BINDING) -> Literal:
         left = _resolve(self.left, bindings)
         right = _resolve(self.right, bindings)
+        assert isinstance(left, Literal)
+        assert isinstance(right, Literal)
         if left.datatype == XSD.yearMonthDuration:
             months = (left.value.months + (left.value.years * 12))\
                     * right.value
@@ -417,72 +439,84 @@ class multiply_yearMonthDuration:
 
 @dataclass
 class divide_yearMonthDuration_by_yearMonthDuration:
-    op = func["divide-yearMonthDuration-by-yearMonthDuration"]
     asassign = None
     left: RESOLVABLE
     right: RESOLVABLE
+    op: URIRef = func["divide-yearMonthDuration-by-yearMonthDuration"]
     def __call__(self, bindings: BINDING) -> Literal:
         left = _resolve(self.left, bindings)
         right = _resolve(self.right, bindings)
+        assert isinstance(left, Literal)
+        assert isinstance(right, Literal)
         left_months = left.value.months + (left.value.years * 12)
         right_months = right.value.months + (right.value.years * 12)
         return Literal(left_months / right_months)
 
 @dataclass
 class add_dayTimeDurations:
-    op = func["add-dayTimeDurations"]
     asassign = None
     left: RESOLVABLE
     right: RESOLVABLE
+    op: URIRef = func["add-dayTimeDurations"]
     def __call__(self, bindings: BINDING) -> Literal:
         left = _resolve(self.left, bindings)
         right = _resolve(self.right, bindings)
+        assert isinstance(left, Literal)
+        assert isinstance(right, Literal)
         return Literal(left.value + right.value)
 
 @dataclass
 class subtract_dayTimeDurations:
-    op = func["subtract-dayTimeDurations"]
     asassign = None
     left: RESOLVABLE
     right: RESOLVABLE
+    op: URIRef = func["subtract-dayTimeDurations"]
     def __call__(self, bindings: BINDING) -> Literal:
         left = _resolve(self.left, bindings)
         right = _resolve(self.right, bindings)
+        assert isinstance(left, Literal)
+        assert isinstance(right, Literal)
         return Literal(left.value - right.value)
 
 @dataclass
 class subtract_dayTimeDuration_from_dateTime:
-    op = func["subtract-dayTimeDuration-from-dateTime"]
     asassign = None
     left: RESOLVABLE
     right: RESOLVABLE
+    op: URIRef = func["subtract-dayTimeDuration-from-dateTime"]
     def __call__(self, bindings: BINDING) -> Literal:
         left = _resolve(self.left, bindings)
         right = _resolve(self.right, bindings)
+        assert isinstance(left, Literal)
+        assert isinstance(right, Literal)
         date, delta = left.value, right.value
         return Literal(date-delta)
 
 @dataclass
 class subtract_dayTimeDuration_from_date:
-    op = func["subtract-dayTimeDuration-from-date"]
     asassign = None
     left: RESOLVABLE
     right: RESOLVABLE
+    op: URIRef = func["subtract-dayTimeDuration-from-date"]
     def __call__(self, bindings: BINDING) -> Literal:
         left = _resolve(self.left, bindings)
         right = _resolve(self.right, bindings)
+        assert isinstance(left, Literal)
+        assert isinstance(right, Literal)
         date, delta = left.value, right.value
         return Literal(date-delta)
 
 @dataclass
 class subtract_dayTimeDuration_from_time:
-    op = func["subtract-dayTimeDuration-from-time"]
     asassign = None
     left: RESOLVABLE
     right: RESOLVABLE
+    op: URIRef = func["subtract-dayTimeDuration-from-time"]
     def __call__(self, bindings: BINDING) -> Literal:
         left = _resolve(self.left, bindings)
         right = _resolve(self.right, bindings)
+        assert isinstance(left, Literal)
+        assert isinstance(right, Literal)
         date, delta = left.value, right.value
         d = datetime.datetime(2,1,1,date.hour, date.minute, date.second, date.microsecond)
         d2 = d - delta
@@ -490,13 +524,15 @@ class subtract_dayTimeDuration_from_time:
 
 @dataclass
 class multiply_dayTimeDuration:
-    op = func["multiply-dayTimeDuration"]
     asassign = None
     left: RESOLVABLE
     right: RESOLVABLE
+    op: URIRef = func["multiply-dayTimeDuration"]
     def __call__(self, bindings: BINDING) -> Literal:
         left = _resolve(self.left, bindings)
         right = _resolve(self.right, bindings)
+        assert isinstance(left, Literal)
+        assert isinstance(right, Literal)
         if isinstance(left.value, datetime.timedelta):
             seconds = (left.value.seconds + (86400*left.value.days) )\
                     * right.value
@@ -512,13 +548,15 @@ class multiply_dayTimeDuration:
 
 @dataclass
 class divide_dayTimeDuration:
-    op = func["divide-dayTimeDuration"]
     asassign = None
     left: RESOLVABLE
     right: RESOLVABLE
+    op: URIRef = func["divide-dayTimeDuration"]
     def __call__(self, bindings: BINDING) -> Literal:
         left = _resolve(self.left, bindings)
         right = _resolve(self.right, bindings)
+        assert isinstance(left, Literal)
+        assert isinstance(right, Literal)
         if isinstance(left.value, datetime.timedelta):
             seconds = (left.value.seconds + (86400*left.value.days) )\
                     / right.value
@@ -534,13 +572,15 @@ class divide_dayTimeDuration:
 
 @dataclass
 class divide_dayTimeDuration_by_dayTimeDuration:
-    op = func["divide-dayTimeDuration-by-dayTimeDuration"]
     asassign = None
     left: RESOLVABLE
     right: RESOLVABLE
+    op: URIRef = func["divide-dayTimeDuration-by-dayTimeDuration"]
     def __call__(self, bindings: BINDING) -> Literal:
         left = _resolve(self.left, bindings)
         right = _resolve(self.right, bindings)
+        assert isinstance(left, Literal)
+        assert isinstance(right, Literal)
         leftseconds = left.value.seconds + (86400*left.value.days)
         rightseconds = right.value.seconds + (86400*right.value.days)
         q = leftseconds / rightseconds
@@ -551,57 +591,67 @@ class divide_dayTimeDuration_by_dayTimeDuration:
 
 @dataclass
 class add_yearMonthDuration_to_dateTime:
-    op = func["add-yearMonthDuration-to-dateTime"]
     asassign = None
     left: RESOLVABLE
     right: RESOLVABLE
+    op: URIRef = func["add-yearMonthDuration-to-dateTime"]
     def __call__(self, bindings: BINDING) -> Literal:
         left = _resolve(self.left, bindings)
         right = _resolve(self.right, bindings)
+        assert isinstance(left, Literal)
+        assert isinstance(right, Literal)
         return Literal(left.value + right.value)
 
 @dataclass
 class add_yearMonthDuration_to_date:
-    op = func["add-yearMonthDuration-to-date"]
     asassign = None
     left: RESOLVABLE
     right: RESOLVABLE
+    op: URIRef = func["add-yearMonthDuration-to-date"]
     def __call__(self, bindings: BINDING) -> Literal:
         left = _resolve(self.left, bindings)
         right = _resolve(self.right, bindings)
+        assert isinstance(left, Literal)
+        assert isinstance(right, Literal)
         return Literal(left.value + right.value)
 
 @dataclass
 class add_dayTimeDuration_to_dateTime:
-    op = func["add-dayTimeDuration-to-dateTime"]
     asassign = None
     left: RESOLVABLE
     right: RESOLVABLE
+    op: URIRef = func["add-dayTimeDuration-to-dateTime"]
     def __call__(self, bindings: BINDING) -> Literal:
         left = _resolve(self.left, bindings)
         right = _resolve(self.right, bindings)
+        assert isinstance(left, Literal)
+        assert isinstance(right, Literal)
         return Literal(left.value + right.value, datatype=XSD.dayTime)
 
 @dataclass
 class add_dayTimeDuration_to_date:
-    op = func["add-dayTimeDuration-to-date"]
     asassign = None
     left: RESOLVABLE
     right: RESOLVABLE
+    op: URIRef = func["add-dayTimeDuration-to-date"]
     def __call__(self, bindings: BINDING) -> Literal:
         left = _resolve(self.left, bindings)
         right = _resolve(self.right, bindings)
+        assert isinstance(left, Literal)
+        assert isinstance(right, Literal)
         return Literal(left.value + right.value)
 
 @dataclass
 class add_dayTimeDuration_to_time:
-    op = func["add-dayTimeDuration-to-time"]
     asassign = None
     left: RESOLVABLE
     right: RESOLVABLE
+    op: URIRef = func["add-dayTimeDuration-to-time"]
     def __call__(self, bindings: BINDING) -> Literal:
         left = _resolve(self.left, bindings)
         right = _resolve(self.right, bindings)
+        assert isinstance(left, Literal)
+        assert isinstance(right, Literal)
         date, delta = left.value, right.value
         microseconds = date.microsecond + delta.microseconds
         seconds = date.second + delta.seconds + int(microseconds/1000000)
@@ -614,111 +664,126 @@ class add_dayTimeDuration_to_time:
 
 @dataclass
 class subtract_yearMonthDuration_from_dateTime:
-    op = func["subtract-yearMonthDuration-from-dateTime"]
     asassign = None
     left: RESOLVABLE
     right: RESOLVABLE
+    op: URIRef = func["subtract-yearMonthDuration-from-dateTime"]
     def __call__(self, bindings: BINDING) -> Literal:
         left = _resolve(self.left, bindings)
         right = _resolve(self.right, bindings)
+        assert isinstance(left, Literal)
+        assert isinstance(right, Literal)
         date, delta = left.value, right.value
         return Literal(date-delta)
 
 @dataclass
 class subtract_yearMonthDuration_from_date:
-    op = func["subtract-yearMonthDuration-from-date"]
     asassign = None
     left: RESOLVABLE
     right: RESOLVABLE
+    op: URIRef = func["subtract-yearMonthDuration-from-date"]
     def __call__(self, bindings: BINDING) -> Literal:
         left = _resolve(self.left, bindings)
         right = _resolve(self.right, bindings)
+        assert isinstance(left, Literal)
+        assert isinstance(right, Literal)
         date, delta = left.value, right.value
         return Literal(date-delta)
 
 
 @dataclass
 class dateTime_equal:
-    op = pred["dateTime-equal"]
     asassign = None
     left: RESOLVABLE
     right: RESOLVABLE
+    op: URIRef = pred["dateTime-equal"]
     def __call__(self, bindings: BINDING) -> Literal:
         left = _resolve(self.left, bindings)
         right = _resolve(self.right, bindings)
+        assert isinstance(left, Literal)
+        assert isinstance(right, Literal)
         dt = left.value - right.value
         return Literal(dt.total_seconds() == 0.0)
 
-@dataclass
 class dateTime_less_than:
-    op = pred["dateTime-less-than"]
+    op: URIRef = pred["dateTime-less-than"]
     asassign = pred_less_than
-@dataclass
+
 class dateTime_greater_than:
-    op = pred["dateTime-greater-than"]
+    op: URIRef = pred["dateTime-greater-than"]
     asassign = pred_greater_than
-@dataclass
+
 class date_equal:
-    op = pred["date-equal"]
     asassign = None
     left: RESOLVABLE
     right: RESOLVABLE
+    op: URIRef = pred["date-equal"]
     def __call__(self, bindings: BINDING) -> Literal:
         left = _resolve(self.left, bindings)
         right = _resolve(self.right, bindings)
+        assert isinstance(left, Literal)
+        assert isinstance(right, Literal)
         dt = left.value - right.value
         return Literal(dt.total_seconds() == 0.0)
-@dataclass
+
 class date_less_than:
-    op = pred["date-less-than"]
+    op: URIRef = pred["date-less-than"]
     asassign = pred_less_than
-@dataclass
+
 class date_greater_than:
-    op = pred["date-greater-than"]
+    op: URIRef = pred["date-greater-than"]
     asassign = pred_greater_than
+
 @dataclass
 class time_equal:
-    op = pred["time-equal"]
     asassign = None
     left: RESOLVABLE
     right: RESOLVABLE
+    op: URIRef = pred["time-equal"]
     def __call__(self, bindings: BINDING) -> Literal:
         left = _resolve(self.left, bindings)
         right = _resolve(self.right, bindings)
+        assert isinstance(left, Literal)
+        assert isinstance(right, Literal)
         date_l = datetime.datetime.combine(datetime.date(2,1,1), left.value)
         date_r = datetime.datetime.combine(datetime.date(2,1,1), right.value)
         dt = date_l - date_r
         return Literal(dt.total_seconds() == 0.0)
-@dataclass
+
 class time_less_than:
-    op = pred["time-less-than"]
+    op: URIRef = pred["time-less-than"]
     asassign = pred_less_than
-@dataclass
+
 class time_greater_than:
-    op = pred["time-greater-than"]
+    op: URIRef = pred["time-greater-than"]
     asassign = pred_greater_than
+
 @dataclass
 class duration_equal:
-    op = pred["duration-equal"]
     asassign = None
     left: RESOLVABLE
     right: RESOLVABLE
+    op: URIRef = pred["duration-equal"]
     def __call__(self, bindings: BINDING) -> Literal:
         left = _resolve(self.left, bindings)
         right = _resolve(self.right, bindings)
+        assert isinstance(left, Literal)
+        assert isinstance(right, Literal)
         q = datetime.datetime(5000,1,1) + left.value - right.value
         return Literal(q == datetime.datetime(5000,1,1))
 
 @dataclass
 class yearMonthDuration_less_than:
-    op = pred["yearMonthDuration-less-than"]
     #asassign = pred_less_than
     asassign = None
     left: RESOLVABLE
     right: RESOLVABLE
+    op: URIRef = pred["yearMonthDuration-less-than"]
     def __call__(self, bindings: BINDING) -> Literal:
         left = _resolve(self.left, bindings)
         right = _resolve(self.right, bindings)
+        assert isinstance(left, Literal)
+        assert isinstance(right, Literal)
         extime = datetime.datetime(5000,1,1)
         d1 = left.value.totimedelta(extime)
         d2 = right.value.totimedelta(extime)
@@ -726,13 +791,15 @@ class yearMonthDuration_less_than:
 
 @dataclass
 class yearMonthDuration_greater_than:
-    op = pred["yearMonthDuration-greater-than"]
     asassign = None
     left: RESOLVABLE
     right: RESOLVABLE
+    op: URIRef = pred["yearMonthDuration-greater-than"]
     def __call__(self, bindings: BINDING) -> Literal:
         left = _resolve(self.left, bindings)
         right = _resolve(self.right, bindings)
+        assert isinstance(left, Literal)
+        assert isinstance(right, Literal)
         extime = datetime.datetime(5000,1,1)
         d1 = left.value.totimedelta(extime)
         d2 = right.value.totimedelta(extime)
@@ -740,83 +807,85 @@ class yearMonthDuration_greater_than:
 
 @dataclass
 class dayTimeDuration_less_than:
-    op = pred["dayTimeDuration-less-than"]
     #asassign = pred_less_than
     asassign = None
     left: RESOLVABLE
     right: RESOLVABLE
+    op: URIRef = pred["dayTimeDuration-less-than"]
     def __call__(self, bindings: BINDING) -> Literal:
         left = _resolve(self.left, bindings)
         right = _resolve(self.right, bindings)
+        assert isinstance(left, Literal)
+        assert isinstance(right, Literal)
         return Literal(left.value < right.value)
+
 @dataclass
 class dayTimeDuration_greater_than:
-    op = pred["dayTimeDuration-greater-than"]
     asassign = None
     left: RESOLVABLE
     right: RESOLVABLE
+    op: URIRef = pred["dayTimeDuration-greater-than"]
     def __call__(self, bindings: BINDING) -> Literal:
         left = _resolve(self.left, bindings)
         right = _resolve(self.right, bindings)
+        assert isinstance(left, Literal)
+        assert isinstance(right, Literal)
         return Literal(left.value > right.value)
 
-@dataclass
 class dateTime_not_equal:
-    op = pred["dateTime-not-equal"]
+    op: URIRef = pred["dateTime-not-equal"]
     asassign = invert.gen(dateTime_equal)
-@dataclass
+
 class dateTime_less_than_or_equal:
-    op = pred["dateTime-less-than-or-equal"]
+    op: URIRef = pred["dateTime-less-than-or-equal"]
     asassign = invert.gen(pred_greater_than)
-@dataclass
+
 class dateTime_greater_than_or_equal:
-    op = pred["dateTime-greater-than-or-equal"]
-    asassign = invert.gen(pred_less_than)
-@dataclass
-class date_not_equal:
-    op = pred["date-not-equal"]
-    asassign = invert.gen(dateTime_equal)
-@dataclass
-class date_less_than_or_equal:
-    op = pred["date-less-than-or-equal"]
-    asassign = invert.gen(pred_greater_than)
-@dataclass
-class date_greater_than_or_equal:
-    op = pred["date-greater-than-or-equal"]
-    asassign = invert.gen(pred_less_than)
-@dataclass
-class time_not_equal:
-    op = pred["time-not-equal"]
-    asassign = invert.gen(time_equal)
-@dataclass
-class time_less_then_or_equal:
-    op = pred["time-less-than-or-equal"]
-    asassign = invert.gen(pred_greater_than)
-@dataclass
-class time_greater_then_or_equal:
-    op = pred["time-greater-than-or-equal"]
+    op: URIRef = pred["dateTime-greater-than-or-equal"]
     asassign = invert.gen(pred_less_than)
 
-@dataclass
+class date_not_equal:
+    op: URIRef = pred["date-not-equal"]
+    asassign = invert.gen(dateTime_equal)
+
+class date_less_than_or_equal:
+    op: URIRef = pred["date-less-than-or-equal"]
+    asassign = invert.gen(pred_greater_than)
+
+class date_greater_than_or_equal:
+    op: URIRef = pred["date-greater-than-or-equal"]
+    asassign = invert.gen(pred_less_than)
+
+class time_not_equal:
+    op: URIRef = pred["time-not-equal"]
+    asassign = invert.gen(time_equal)
+
+class time_less_then_or_equal:
+    op: URIRef = pred["time-less-than-or-equal"]
+    asassign = invert.gen(pred_greater_than)
+
+class time_greater_then_or_equal:
+    op: URIRef = pred["time-greater-than-or-equal"]
+    asassign = invert.gen(pred_less_than)
+
 class duration_not_equal:
-    op = pred["duration-not-equal"]
+    op: URIRef = pred["duration-not-equal"]
     asassign = invert.gen(duration_equal)
 
-@dataclass
 class yearMonthDuration_less_than_or_equal:
-    op = pred["yearMonthDuration-less-than-or-equal"]
+    op: URIRef = pred["yearMonthDuration-less-than-or-equal"]
     asassign = invert.gen(yearMonthDuration_greater_than)
-@dataclass
+
 class yearMonthDuration_greater_than_or_equal:
-    op = pred["yearMonthDuration-greater-than-or-equal"]
+    op: URIRef = pred["yearMonthDuration-greater-than-or-equal"]
     asassign = invert.gen(yearMonthDuration_less_than)
-@dataclass
+
 class dayTimeDuration_less_than_or_equal:
-    op = pred["dayTimeDuration-less-than-or-equal"]
+    op: URIRef = pred["dayTimeDuration-less-than-or-equal"]
     asassign = invert.gen(dayTimeDuration_greater_than)
-@dataclass
+
 class dayTimeDuration_greater_than_or_equal:
-    op = pred["dayTimeDuration-greater-than-or-equal"]
+    op: URIRef = pred["dayTimeDuration-greater-than-or-equal"]
     asassign = invert.gen(dayTimeDuration_less_than)
 
 _externals = [

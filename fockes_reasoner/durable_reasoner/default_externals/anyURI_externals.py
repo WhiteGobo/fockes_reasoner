@@ -10,6 +10,7 @@ from ..bridge_rdflib import term_list, _term_list, TRANSLATEABLE_TYPES
 import re
 
 from ..abc_machine import BINDING, RESOLVABLE, _resolve, RESOLVER, abc_pattern, ATOM_ARGS
+from .. import abc_machine
 from ...shared import pred, func
 from .shared import is_datatype, invert, assign_rdflib
 import locale
@@ -20,7 +21,7 @@ _datatypes: Iterable[URIRef] = [
         XSD.anyURI,
         ]
 
-def _register_anyURIExternals(machine):
+def _register_anyURIExternals(machine: abc_machine.extensible_machine) -> None:
     for dt in _datatypes:
         machine.register(dt, asassign=assign_rdflib.gen(dt))
     for x in _externals:
@@ -38,16 +39,16 @@ def _register_anyURIExternals(machine):
 
 @dataclass
 class is_literal_anyURI:
-    op = pred["is-literal-anyURI"]
     asassign = None
     target: RESOLVABLE
+    op: URIRef = pred["is-literal-anyURI"]
     def __call__(self, bindings: BINDING) -> Literal:
         t = _resolve(self.target, bindings)
+        assert isinstance(t, Literal)
         return Literal(t.datatype == XSD.anyURI)
 
-@dataclass
 class is_literal_not_anyURI:
-    op = pred["is-literal-not-anyURI"]
+    op: URIRef = pred["is-literal-not-anyURI"]
     asassign = invert.gen(is_literal_anyURI)
 
 _externals = [

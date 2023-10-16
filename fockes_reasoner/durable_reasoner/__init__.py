@@ -5,3 +5,5 @@ from .machine_facts import frame, member, subclass, executable, external
 from .bridge_rdflib import TRANSLATEABLE_TYPES, term_list
 from .machine_actions import action_assert, action_retract
 from .owl_facts import rdfs_subclass
+
+from .machine import durableMachine

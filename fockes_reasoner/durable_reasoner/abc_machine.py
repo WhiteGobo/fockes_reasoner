@@ -1,20 +1,21 @@
 import abc
 import logging
 import typing as typ
-from typing import MutableMapping, Mapping, Union, Iterable, Optional, overload, Any, Tuple
+from typing import MutableMapping, Mapping, Union, Iterable, Optional, overload, Any, Tuple, Hashable
 from collections.abc import MutableSequence, Callable, Collection, Container
 import rdflib
 from rdflib import IdentifiedNode, Graph, Literal, Variable
 
+from .bridge_rdflib import TRANSLATEABLE_TYPES, term_list, _term_list
+
 FACTTYPE = "type"
 """Labels in where the type of fact is saved"""
-
-from .bridge_rdflib import TRANSLATEABLE_TYPES, term_list
 
 BINDABLE_TYPES = Union[TRANSLATEABLE_TYPES]
 BINDING = MutableMapping[rdflib.Variable, TRANSLATEABLE_TYPES]
 BINDING_WITH_BLANKS = MutableMapping[rdflib.Variable,
                                      Union[TRANSLATEABLE_TYPES, None]]
+
 RESOLVER = Callable[[BINDING], TRANSLATEABLE_TYPES]
 RESOLVABLE = Union[Variable, TRANSLATEABLE_TYPES, RESOLVER]
 #VARIABLE_LOCATOR = Callable[[typ.Union[durable.engine.Closure, None]], TRANSLATEABLE_TYPES]
@@ -26,11 +27,19 @@ BINDING_DESCRIPTION = Mapping[tuple[bool], Callable]
 """Maps a tuple representing the position of unbound variables to a generator
 """
 
+from typing import Protocol
+
+ASSIGNMENT = Callable[[BINDING], Literal]
+class ASSIGNMENTGENERATOR(Protocol):
+    def __call__(self, *args: RESOLVABLE) -> ASSIGNMENT: ...
+
 PATTERNGENERATOR\
         = Callable[[Iterable[RESOLVABLE], Container[Variable]],
                    Iterable[Tuple[Iterable["abc_pattern"],
                                   Iterable[Callable[[BINDING], Literal]],
                                   Iterable[Variable]]]]
+
+EXTERNAL_ARG = Union[TRANSLATEABLE_TYPES, "abc_external", Variable, "fact"]
 
 
 class RuleNotComplete(Exception):
@@ -46,14 +55,16 @@ class StopRunning(Exception):
 
 class abc_external(abc.ABC):
     op: Any
-    args: ATOM_ARGS
+    args: Iterable[EXTERNAL_ARG]
 
 def _resolve(x: RESOLVABLE, bindings: BINDING,
              ) -> TRANSLATEABLE_TYPES:
     """Resolve variables and externals
     """
-    if isinstance(x, (IdentifiedNode, Literal, list, tuple, term_list)):
+    if isinstance(x, (IdentifiedNode, Literal)):
         return x
+    elif isinstance(x, (list, tuple, term_list)):
+        return _term_list([_resolve(y, bindings) for y in x])
     elif isinstance(x, Variable):
         return bindings[x]
     return x(bindings)
@@ -65,7 +76,6 @@ class NoPossibleExternal(ValueError):
     """
     ...
 
-ASSIGNMENT = Callable[[BINDING], Literal]
 
 
 #class external(abc.ABC):
@@ -140,8 +150,8 @@ class machine(abc.ABC):
     @abc.abstractmethod
     def _create_pattern_from_external(
             self,
-            op: IdentifiedNode,
-            args: ATOM_ARGS,
+            op: Hashable,
+            args: Iterable[EXTERNAL_ARG],
             bound_variables: Container[Variable],
             ) -> Iterable[Tuple[Iterable[fact],
                                 Iterable[Callable[[BINDING], Literal]],
@@ -151,8 +161,8 @@ class machine(abc.ABC):
     @abc.abstractmethod
     def _create_binding_from_external(
             self,
-            op: IdentifiedNode,
-            args: ATOM_ARGS,
+            op: Hashable,
+            args: Iterable[EXTERNAL_ARG],
             bound_variables: Container[Variable] = [],
             ) -> Tuple[Iterable[fact],
                        Iterable[Callable[[BINDING], Literal]],
@@ -162,8 +172,8 @@ class machine(abc.ABC):
     @abc.abstractmethod
     def _create_assignment_from_external(
             self,
-            op: IdentifiedNode,
-            args: ATOM_ARGS,
+            op: Hashable,
+            args: Iterable[EXTERNAL_ARG],
             ) -> ASSIGNMENT:
         ...
 
@@ -171,13 +181,14 @@ class machine(abc.ABC):
             self,
             info: Union[fact, abc_external],
             bound_variables: Container[Variable] = [],
-            ) -> Iterable[Union[Iterable[fact],
+            ) -> Iterable[Tuple[Iterable[fact],
                                 Iterable[Callable[[BINDING], Literal]],
-                                Container[Variable]]]:
+                                Iterable[Variable]]]:
         _was_found = False
         if isinstance(info, fact):
+            raise NotImplementedError()
             assert all(not isinstance(x, abc_external) for x in info.values())
-            yield (info, [], info.used_variables)
+            yield ([info], [], info.used_variables)
             return
         try:
             info.op, info.args
@@ -264,15 +275,7 @@ class machine(abc.ABC):
         ...
 
     @abc.abstractmethod
-    def _create_assignment_from_external(
-            self,
-            op: IdentifiedNode,
-            args: ATOM_ARGS,
-            ) -> ASSIGNMENT:
-        ...
-
-    @abc.abstractmethod
-    def get_replacement_node(self, op: IdentifiedNode, args: Iterable[RESOLVABLE]) -> TRANSLATEABLE_TYPES:
+    def get_replacement_node(self, op: Hashable, args: Iterable[RESOLVABLE]) -> TRANSLATEABLE_TYPES:
         """
         :TODO: Seems indifferent to get_binding_action but doesnt work if used as replacement. Have to rework the resolution of externals
         """
@@ -283,7 +286,7 @@ class extensible_machine(machine):
     @abc.abstractmethod
     def register(self, op: rdflib.URIRef,
                  asaction: Optional[Callable[[BINDING], None]] = None,
-                 asassign: Optional[Callable[[BINDING], Literal]] = None,
+                 asassign: Optional[ASSIGNMENTGENERATOR] = None,
                  aspattern: Optional[PATTERNGENERATOR] = None,
                  asbinding: Optional[BINDING_DESCRIPTION] = None,
                  #asgroundaction: Optional[Any] = None,

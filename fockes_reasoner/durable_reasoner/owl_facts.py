@@ -20,7 +20,7 @@ class rdfs_subclass(fact):
         self.sub_class = sub_class
         self.super_class = super_class
 
-    def create_fact_generator(cls, machine: "machine",
+    def create_fact_generator(cls, machine: abc_machine.machine,
                               ) -> Callable[[BINDING], "fact"]:
         raise NotImplementedError()
 
@@ -73,7 +73,7 @@ class rdfs_subclass(fact):
         raise NotImplementedError()
 
     @classmethod
-    def from_fact(cls, fact: Mapping[str, str]) -> "subclass":
+    def from_fact(cls, fact: Mapping[str, str]) -> "rdfs_subclass":
         sub_class = string2rdflib(fact[cls.SUBCLASS_SUB])
         super_class = string2rdflib(fact[cls.SUBCLASS_SUPER])
         return cls(sub_class, super_class)

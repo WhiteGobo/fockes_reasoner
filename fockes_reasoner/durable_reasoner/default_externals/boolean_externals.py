@@ -11,6 +11,7 @@ import re
 from .numeric_externals import numeric_equal, pred_less_than, pred_greater_than
 
 from ..abc_machine import BINDING, RESOLVABLE, _resolve, RESOLVER, abc_pattern, ATOM_ARGS
+from .. import abc_machine
 from ...shared import pred, func
 from .shared import is_datatype, invert, assign_rdflib
 import locale
@@ -21,7 +22,7 @@ _datatypes: Iterable[URIRef] = [
         XSD.boolean,
         ]
 
-def _register_booleanExternals(machine):
+def _register_booleanExternals(machine: abc_machine.extensible_machine) -> None:
     for dt in _datatypes:
         machine.register(dt, asassign=assign_rdflib.gen(dt))
     for x in _externals:
@@ -39,31 +40,28 @@ def _register_booleanExternals(machine):
 
 @dataclass
 class is_literal_boolean:
-    op = pred["is-literal-boolean"]
     asassign = None
     target: RESOLVABLE
+    op: URIRef = pred["is-literal-boolean"]
     def __call__(self, bindings: BINDING) -> Literal:
         t = _resolve(self.target, bindings)
+        assert isinstance(t, Literal)
         return Literal(t.datatype == XSD.boolean)
 
-@dataclass
 class is_literal_not_boolean:
-    op = pred["is-literal-not-boolean"]
+    op: URIRef = pred["is-literal-not-boolean"]
     asassign = invert.gen(is_literal_boolean)
 
-@dataclass
 class boolean_equal:
-    op = pred["boolean-equal"]
+    op: URIRef = pred["boolean-equal"]
     asassign = numeric_equal
 
-@dataclass
 class boolean_less_than:
-    op = pred["boolean-less-than"]
+    op: URIRef = pred["boolean-less-than"]
     asassign = pred_less_than
 
-@dataclass
 class boolean_greater_than:
-    op = pred["boolean-greater-than"]
+    op: URIRef = pred["boolean-greater-than"]
     asassign = pred_greater_than
 
 _externals = [

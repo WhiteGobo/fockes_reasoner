@@ -10,6 +10,7 @@ from ..bridge_rdflib import term_list, _term_list, TRANSLATEABLE_TYPES
 import re
 
 from ..abc_machine import BINDING, RESOLVABLE, _resolve, RESOLVER, abc_pattern, ATOM_ARGS
+from .. import abc_machine
 from ...shared import pred, func
 from .shared import is_datatype, invert, assign_rdflib
 import locale
@@ -20,7 +21,7 @@ _datatypes: Iterable[URIRef] = [
         RDF.XMLLiteral
         ]
 
-def _register_xmlExternals(machine):
+def _register_xmlExternals(machine: abc_machine.extensible_machine) -> None:
     for dt in _datatypes:
         machine.register(dt, asassign=assign_rdflib.gen(dt))
     for x in _externals:
@@ -38,16 +39,16 @@ def _register_xmlExternals(machine):
 
 @dataclass
 class is_literal_xmlliteral:
-    op = pred["is-literal-XMLLiteral"]
-    asassign = None
     target: RESOLVABLE
+    asassign: None = None
+    op: URIRef = pred["is-literal-XMLLiteral"]
     def __call__(self, bindings: BINDING) -> Literal:
         t = _resolve(self.target, bindings)
+        assert isinstance(t, Literal)
         return Literal(t.datatype == RDF.XMLLiteral)
 
-@dataclass
 class is_literal_not_xmlliteral:
-    op = pred["is-literal-not-XMLLiteral"]
+    op: URIRef = pred["is-literal-not-XMLLiteral"]
     asassign = invert.gen(is_literal_xmlliteral)
 
 _externals = [

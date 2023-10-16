@@ -5,9 +5,11 @@ unified translator from rdflib nodes to these string and back
 import abc
 import rdflib
 from rdflib import XSD
-from typing import Iterable, Union, Iterator, List
+from typing import Iterable, Union, Iterator, List, Any
 from collections.abc import Sequence
 from dataclasses import dataclass
+import logging
+logger = logging.getLogger(__name__)
 
 import rdflib
 

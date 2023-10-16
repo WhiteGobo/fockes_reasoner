@@ -4,6 +4,7 @@ from rdflib import  Variable, URIRef, BNode, Literal, IdentifiedNode
 from hashlib import sha1
 import durable.lang as rls
 import durable.engine
+from . import abc_machine
 from .abc_machine import abc_pattern, TRANSLATEABLE_TYPES, VARIABLE_LOCATOR, FACTTYPE, BINDING, abc_external, ATOM_ARGS, NoPossibleExternal, VariableNotBoundError
 from .bridge_rdflib import rdflib2string
 from .machine_facts import frame, member, subclass, atom, fact, external, rdflib2string, _node2string, string2rdflib
@@ -34,7 +35,8 @@ class _pattern(abc_pattern):
         return "f(%s): %s" % (self.factname, self.pattern)
 
     @classmethod
-    def from_fact(cls, factid: str, myfact, name: Optional[str] = None,
+    def from_fact(cls, factid: str, myfact: dict[str, str],
+                  name: Optional[str] = None,
                   ) -> "_pattern":
         d = {FACTTYPE: factid, **myfact}
         if name is not None:
@@ -108,7 +110,7 @@ class _value_locator:
 
 
 def generate_action_prerequisites(
-        machine,
+        machine: abc_machine.machine,
         p: List[Union[fact, abc_external]],
         ) -> Iterable[Tuple[Iterable[_pattern],
                             Iterable[Callable[[BINDING], Literal]],
@@ -132,7 +134,7 @@ def generate_action_prerequisites(
         raise
 
 def _generate_action_prerequisites_inner(
-        machine,
+        machine: abc_machine.machine,
         pattern_parts: List[Union[fact, abc_external]],
         patterns: list[_pattern],
         conditions: List[Callable[[BINDING], Literal]],

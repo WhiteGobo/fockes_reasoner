@@ -541,8 +541,8 @@ class OWLmachine(_base_durable_machine):
             = {**_base_durable_machine._fact_generator_from_id,
                **{rdfs_subclass.ID: rdfs_subclass}}
 
-    def __init__(self, loggername: str = __name__) -> None:
-        super().__init__(loggername)
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
         self.__inconsistency_rules()
         self.__rdfs_subclass_rule()
 
@@ -590,8 +590,8 @@ class OWLmachine(_base_durable_machine):
 class RDFSmachine(_base_durable_machine):
     """Implements translation of as in RDF specified syntax for the machine
     """
-    def __init__(self, loggername: str = __name__) -> None:
-        super().__init__(loggername)
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
         self.__subclass_rule()
 
     def __subclass_rule(self) -> None:
@@ -1057,5 +1057,5 @@ class _machine_default_externals(_base_durable_machine):
                       asassign=def_ext.assign_rdflib.gen(XSD["unsignedByte"]))
 
 
-class durable_machine(_machine_default_externals, RDFSmachine, OWLmachine):
+class durableMachine(_machine_default_externals, RDFSmachine, OWLmachine):
     pass

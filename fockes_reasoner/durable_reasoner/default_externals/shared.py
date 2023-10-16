@@ -8,7 +8,7 @@ from dataclasses import dataclass
 import math
 from ..bridge_rdflib import term_list, _term_list, TRANSLATEABLE_TYPES
 
-from ..abc_machine import BINDING, RESOLVABLE, _resolve, RESOLVER, abc_pattern, ATOM_ARGS
+from ..abc_machine import BINDING, RESOLVABLE, _resolve, RESOLVER, abc_pattern, ATOM_ARGS, ASSIGNMENTGENERATOR, ASSIGNMENT
 from ...shared import pred, func
 
 
@@ -47,6 +47,7 @@ class assign_rdflib:
         return "%s: %s" % (self.type_uri, self.target)
 
     @classmethod
-    def gen(cls, type_uri: URIRef) -> Callable[..., "assign_rdflib"]:
-        return lambda target: cls(target, type_uri)
-
+    def gen(cls, type_uri: URIRef) -> ASSIGNMENTGENERATOR:
+        #ignoring, that there may be more inputargs as expected. Getting more
+        #args whithin the generation is expected and will throw a TypeError.
+        return lambda target: cls(target, type_uri) #type: ignore[return-value]

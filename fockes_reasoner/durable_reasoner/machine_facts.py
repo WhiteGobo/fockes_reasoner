@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 import rdflib
 from rdflib import URIRef, BNode, Literal, Variable
 import typing as typ
-from typing import MutableMapping, Mapping, Union, Callable, Iterable, Tuple, Optional, overload, cast
+from typing import MutableMapping, Mapping, Union, Callable, Iterable, Tuple, Optional, overload, cast, Hashable
 from collections.abc import Collection
 
 
@@ -17,7 +17,7 @@ from .abc_machine import BINDING, BINDING_WITH_BLANKS, CLOSURE_BINDINGS, VARIABL
 
 from .bridge_rdflib import *
 from .bridge_rdflib import term_list, _term_list
-from .abc_machine import fact
+from .abc_machine import fact, EXTERNAL_ARG
 from ..shared import _pretty
 #from .special_externals import create_list
 
@@ -29,9 +29,10 @@ class _dict_fact(fact):
 
 
 class external(abc_external):
-    op: URIRef
-    args: Iterable[Union[TRANSLATEABLE_TYPES, "external", Variable]]
-    def __init__(self, op: URIRef, args: Iterable[Union[TRANSLATEABLE_TYPES, "external", Variable]]) -> None:
+    op: Union[URIRef, Hashable]
+    args: Iterable[EXTERNAL_ARG]
+    def __init__(self, op: Union[URIRef, Hashable],
+                 args: Iterable[EXTERNAL_ARG]) -> None:
         self.op = op
         self.args = list(args)
 
@@ -78,15 +79,17 @@ class subclass(_dict_fact):
         self.sub_class = sub_class
         self.super_class = super_class
 
-    def create_fact_generator(self, machine: "machine",
-                              ) -> Callable[[BINDING], "fact"]:
-        q = []
+    def create_fact_generator(self, machine: abc_machine.machine,
+                              ) -> Callable[[BINDING], abc_machine.fact]:
+        #q: List[Union[abc_machine.ASSIGNMENT, fact]] = []
+        q: List[RESOLVABLE] = []
         for x in (self.sub_class, self.super_class):
             if isinstance(x, external):
                 q.append(machine._create_assignment_from_external(x.op,
                                                                   x.args))
             else:
-                q.append(x)
+                raise NotImplementedError(repr(x), self)
+                #q.append(x)
         return _resolve_fact(type(self), q)
 
     def __iter__(self) -> Iterator[str]:
@@ -152,9 +155,9 @@ class frame(fact):
         self._used_variables = None
 
 
-    def create_fact_generator(self, machine: "machine",
+    def create_fact_generator(self, machine: abc_machine.machine,
                               ) -> Callable[[BINDING], fact]:
-        q = []
+        q: List[RESOLVABLE] = []
         for x in (self.obj, self.slotkey, self.slotvalue):
             if isinstance(x, external):
                 q.append(machine._create_assignment_from_external(x.op,
@@ -229,9 +232,9 @@ class member(_dict_fact):
         self.instance = instance
         self.cls = cls
 
-    def create_fact_generator(self, machine: "machine",
-                              ) -> Callable[[BINDING], "fact"]:
-        q = []
+    def create_fact_generator(self, machine: abc_machine.machine,
+                              ) -> Callable[[BINDING], abc_machine.fact]:
+        q: List[RESOLVABLE] = []
         for x in (self.instance, self.cls):
             if isinstance(x, external):
                 q.append(machine._create_assignment_from_external(x.op,
@@ -297,8 +300,9 @@ class atom(fact):
         self.op = op
         self.args = tuple(args)
 
-    def create_fact_generator(self, machine: "machine",
-                              ) -> Callable[[BINDING], "fact"]:
+    def create_fact_generator(self, machine: abc_machine.machine,
+                              ) -> Callable[[BINDING], abc_machine.fact]:
+        op: RESOLVABLE
         if isinstance(self.op, external):
             op = machine._create_assignment_from_external(self.op.op,
                                                               self.op.args)
@@ -306,9 +310,8 @@ class atom(fact):
             op = self.op
         args = [machine._create_assignment_from_external(x.op, x.args)
                 if isinstance(x, external) else x
-                for x in self.args
-                ]
-        return _resolve_fact(type(self), (op, args))
+                for x in self.args]
+        return _resolve_atom(op, args)
 
     def __iter__(self) -> Iterator[str]:
         yield self.ATOM_OP
@@ -397,12 +400,14 @@ def _node2string(x: Union[TRANSLATEABLE_TYPES, Variable, str, abc_external],
             return rdflib2string(q)
     elif isinstance(x, (URIRef, BNode, Literal)):
         return rdflib2string(x)
-    elif isinstance(x, external):
+    elif isinstance(x, abc_external):
         assert None not in bindings.values()
-        #cast(BINDING, bindings)
+        #cast(BINDING, bindings) #This doesnt seem to work properly
         res = machine._create_assignment_from_external(x.op, x.args)
-        newnode = _resolve(res, bindings)
+        newnode = _resolve(res, bindings) #type: ignore[arg-type]
         return rdflib2string(newnode)
+    elif isinstance(x, (term_list, tuple, list)):
+        return rdflib2string(x)
     elif isinstance(x, str):
         return x
     return rdflib2string(x(bindings))
@@ -414,3 +419,12 @@ class _resolve_fact:
     def __call__(self, bindings: BINDING) -> fact:
         args_ = [_resolve(x, bindings) for x in self.args]
         return self.facttype(*args_)
+
+@dataclass
+class _resolve_atom:
+    op: RESOLVABLE
+    args: Iterable[RESOLVABLE]
+    def __call__(self, bindings: BINDING) -> atom:
+        op = _resolve(self.op, bindings)
+        args = [_resolve(x, bindings) for x in self.args]
+        return atom(op, args)
