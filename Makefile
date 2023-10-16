@@ -17,8 +17,8 @@ documentation:
 	cd $(DOCS) && env SPHINXOPTS=-a $(MAKE) html
 
 mypy:
-	$(MYPY) fockes_reasoner
-	#$(MYPY) fockes_reasoner 2>&1 | head -n20
+	#$(MYPY) fockes_reasoner
+	unbuffer $(MYPY) fockes_reasoner 2>&1 | head -n5
 
 clean:
 	cd $(DOCS) && env SPHINXOPTS=-a $(MAKE) clean
