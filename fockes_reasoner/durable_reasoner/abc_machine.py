@@ -40,6 +40,7 @@ PATTERNGENERATOR\
                                   Iterable[Variable]]]]
 
 EXTERNAL_ARG = Union[TRANSLATEABLE_TYPES, "abc_external", Variable, "fact"]
+IMPORTPROFILE = Callable[["machine", str], Graph]
 
 
 class RuleNotComplete(Exception):
@@ -133,6 +134,10 @@ class machine(abc.ABC):
     logger: logging.Logger
     errors: list
 
+    _imported_locations: list[str]
+    available_import_profiles: Mapping[Optional[str], IMPORTPROFILE]
+    _registered_facttypes: Mapping[type[fact], str]
+
     @abc.abstractmethod
     def load_external_resource(self, location: Union[str, IdentifiedNode],
                                ) -> rdflib.Graph:
@@ -153,7 +158,7 @@ class machine(abc.ABC):
             op: Hashable,
             args: Iterable[EXTERNAL_ARG],
             bound_variables: Container[Variable],
-            ) -> Iterable[Tuple[Iterable[fact],
+            ) -> Iterable[Tuple[Iterable["abc_pattern"],
                                 Iterable[Callable[[BINDING], Literal]],
                                 Iterable[Variable]]]:
         ...
@@ -164,7 +169,7 @@ class machine(abc.ABC):
             op: Hashable,
             args: Iterable[EXTERNAL_ARG],
             bound_variables: Container[Variable] = [],
-            ) -> Tuple[Iterable[fact],
+            ) -> Tuple[Iterable["abc_pattern"],
                        Iterable[Callable[[BINDING], Literal]],
                        Iterable[Variable]]:
         ...
@@ -181,14 +186,14 @@ class machine(abc.ABC):
             self,
             info: Union[fact, abc_external],
             bound_variables: Container[Variable] = [],
-            ) -> Iterable[Tuple[Iterable[fact],
+            ) -> Iterable[Tuple[Iterable["abc_pattern"],
                                 Iterable[Callable[[BINDING], Literal]],
                                 Iterable[Variable]]]:
         _was_found = False
         if isinstance(info, fact):
             raise NotImplementedError()
             assert all(not isinstance(x, abc_external) for x in info.values())
-            yield ([info], [], info.used_variables)
+            #yield ([info], [], info.used_variables)
             return
         try:
             info.op, info.args
@@ -241,6 +246,13 @@ class machine(abc.ABC):
         """
 
     @abc.abstractmethod
+    def retract_object(self, obj: str) -> None:
+        """Retract all facts that are correlated with this object
+        :TODO: using here a str object as input is very contrary 
+            to eg retract_fact
+        """
+
+    @abc.abstractmethod
     def get_facts(self, fact_filter: Optional[Mapping[str, str]]) -> Iterable[fact]:
         ...
 
@@ -271,7 +283,7 @@ class machine(abc.ABC):
         ...
 
     @abc.abstractmethod
-    def add_init_action(self, action: Callable[[BINDING], None]) -> None:
+    def add_init_action(self, action: Union[Callable[[BINDING], None], abc_external]) -> None:
         ...
 
     @abc.abstractmethod
@@ -291,6 +303,13 @@ class extensible_machine(machine):
                  asbinding: Optional[BINDING_DESCRIPTION] = None,
                  #asgroundaction: Optional[Any] = None,
                  ) -> None:
+        ...
+
+    @abc.abstractmethod
+    def _make_rule(self, patterns: Iterable["abc_pattern"],
+                   actions: Iterable[Union[Callable, fact]],
+                   error_message: str = "",
+                   priority: int = 5) -> None:
         ...
 
 class action:
@@ -365,8 +384,3 @@ class implication(rule, abc.ABC):
         """
         ...
 
-
-class importProfile(abc.ABC):
-    @abc.abstractmethod
-    def create_rules(self, machine: machine, location: str) -> None:
-        ...

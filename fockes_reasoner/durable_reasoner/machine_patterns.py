@@ -1,11 +1,11 @@
-from typing import Union, Optional, Tuple, Callable, List, Set
+from typing import Union, Optional, Tuple, Callable, List, Set, Hashable, overload
 from collections.abc import Mapping, MutableMapping, Iterable, Container
 from rdflib import  Variable, URIRef, BNode, Literal, IdentifiedNode
 from hashlib import sha1
 import durable.lang as rls
 import durable.engine
 from . import abc_machine
-from .abc_machine import abc_pattern, TRANSLATEABLE_TYPES, VARIABLE_LOCATOR, FACTTYPE, BINDING, abc_external, ATOM_ARGS, NoPossibleExternal, VariableNotBoundError
+from .abc_machine import abc_pattern, TRANSLATEABLE_TYPES, VARIABLE_LOCATOR, FACTTYPE, BINDING, abc_external, ATOM_ARGS, NoPossibleExternal, VariableNotBoundError, EXTERNAL_ARG
 from .bridge_rdflib import rdflib2string
 from .machine_facts import frame, member, subclass, atom, fact, external, rdflib2string, _node2string, string2rdflib
 import logging
@@ -111,35 +111,39 @@ class _value_locator:
 
 def generate_action_prerequisites(
         machine: abc_machine.machine,
-        p: List[Union[fact, abc_external]],
-        ) -> Iterable[Tuple[Iterable[_pattern],
+        p: Iterable[Union[fact, abc_external]],
+        ) -> Iterable[Tuple[Iterable[abc_pattern],
                             Iterable[Callable[[BINDING], Literal]],
                             Iterable[Variable]]]:
     #p: List[Union[fact, abc_external]] = list(self.orig_pattern)
     conditions: List[Callable[[BINDING], Literal]]
-    patterns: List[_pattern]
+    patterns: List[abc_pattern]
     bound_variables: Set[Variable]
     try:
-        for patterns, conditions, bound_variables in _generate_action_prerequisites_inner(machine, p, [], [], set()):
-            if len(patterns) == 0 and len(conditions) == 0:
+        for patterns_, conditions, bound_variables in _generate_action_prerequisites_inner(machine, p, [], [], set()):
+            if len(patterns_) == 0 and len(conditions) == 0:
                 #create rule as initialisation rule
-                patterns.insert(0, _pattern({MACHINESTATE: INIT_STATE}))
-            elif len(patterns) > 0:
-                patterns.insert(0, _pattern({MACHINESTATE: RUNNING_STATE}))
+                patterns = [_pattern({MACHINESTATE: INIT_STATE}), *patterns_]
+                #patterns.insert(0, _pattern({MACHINESTATE: INIT_STATE}))
+            elif len(patterns_) > 0:
+                patterns = [_pattern({MACHINESTATE: RUNNING_STATE}),
+                            *patterns_]
+                #patterns.insert(0, _pattern({MACHINESTATE: RUNNING_STATE}))
             else:
                 #TODO : This rule lacks any trigger. 
-                patterns.insert(0, _pattern({MACHINESTATE: RUNNING_STATE}))
+                patterns = [_pattern({MACHINESTATE: RUNNING_STATE})]
+                #patterns.insert(0, _pattern({MACHINESTATE: RUNNING_STATE}))
             yield patterns, conditions, bound_variables
     except VariableNotBoundError:
         raise
 
 def _generate_action_prerequisites_inner(
         machine: abc_machine.machine,
-        pattern_parts: List[Union[fact, abc_external]],
-        patterns: list[_pattern],
+        pattern_parts: Iterable[Union[fact, abc_external]],
+        patterns: list[abc_pattern],
         conditions: List[Callable[[BINDING], Literal]],
         bound_variables: Set[Variable],
-        ) -> Iterable[Tuple[List[_pattern],
+        ) -> Iterable[Tuple[List[abc_pattern],
                             List[Callable[[BINDING], Literal]],
                             Set[Variable]]]:
     """
@@ -184,11 +188,11 @@ def _generate_action_prerequisites_inner(
     yield patterns, conditions, bound_variables
 
 def _process_external_as_pattern(
-        machine,
-        op: IdentifiedNode,
-        args: ATOM_ARGS,
+        machine: abc_machine.machine,
+        op: Hashable,
+        args: Iterable[EXTERNAL_ARG],
         bound_variables: Container[Variable] = {},
-        ) -> Iterable[Tuple[Iterable[_pattern],
+        ) -> Iterable[Tuple[Iterable[abc_pattern],
                    Iterable[Callable[[BINDING], Literal]],
                    Iterable[Variable]]]:
     """

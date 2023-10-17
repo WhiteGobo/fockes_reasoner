@@ -13,7 +13,7 @@ import itertools as it
 import rdflib
 from rdflib import URIRef, Variable, Literal, BNode, Graph, IdentifiedNode, XSD
 from . import abc_machine
-from .abc_machine import TRANSLATEABLE_TYPES, FACTTYPE, BINDING, BINDING_WITH_BLANKS, VARIABLE_LOCATOR, NoPossibleExternal, importProfile, RESOLVABLE, ATOM_ARGS, abc_external, RESOLVER, RuleNotComplete, pattern_generator, VariableNotBoundError, abc_pattern, _resolve, ASSIGNMENT, StopRunning
+from .abc_machine import TRANSLATEABLE_TYPES, FACTTYPE, BINDING, BINDING_WITH_BLANKS, VARIABLE_LOCATOR, NoPossibleExternal, IMPORTPROFILE, RESOLVABLE, ATOM_ARGS, abc_external, RESOLVER, RuleNotComplete, pattern_generator, VariableNotBoundError, abc_pattern, _resolve, ASSIGNMENT, StopRunning
 from ..class_profileOWLDirect import import_profileOWLDirect
 from ..class_profileSimpleEntailment import import_profileSimpleEntailment
 from ..class_profileRDFSEntailment import import_profileRDFSEntailment
@@ -175,9 +175,8 @@ class _base_durable_machine(abc_machine.extensible_machine):
     inconsistent_information: bool
     _current_context: _context_helper
     _initialized: bool
-    _imported_location: Container[IdentifiedNode]
     available_import_profiles: MutableMapping[Optional[IdentifiedNode],
-                                              importProfile]
+                                              IMPORTPROFILE]
     _registered_pattern_generator: Dict[IdentifiedNode,
                                         PATTERNGENERATOR]
     _registered_action_generator: Dict[IdentifiedNode,
@@ -188,7 +187,7 @@ class _base_durable_machine(abc_machine.extensible_machine):
     _registered_binding_generator: Dict[IdentifiedNode, BINDING_DESCRIPTION]
     _registered_groundaction_generator: Dict[IdentifiedNode, Any]
 
-    _imported_locations: Set[Optional[IdentifiedNode]]
+    _imported_locations: List[str]
     _knownLocations: MutableMapping[IdentifiedNode, Callable[[], rdflib.Graph]]
 
     _registered_facttypes: Mapping[type[fact], str] = {
@@ -221,7 +220,7 @@ class _base_durable_machine(abc_machine.extensible_machine):
         self._registered_groundaction_generator = {}
         self._registered_information = {}
 
-        self._imported_locations = set()
+        self._imported_locations = []
         self.available_import_profiles = {}
         self._knownLocations = {}
         self._steps_left = -1
@@ -404,7 +403,7 @@ class _base_durable_machine(abc_machine.extensible_machine):
     def _rulename(self) -> str:
         return self._ruleset.name #type: ignore[no-any-return]
 
-    def add_init_action(self, action: Callable[[BINDING], None]) -> None:
+    def add_init_action(self, action: Union[Callable[[BINDING], None], abc_external]) -> None:
         q = durable_rule(self)
         #def act(bindings: BINDING) -> None:
         #    logger.debug("execute init: %s" % action)
@@ -754,7 +753,7 @@ class durable_rule(abc_machine.implication, abc_machine.rule):
             actions = self._generate_action(conditions, self.actions)
             self.machine._make_rule(patterns, actions)
 
-    def set_action(self, action: Callable[[BINDING], None],
+    def set_action(self, action: Union[Callable[[BINDING], None], abc_external],
                    needed_variables: Iterable[Variable]) -> None:
         self.actions.append(action)
         self.needed_variables = list(needed_variables)

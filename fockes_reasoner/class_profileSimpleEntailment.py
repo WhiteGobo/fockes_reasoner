@@ -1,5 +1,5 @@
 from rdflib import Graph
-from .durable_reasoner import importProfile, machine, fact, frame, TRANSLATEABLE_TYPES
+from .durable_reasoner import machine, fact, frame, TRANSLATEABLE_TYPES
 from rdflib import IdentifiedNode, Literal, URIRef, BNode
 from typing import Union, Any
 from dataclasses import dataclass
@@ -14,7 +14,7 @@ def import_profileSimpleEntailment(machine: machine,
         f = frame(subj, pred, obj)
         machine.assert_fact(f, {})
 
-class profileSimpleEntailment(importProfile):
+class profileSimpleEntailment:
     """
     See `https://www.w3.org/TR/2013/REC-rif-rdf-owl-20130205/#RDF_Compatibility`_ for more information.
     """

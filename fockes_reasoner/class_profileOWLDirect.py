@@ -1,7 +1,7 @@
 from rdflib import Graph, URIRef
 from rdflib.term import Node
 from . import durable_reasoner
-from .durable_reasoner import importProfile, fact, TRANSLATEABLE_TYPES, member, rdfs_subclass, frame
+from .durable_reasoner import fact, TRANSLATEABLE_TYPES, member, rdfs_subclass, frame
 from rdflib import IdentifiedNode, Literal, URIRef, BNode
 from typing import Union, Any, Dict, List
 from dataclasses import dataclass
@@ -14,7 +14,7 @@ def import_profileOWLDirect(machine, location):
     helper({})
 
 
-class profileOWLDirect(importProfile):
+class profileOWLDirect:
     """
     See `https://www.w3.org/TR/2013/REC-rif-rdf-owl-20130205/#RDF_Compatibility`_ for more information.
     """

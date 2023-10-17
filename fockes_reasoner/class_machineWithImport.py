@@ -1,6 +1,5 @@
 from typing import Any
 from .durable_reasoner.machine import durableMachine
-from .durable_reasoner.abc_machine import importProfile
 from .class_profileSimpleEntailment import profileSimpleEntailment
 from .class_profileRDFSEntailment import profileRDFSEntailment
 #from .class_rifImportProfile import rifImportProfile

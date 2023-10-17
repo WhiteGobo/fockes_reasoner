@@ -1,7 +1,7 @@
-from typing import Any, Union, Optional, Tuple, List
+from typing import Any, Union, Optional, Tuple, List, Dict
 from dataclasses import dataclass, field
 from .bridge_rdflib import term_list, _term_list
-from collections.abc import Iterable, Mapping, Callable, Container
+from collections.abc import Iterable, Mapping, Callable, Container, Iterator
 from rdflib import Variable, URIRef, Literal, IdentifiedNode
 from .abc_machine import abc_external, TRANSLATEABLE_TYPES, RESOLVABLE, BINDING, _resolve, fact, abc_pattern
 from .machine_facts import _node2string, external
@@ -21,16 +21,16 @@ class _id:
     name: str = field(hash=True)
 
 @dataclass
-class _special_external(Mapping):
+class _special_external(Mapping[str, Union[Tuple, Callable, Mapping, Any]]):
     op: _id
     asaction: Optional[Tuple[Callable, bool]]\
             = field(default=None)
     asassign: Optional[Callable] = field(default=None)
     aspattern: Optional[Callable] = field(default=None)
-    asbinding: Optional[Mapping[tuple[bool], Callable]] = field(default=None)
+    asbinding: Optional[Mapping[tuple[bool, ...], Callable]] = field(default=None)
     asgroundaction: Optional[Any] = field(default=None)
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[str]:
         for x in ["op", "asassign", "asbinding", "asaction", "asgroundaction",
                   "aspattern"]:
             if getattr(self, x, None) is not None:
@@ -44,7 +44,7 @@ class _special_external(Mapping):
                 i += 1
         return i
 
-    def __getitem__(self, key):
+    def __getitem__(self, key: str) -> Any:
         try:
             return getattr(self, key)
         except AttributeError as err:
@@ -54,7 +54,7 @@ class _special_external(Mapping):
 @dataclass
 class _create_list:
     items: Iterable[RESOLVABLE]
-    def __init__(self, *items: Iterable[RESOLVABLE]):
+    def __init__(self, *items: RESOLVABLE) -> None:
         self.items = items
 
     def __call__(self, bindings: BINDING) -> term_list:
@@ -128,7 +128,7 @@ retract_object = _special_external(_id("retract_object"),
 class _do_function:
     actions: Iterable[Callable[[BINDING], None]]
     def __init__(self, machine: abc_machine.machine,
-                 *actions: Iterable[Callable[[BINDING], None]],
+                 *actions: Callable[[BINDING], None],
                  ) -> None:
         self.actions = actions
 
@@ -147,15 +147,17 @@ def _register_import_as_init_action(machine: abc_machine.machine,
     if location in machine._imported_locations:
         logger.debug("Already import %s" % location)
         return
+    machine._imported_locations.append(location)
     logger.debug("import data %s" % profile)
-    args = [location] if profile is None else [location, profile] 
+    args = [Literal(location)] if profile is None else [Literal(location),
+                                                        Literal(profile)] 
     machine.add_init_action(external(_import_id, args))
 
 @dataclass
 class _import_action:
     machine: abc_machine.machine
     location: Literal
-    profile: Literal = field(default=None)
+    profile: Optional[Literal] = field(default=None)
 
     def __call__(self, bindings: BINDING) -> None:
         try:
@@ -177,31 +179,32 @@ class _StopRunning_action:
     conditions: Iterable[Callable[[BINDING], Literal]]
     stopmessage: str
     def __call__(self, bindings: BINDING) -> None:
+        """
+        :TODO: remove type:ignore
+        """
         try:
             for cond in self.conditions:
                 if not cond(bindings):
                     return
             logger.critical("Stopping ...")
-            self.machine._current_context.retract_fact(
+            self.machine._current_context.retract_fact( #type: ignore[attr-defined]
                     {MACHINESTATE: RUNNING_STATE})
             raise abc_machine.StopRunning(self.stopmessage)
         except Exception:
             logger.critical(traceback.format_exc())
             raise
 
-def _register_stop_condition(machine: abc_machine.machine,
-                             *required_facts: Iterable[fact],
+def _register_stop_condition(machine: abc_machine.extensible_machine,
+                             *required_facts: fact,
                              ) -> None:
 
-    myfacts = []
-    patterns = []
     for patterns, conditions, bound_variables\
-            in generate_action_prerequisites(machine, list(required_facts)):
+            in generate_action_prerequisites(machine, required_facts):
         logger.critical(patterns)
         #if len(patterns) == 1:#always contains machinestate: running
         #    raise NotImplementedError("Doesnt produce any patterns but "
         #                              "currently i need some.")
-        msg = "stop conditions reached: %s" % (str(myfacts))
+        msg = "stop conditions reached: %s"
         machine._make_rule(patterns,
                            [_StopRunning_action(machine, conditions, msg)],
                            priority=3)
@@ -212,27 +215,36 @@ stop_condition = _special_external(_id("stop_condition"),
 
 
 def _pattern_generator_and(
-        machine,
+        machine: abc_machine.machine,
         args: Iterable[Union[fact, abc_external]],
-        bound_variables: Container[Variable],
+        bound_variables: Iterable[Variable],
         ) -> Iterable[Tuple[Iterable[abc_pattern],
-                            Tuple["pred_iri_string"],
+                            Iterable[Callable[[BINDING], Literal]],
                             Iterable[Variable]]]:
-    patterns, conditions, bound_variables = [], [], set()
+    patterns: List[abc_pattern]
+    conditions: List[Callable[[BINDING], Literal]]
+    patterns, conditions = [], []
+    bound_vars = set(bound_variables)
     for formula in args:
         if isinstance(formula, fact):
             id_ = machine._registered_facttypes[type(formula)]
-            patterns.append(_pattern.from_fact(id_, formula))
-            bound_variables.update(formula.used_variables)
+            asdict: Dict[str, str] = {}
+            for key, val in formula.items():
+                if isinstance(val, str):
+                    asdict[key] = val
+                else:
+                    raise NotImplementedError()
+            patterns.append(_pattern.from_fact(id_, asdict))
+            bound_vars.update(formula.used_variables)
         elif isinstance(formula, abc_external):
             raise NotImplementedError("externals not yet supported", formula)
         else:
             raise TypeError("only supports fact and abc_external", formula)
-    yield patterns, conditions, bound_variables
+    yield patterns, conditions, bound_vars
 
 class _and_assignment:
-    args: Iterable
-    def __init__(self, *args):
+    args: Iterable[Union[fact, abc_external]]
+    def __init__(self, *args: Union[fact, abc_external]) -> None:
         self.args = args
     def __call__(self, bindings: BINDING) -> Literal:
         args = (_resolve(x, bindings) for x in self.args)
@@ -243,7 +255,7 @@ condition_and = _special_external(_id("rif_and"),
                                   )
 
 def _pattern_generator_or(
-        machine,
+        machine: abc_machine.machine,
         args: Iterable[Union[fact, abc_external]],
         bound_variables: Container[Variable],
         ) -> Iterable[Tuple[Iterable[abc_pattern],

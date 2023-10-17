@@ -1,6 +1,6 @@
 from rdflib import Graph, IdentifiedNode
 from rdflib.term import Node, Node
-from .durable_reasoner import importProfile, machine, fact, frame, TRANSLATEABLE_TYPES, subclass, member
+from .durable_reasoner import machine, fact, frame, TRANSLATEABLE_TYPES, subclass, member
 from rdflib import IdentifiedNode, Literal, URIRef, BNode, RDF, RDFS
 from typing import Union, Any, List, Dict, Mapping
 from dataclasses import dataclass
@@ -29,7 +29,7 @@ def export_profileRDFEntailment(machine) -> Graph:
     return g
 
 
-class profileRDFSEntailment(importProfile):
+class profileRDFSEntailment:
     """
     See `https://www.w3.org/TR/2013/REC-rif-rdf-owl-20130205/#RDF_Compatibility`_ for more information.
     """

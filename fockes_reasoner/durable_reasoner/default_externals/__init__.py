@@ -31,25 +31,14 @@ class rif_or:
                 return y
         return Literal(False)
 
-    @classmethod
-    def pattern_generator(
-            cls,
-            args: Iterable[RESOLVABLE],
-            bound_variables: Container[Variable],
-            ) -> Tuple[Iterable[abc_pattern],
-                       Tuple["pred_iri_string"],
-                       Iterable[Variable]]:
-        raise NotImplementedError()
+    #@classmethod
+    #def pattern_generator(
+    #        cls,
+    #        args: Iterable[RESOLVABLE],
+    #        bound_variables: Container[Variable],
+    #        ) -> Tuple[Iterable[abc_pattern],
+    #                   Tuple["pred_iri_string"],
+    #                   Iterable[Variable]]:
+    #    raise NotImplementedError()
         
-
-
-@dataclass
-class set_var:
-    left: Variable
-    right: RESOLVABLE
-
-    def __call__(self, bindings:BINDING) -> Literal:
-        right = _resolve(self.right, bindings)
-        bindings[left] = right
-        return Literal(True)
 
