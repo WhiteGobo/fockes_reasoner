@@ -21,7 +21,7 @@ _datatypes: Iterable[URIRef] = [
         XSD.anyURI,
         ]
 
-def _register_anyURIExternals(machine: abc_machine.extensible_machine) -> None:
+def _register_anyURIExternals(machine: abc_machine.extensible_Machine) -> None:
     for dt in _datatypes:
         machine.register(dt, asassign=assign_rdflib.gen(dt))
     for x in _externals:

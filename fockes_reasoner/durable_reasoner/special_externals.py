@@ -3,7 +3,7 @@ from dataclasses import dataclass, field
 from .bridge_rdflib import term_list, _term_list
 from collections.abc import Iterable, Mapping, Callable, Container, Iterator
 from rdflib import Variable, URIRef, Literal, IdentifiedNode
-from .abc_machine import abc_external, TRANSLATEABLE_TYPES, RESOLVABLE, BINDING, _resolve, fact, abc_pattern
+from .abc_machine import abc_external, TRANSLATEABLE_TYPES, RESOLVABLE, BINDING, _resolve, fact, abc_pattern, ASSIGNMENT
 from .machine_facts import _node2string, external
 from . import abc_machine
 from .default_externals import literal_equal
@@ -91,9 +91,9 @@ equality = _special_external(_id("rif equality"),
 
 @dataclass
 class _assert_fact_function:
-    machine: abc_machine.machine
+    machine: abc_machine.Machine
     facts: Iterable[Union[fact, Callable[[BINDING], fact]]]
-    def __init__(self, machine:abc_machine.machine,
+    def __init__(self, machine:abc_machine.Machine,
                  *facts: Union[fact, Callable[[BINDING], fact]],
                  ) -> None:
         self.machine = machine
@@ -111,7 +111,7 @@ assert_fact = _special_external(_id("assert_fact"),
 
 @dataclass
 class _retract_object_function:
-    machine: abc_machine.machine
+    machine: abc_machine.Machine
     atom: Union[TRANSLATEABLE_TYPES, abc_external, Variable]
 
     def __call__(self, bindings: BINDING = {}) -> None:
@@ -127,7 +127,7 @@ retract_object = _special_external(_id("retract_object"),
 
 class _do_function:
     actions: Iterable[Callable[[BINDING], None]]
-    def __init__(self, machine: abc_machine.machine,
+    def __init__(self, machine: abc_machine.Machine,
                  *actions: Callable[[BINDING], None],
                  ) -> None:
         self.actions = actions
@@ -140,7 +140,7 @@ do = _special_external(_id("do"),
                        asaction=(_do_function, True))
 
 _import_id = _id("import")
-def _register_import_as_init_action(machine: abc_machine.machine,
+def _register_import_as_init_action(machine: abc_machine.Machine,
                                     location: str,
                                     profile: Optional[str] = None,
                                     ) -> None:
@@ -155,7 +155,7 @@ def _register_import_as_init_action(machine: abc_machine.machine,
 
 @dataclass
 class _import_action:
-    machine: abc_machine.machine
+    machine: abc_machine.Machine
     location: Literal
     profile: Optional[Literal] = field(default=None)
 
@@ -175,7 +175,7 @@ import_data = _special_external(_import_id,
 
 @dataclass
 class _StopRunning_action:
-    machine: abc_machine.machine
+    machine: abc_machine.Machine
     conditions: Iterable[Callable[[BINDING], Literal]]
     stopmessage: str
     def __call__(self, bindings: BINDING) -> None:
@@ -194,7 +194,7 @@ class _StopRunning_action:
             logger.critical(traceback.format_exc())
             raise
 
-def _register_stop_condition(machine: abc_machine.extensible_machine,
+def _register_stop_condition(machine: abc_machine.extensible_Machine,
                              *required_facts: fact,
                              ) -> None:
 
@@ -215,7 +215,7 @@ stop_condition = _special_external(_id("stop_condition"),
 
 
 def _pattern_generator_and(
-        machine: abc_machine.machine,
+        machine: abc_machine.Machine,
         args: Iterable[Union[fact, abc_external]],
         bound_variables: Iterable[Variable],
         ) -> Iterable[Tuple[Iterable[abc_pattern],
@@ -242,43 +242,43 @@ def _pattern_generator_and(
             raise TypeError("only supports fact and abc_external", formula)
     yield patterns, conditions, bound_vars
 
-class _and_assignment:
-    args: Iterable[Union[fact, abc_external]]
-    def __init__(self, *args: Union[fact, abc_external]) -> None:
-        self.args = args
-    def __call__(self, bindings: BINDING) -> Literal:
-        args = (_resolve(x, bindings) for x in self.args)
-        return Literal(all(args))
+#class _and_assignment:
+#    args: Iterable[Union[fact, abc_external]]
+#    def __init__(self, *args: Union[fact, abc_external]) -> None:
+#        self.args = args
+#    def __call__(self, bindings: BINDING) -> Literal:
+#        args = (_resolve(x, bindings) for x in self.args)
+#        return Literal(all(args))
 condition_and = _special_external(_id("rif_and"),
                                   aspattern=_pattern_generator_and,
-                                  asassign=_and_assignment,
+                                  #asassign=_and_assignment,
                                   )
 
 def _pattern_generator_or(
-        machine: abc_machine.machine,
+        machine: abc_machine.Machine,
         args: Iterable[Union[fact, abc_external]],
         bound_variables: Container[Variable],
         ) -> Iterable[Tuple[Iterable[abc_pattern],
-                            Tuple["pred_iri_string"],
+                            Iterable[ASSIGNMENT],
                             Iterable[Variable]]]:
     #patterns, conditions, bound_variables = [], [], set()
     for formula in args:
         #for patterns, conditions, bound_variables in generate_action_prerequisites(machine, [args]):
         q = machine.create_internal_and_python_conditions(formula,
                                                           bound_variables)
-        for patterns, conditions, bound_variables in q:
-            yield patterns, conditions, bound_variables
+        for patterns, conditions, new_bound_variables in q:
+            yield patterns, conditions, new_bound_variables
 
-class _or_assignment:
-    args: Iterable
-    def __init__(self, *args):
-        self.args = args
-    def __call__(self, bindings: BINDING) -> Literal:
-        args = (_resolve(x, bindings) for x in self.args)
-        return Literal(any(args))
+#class _or_assignment:
+#    args: Iterable
+#    def __init__(self, *args):
+#        self.args = args
+#    def __call__(self, bindings: BINDING) -> Literal:
+#        args = (_resolve(x, bindings) for x in self.args)
+#        return Literal(any(args))
 condition_or = _special_external(_id("rif_or"),
                                  aspattern=_pattern_generator_or,
-                                 asassign=_and_assignment,
+                                 #asassign=_or_assignment,
                                  )
 
 _special_externals = [

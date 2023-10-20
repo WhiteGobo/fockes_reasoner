@@ -23,7 +23,7 @@ VARIABLE_LOCATOR = Callable[[typ.Any], TRANSLATEABLE_TYPES]
 CLOSURE_BINDINGS = MutableMapping[rdflib.Variable, VARIABLE_LOCATOR]
 ATOM_ARGS = Iterable[Union[TRANSLATEABLE_TYPES, Variable, "abc_external"]]
 
-BINDING_DESCRIPTION = Mapping[tuple[bool], Callable]
+BINDING_DESCRIPTION = Mapping[tuple[bool, ...], Callable]
 """Maps a tuple representing the position of unbound variables to a generator
 """
 
@@ -33,14 +33,18 @@ ASSIGNMENT = Callable[[BINDING], Literal]
 class ASSIGNMENTGENERATOR(Protocol):
     def __call__(self, *args: RESOLVABLE) -> ASSIGNMENT: ...
 
+EXTERNAL_ARG = Union[TRANSLATEABLE_TYPES, "abc_external", Variable, "fact"]
+"""All accepted types for arg of abc_external
+"""
+
 PATTERNGENERATOR\
-        = Callable[[Iterable[RESOLVABLE], Container[Variable]],
+        = Callable[["Machine", Iterable[EXTERNAL_ARG], Container[Variable]],
                    Iterable[Tuple[Iterable["abc_pattern"],
                                   Iterable[Callable[[BINDING], Literal]],
                                   Iterable[Variable]]]]
 
-EXTERNAL_ARG = Union[TRANSLATEABLE_TYPES, "abc_external", Variable, "fact"]
-IMPORTPROFILE = Callable[["machine", str], Graph]
+
+IMPORTPROFILE = Callable[["Machine", str], Graph]
 
 
 class RuleNotComplete(Exception):
@@ -101,6 +105,18 @@ class fact(Mapping[str, Union[TRANSLATEABLE_TYPES, abc_external, Variable]],
            abc.ABC):
     ID: str
 
+    @classmethod
+    @abc.abstractmethod
+    def from_flat_translateables(cls, *args: TRANSLATEABLE_TYPES) -> "fact":
+        """Returns this fact with all information given as sequence.
+        The arguments are expected to be given in the same sequence as
+        specified in fact.__iter__
+
+        This method is important to have a unified way of transforming
+        information extracted from fact.items back into a fact. This
+        is done, when externals are resolved into translateables.
+        """
+
     @property
     @abc.abstractmethod
     def used_variables(self) -> Iterable[Variable]:
@@ -117,20 +133,15 @@ class fact(Mapping[str, Union[TRANSLATEABLE_TYPES, abc_external, Variable]],
     def from_fact(cls, fact: Mapping[str, str]) -> "fact":
         ...
 
-    @abc.abstractmethod
-    def create_fact_generator(self, machine: "machine",
-                              ) -> Callable[[BINDING], "fact"]:
-        ...
-
     #@property
     #def has_variable_attributes(self) -> bool:
     #    return True
 
 
 class abc_action(abc.ABC):
-    machine: "machine"
+    machine: "Machine"
 
-class machine(abc.ABC):
+class Machine(abc.ABC):
     logger: logging.Logger
     errors: list
 
@@ -187,7 +198,7 @@ class machine(abc.ABC):
             info: Union[fact, abc_external],
             bound_variables: Container[Variable] = [],
             ) -> Iterable[Tuple[Iterable["abc_pattern"],
-                                Iterable[Callable[[BINDING], Literal]],
+                                Iterable[ASSIGNMENT],
                                 Iterable[Variable]]]:
         _was_found = False
         if isinstance(info, fact):
@@ -253,25 +264,13 @@ class machine(abc.ABC):
         """
 
     @abc.abstractmethod
-    def get_facts(self, fact_filter: Optional[Mapping[str, str]]) -> Iterable[fact]:
+    def get_facts(self,
+                  fact_filter: Optional[Mapping[str, str]] = None,
+                  ) -> Iterable[fact]:
         ...
 
     @abc.abstractmethod
     def run(self, steps: Union[int, None] = None) -> None:
-        ...
-
-    @abc.abstractmethod
-    def import_data(self,
-                    infograph: Graph,
-                    location: IdentifiedNode,
-                    profile: Optional[IdentifiedNode] = None,
-                    extraDocuments: Mapping[IdentifiedNode, Graph] = {},
-                    ) -> None:
-        """
-        :param profile: Defines the the model, entailment and satisfiability
-            of given graph.
-            `https://www.w3.org/TR/2013/REC-rif-rdf-owl-20130205/#Profiles_of_Imports`_
-        """
         ...
 
     @abc.abstractmethod
@@ -292,7 +291,7 @@ class machine(abc.ABC):
         :TODO: Seems indifferent to get_binding_action but doesnt work if used as replacement. Have to rework the resolution of externals
         """
 
-class extensible_machine(machine):
+class extensible_Machine(Machine):
     """This machine can be extended with python code
     """
     @abc.abstractmethod
@@ -314,7 +313,7 @@ class extensible_machine(machine):
 
 class action:
     action: Optional[Callable]
-    machine: machine
+    machine: Machine
 
     @abc.abstractmethod
     def finalize(self) -> None:
@@ -330,7 +329,7 @@ class pattern_organizer(MutableSequence[Union[fact, abc_external]]):
 class rule(abc.ABC):
     patterns: typ.Any
     action: Optional[Callable]
-    machine: machine
+    machine: Machine
 
     @abc.abstractmethod
     def set_action(self, action: Callable[[BINDING], None],
@@ -370,7 +369,7 @@ class abc_pattern(abc.ABC):
 class implication(rule, abc.ABC):
     patterns: typ.Any
     action: Optional[Callable]
-    machine: machine
+    machine: Machine
 
     @abc.abstractmethod
     def finalize(self) -> None:

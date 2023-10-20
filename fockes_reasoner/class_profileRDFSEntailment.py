@@ -1,23 +1,24 @@
 from rdflib import Graph, IdentifiedNode
 from rdflib.term import Node, Node
-from .durable_reasoner import machine, fact, frame, TRANSLATEABLE_TYPES, subclass, member
+from .durable_reasoner import Machine, fact, frame, TRANSLATEABLE_TYPES, subclass, member, atom, subclass, member
 from rdflib import IdentifiedNode, Literal, URIRef, BNode, RDF, RDFS
 from typing import Union, Any, List, Dict, Mapping
 from dataclasses import dataclass
 
-def import_profileRDFSEntailment(machine, location):
+def import_profileRDFSEntailment(machine: Machine, location: str) -> None:
     helper = profileRDFSEntailment._initImport(machine, location)
     helper({})
 
-def export_profileRDFEntailment(machine) -> Graph:
+def export_profileRDFEntailment(machine: Machine) -> Graph:
     g = Graph()
     data = machine.get_facts()
     for tmp_fact in data:
         if isinstance(tmp_fact, frame):
-            axiom = (tmp_fact.obj, tmp_fact.slotkey, tmp_fact.slotvalue)
-            if any(not isinstance(x, Node) for x in axiom):
+            subj, pred, obj = (tmp_fact.obj, tmp_fact.slotkey, tmp_fact.slotvalue)
+            if isinstance(subj, Node) and isinstance(pred, Node) and isinstance(obj, Node):
+                g.add((subj, pred, obj))
+            else:
                 raise NotImplementedError("lists are not yet supported")
-            g.add(axiom)
         elif isinstance(tmp_fact, atom):
             raise NotImplementedError()
         elif isinstance(tmp_fact, subclass):
@@ -35,7 +36,7 @@ class profileRDFSEntailment:
     """
     @dataclass
     class _initImport:
-        machine: machine
+        machine: Machine
         location: Union[str, IdentifiedNode]
         def __call__(self, bindings: Any) -> None:
             mapping: Dict[Node, Union[Node, List[Node]]] = {}
@@ -107,5 +108,5 @@ class profileRDFSEntailment:
                 self.machine.assert_fact(f, {})
 
 
-    def create_rules(self, machine: machine, location: str) -> None:
+    def create_rules(self, machine: Machine, location: str) -> None:
         machine.add_init_action(self._initImport(machine, location))

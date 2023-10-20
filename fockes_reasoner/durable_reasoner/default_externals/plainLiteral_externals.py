@@ -23,7 +23,7 @@ _datatypes: Iterable[URIRef] = [
         RDF.PlainLiteral,
         ]
 
-def _register_plainLiteralExternals(machine: abc_machine.extensible_machine) -> None:
+def _register_plainLiteralExternals(machine: abc_machine.extensible_Machine) -> None:
     for dt in _datatypes:
         machine.register(dt, asassign=assign_rdflib.gen(dt))
     for x in _externals:

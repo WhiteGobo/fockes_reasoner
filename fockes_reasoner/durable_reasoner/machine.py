@@ -6,14 +6,14 @@ import abc
 import logging
 logger = logging.getLogger(__name__)
 import traceback
-from typing import Union, Mapping, Iterable, Callable, Any, MutableMapping, Optional, Container, Dict, Set, get_args, Tuple, List, Iterator
+from typing import Union, Mapping, Iterable, Callable, Any, MutableMapping, Optional, Container, Dict, Set, get_args, Tuple, List, Iterator, Hashable
 from collections.abc import Collection
 from dataclasses import dataclass
 import itertools as it
 import rdflib
 from rdflib import URIRef, Variable, Literal, BNode, Graph, IdentifiedNode, XSD
 from . import abc_machine
-from .abc_machine import TRANSLATEABLE_TYPES, FACTTYPE, BINDING, BINDING_WITH_BLANKS, VARIABLE_LOCATOR, NoPossibleExternal, IMPORTPROFILE, RESOLVABLE, ATOM_ARGS, abc_external, RESOLVER, RuleNotComplete, pattern_generator, VariableNotBoundError, abc_pattern, _resolve, ASSIGNMENT, StopRunning
+from .abc_machine import TRANSLATEABLE_TYPES, FACTTYPE, BINDING, BINDING_WITH_BLANKS, VARIABLE_LOCATOR, NoPossibleExternal, IMPORTPROFILE, RESOLVABLE, ATOM_ARGS, abc_external, RESOLVER, RuleNotComplete, pattern_generator, VariableNotBoundError, abc_pattern, _resolve, ASSIGNMENT, StopRunning, EXTERNAL_ARG
 from ..class_profileOWLDirect import import_profileOWLDirect
 from ..class_profileSimpleEntailment import import_profileSimpleEntailment
 from ..class_profileRDFSEntailment import import_profileRDFSEntailment
@@ -116,6 +116,7 @@ class _closure_helper(_context_helper):
                            for key, val in fact_filter.items()))
 
     def retract_fact(self, fact: Mapping[str, str]) -> None:
+        logger.critical(repr(fact))
         for f in self.get_facts():
             if all(f.get(x) == y for x,y in fact.items()):
                 self.c.retract_fact(f)
@@ -127,7 +128,7 @@ class _closure_helper(_context_helper):
     def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         self.machine._current_context = self.previous_context
 
-def _transform_all_externals_to_calls(args: ATOM_ARGS,
+def _transform_all_externals_to_calls(args: Iterable[EXTERNAL_ARG],
                                       tmp_machine: "_base_durable_machine",
                                       ) -> Iterable[RESOLVABLE]:
     useable_args: list[RESOLVABLE] = []
@@ -136,14 +137,21 @@ def _transform_all_externals_to_calls(args: ATOM_ARGS,
     e_arg: abc_external
     for arg in args:
         if isinstance(arg, abc_external):
-            useable_args.append(tmp_machine._create_assignment_from_external(arg.op,
-                                                                 arg.args))
+            _assign_args = []
+            for x in arg.args:
+                assert isinstance(x, (IdentifiedNode, Literal, term_list, Variable, abc_external))
+                _assign_args.append(x)
+            _assignment = tmp_machine._create_assignment_from_external(
+                    arg.op, _assign_args)
+            useable_args.append(_assignment)
             continue
         elif isinstance(arg, (Variable, Literal, IdentifiedNode)):
             useable_args.append(arg)
             continue
         elif isinstance(arg, fact):
-            useable_args.append(arg.create_fact_generator(tmp_machine))
+            gen = tmp_machine._fact_generator.gen_for_machine(tmp_machine, arg)
+            useable_args.append(gen)
+            #useable_args.append(arg.create_fact_generator(tmp_machine))
             continue
         try:
             t_arg = arg#type: ignore[assignment]
@@ -165,7 +173,7 @@ def _transform_all_externals_to_calls(args: ATOM_ARGS,
         raise NotImplementedError(arg, type(arg))
     return useable_args
 
-class _base_durable_machine(abc_machine.extensible_machine):
+class _base_durable_machine(abc_machine.extensible_Machine):
     _ruleset: rls.ruleset
     logger: logging.Logger
     """Logger for specific output, expected from the machine, eg execute:print.
@@ -175,20 +183,20 @@ class _base_durable_machine(abc_machine.extensible_machine):
     inconsistent_information: bool
     _current_context: _context_helper
     _initialized: bool
-    available_import_profiles: MutableMapping[Optional[IdentifiedNode],
+    available_import_profiles: MutableMapping[Optional[str],
                                               IMPORTPROFILE]
-    _registered_pattern_generator: Dict[IdentifiedNode,
+    _registered_pattern_generator: Dict[Hashable,
                                         PATTERNGENERATOR]
-    _registered_action_generator: Dict[IdentifiedNode,
+    _registered_action_generator: Dict[Hashable,
                                        Tuple[Callable[..., RESOLVABLE],
                                              bool]]
-    _registered_assignment_generator: Dict[IdentifiedNode,
+    _registered_assignment_generator: Dict[Hashable,
                                            Callable[..., ASSIGNMENT]]
-    _registered_binding_generator: Dict[IdentifiedNode, BINDING_DESCRIPTION]
-    _registered_groundaction_generator: Dict[IdentifiedNode, Any]
+    _registered_binding_generator: Dict[Hashable, BINDING_DESCRIPTION]
+    _registered_groundaction_generator: Dict[Hashable, Any]
 
     _imported_locations: List[str]
-    _knownLocations: MutableMapping[IdentifiedNode, Callable[[], rdflib.Graph]]
+    _knownLocations: MutableMapping[str, Callable[[], rdflib.Graph]]
 
     _registered_facttypes: Mapping[type[fact], str] = {
             frame: frame.ID,
@@ -218,12 +226,38 @@ class _base_durable_machine(abc_machine.extensible_machine):
         self._registered_assignment_generator = {}
         self._registered_binding_generator = {}
         self._registered_groundaction_generator = {}
-        self._registered_information = {}
 
         self._imported_locations = []
         self.available_import_profiles = {}
         self._knownLocations = {}
         self._steps_left = -1
+
+    @dataclass
+    class _fact_generator:
+        """Generator of translateable facts from facts with externals
+        :TODO: replace type[fact] with callable
+        """
+        fact_generator: type[fact] #theroeticly callable[[res, ...], fact]
+        original_fact: fact
+        args: Iterable[RESOLVABLE]
+
+        def __call__(self, bindings: BINDING) -> fact:
+            args_ = [_resolve(x, bindings) for x in self.args]
+            return self.fact_generator.from_flat_translateables(*args_)
+
+        @classmethod
+        def gen_for_machine(cls, machine: "_base_durable_machine",
+                            original_fact: fact) -> "_fact_generator":
+            gen = machine._fact_generator_from_id[original_fact.ID]
+            args: List[RESOLVABLE] = []
+            for arg_name, x in original_fact.items():
+                if isinstance(x, external):
+                    args.append(machine._create_assignment_from_external(
+                                    x.op, x.args))
+                else:#isinstance(x, TRANSLATEABLE_TYPES)
+                    args.append(x)
+            return cls(gen, original_fact, args)
+
 
     def apply(self, ext_order: abc_external) -> None:
         registering_action\
@@ -236,18 +270,12 @@ class _base_durable_machine(abc_machine.extensible_machine):
                              ) -> None:
         self._knownLocations[str(location)] = graph_getter
 
-    def import_data(self,
-                    location: Union[str, Literal],
-                    profile: Union[IdentifiedNode, None] = None,
-                    ) -> None:
-        raise NotImplementedError()
-
     def load_external_resource(self, location: Union[str, Literal],
                                ) -> rdflib.Graph:
         return self._knownLocations[str(location)]()
 
     def get_replacement_node(self,
-                             op: IdentifiedNode,
+                             op: Hashable,
                              args: Iterable[RESOLVABLE],
                              ) -> TRANSLATEABLE_TYPES:
         raise NoPossibleExternal()
@@ -278,7 +306,13 @@ class _base_durable_machine(abc_machine.extensible_machine):
                 except StopIteration:
                     return False
             else:
-                q = self._create_assignment_from_external(f.op, f.args)
+                _args = []
+                for xx in f.args:
+                    assert isinstance(xx, (Literal, IdentifiedNode, Variable,
+                                           abc_external, term_list))
+                    _args.append(xx)
+                q = self._create_assignment_from_external(f.op, _args)
+                assert isinstance(q, (Literal, IdentifiedNode, term_list))
                 if not _resolve(q, bindings):
                     return False
         return True
@@ -290,7 +324,7 @@ class _base_durable_machine(abc_machine.extensible_machine):
             d[key] = _node2string(x, self, bindings)
         self._current_context.assert_fact(d)
     
-    def retract_object(self, obj: IdentifiedNode) -> None:
+    def retract_object(self, obj: str) -> None:
         """
         :TODO: rework this
         """
@@ -303,8 +337,9 @@ class _base_durable_machine(abc_machine.extensible_machine):
         d = {FACTTYPE: self._registered_facttypes[type(old_fact)]}
         for key, x in old_fact.items():
             d[key] = _node2string(x, self, bindings)
-        for f in self.get_facts(d):
-            self._current_context.retract_fact(f)
+        self._current_context.retract_fact(d)
+        #for f in self.get_facts(d):
+        #    self._current_context.retract_fact(f)
 
     def get_facts(self, fact_filter: Optional[Mapping[str, str]] = None,
             ) -> Iterable[abc_machine.fact]:
@@ -312,7 +347,7 @@ class _base_durable_machine(abc_machine.extensible_machine):
             fact_id = f[FACTTYPE]
             yield self._fact_generator_from_id[fact_id].from_fact(f)
 
-    def _make_rule(self, patterns: Iterable[_pattern],
+    def _make_rule(self, patterns: Iterable[abc_pattern],
                    actions: Iterable[Union[Callable, fact]],
                    error_message: str = "",
                    priority: int = 5) -> None:
@@ -323,6 +358,7 @@ class _base_durable_machine(abc_machine.extensible_machine):
         pats: List[rls.value] = [rls.pri(priority)]
         variable_locators: MutableMapping[Variable, VARIABLE_LOCATOR] = {}
         for p in patterns:
+            assert isinstance(p, _pattern)
             pats.append(p.generate_rls(variable_locators))
         with self._ruleset:
             @rls.when_all(*pats)
@@ -420,7 +456,7 @@ class _base_durable_machine(abc_machine.extensible_machine):
 
     def _create_executable_from_external(
             self,
-            op: IdentifiedNode,
+            op: Hashable,
             args: ATOM_ARGS,
             ) -> Iterable[Tuple[Iterable[_pattern],
                                 Iterable[Callable[[BINDING], Literal]],
@@ -429,8 +465,8 @@ class _base_durable_machine(abc_machine.extensible_machine):
 
     def _create_pattern_from_external(
             self,
-            op: IdentifiedNode,
-            args: ATOM_ARGS,
+            op: Hashable,
+            args: Iterable[EXTERNAL_ARG],
             bound_variables: Container[Variable],
             ) -> Iterable[Tuple[Iterable[_pattern],
                                 Iterable[Callable[[BINDING], Literal]],
@@ -452,8 +488,8 @@ class _base_durable_machine(abc_machine.extensible_machine):
 
     def _create_binding_from_external(
             self,
-            op: IdentifiedNode,
-            args: ATOM_ARGS,
+            op: Hashable,
+            args: Iterable[EXTERNAL_ARG],
             bound_variables: Container[Variable] = [],
             ) -> Tuple[Iterable[_pattern],
                        Iterable[Callable[[BINDING], Literal]],
@@ -1058,3 +1094,4 @@ class _machine_default_externals(_base_durable_machine):
 
 class durableMachine(_machine_default_externals, RDFSmachine, OWLmachine):
     pass
+

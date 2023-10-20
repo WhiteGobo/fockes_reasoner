@@ -27,7 +27,7 @@ _datatypes: Iterable[URIRef] = [
         XSD.NMTOKEN,
         ]
 
-def _register_stringExternals(machine: abc_machine.extensible_machine) -> None:
+def _register_stringExternals(machine: abc_machine.extensible_Machine) -> None:
     for dt in _datatypes:
         machine.register(dt, asassign=assign_rdflib.gen(dt))
     for x in _externals:
@@ -408,7 +408,7 @@ class iri_string:
     @classmethod
     def pattern_generator(
             cls,
-            machine: abc_machine.machine,
+            machine: abc_machine.Machine,
             args: Iterable[RESOLVABLE],
             bound_variables: Container[Variable],
             ) -> Iterable[Tuple[Iterable[abc_pattern],

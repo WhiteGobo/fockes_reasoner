@@ -110,7 +110,7 @@ class _value_locator:
 
 
 def generate_action_prerequisites(
-        machine: abc_machine.machine,
+        machine: abc_machine.Machine,
         p: Iterable[Union[fact, abc_external]],
         ) -> Iterable[Tuple[Iterable[abc_pattern],
                             Iterable[Callable[[BINDING], Literal]],
@@ -138,7 +138,7 @@ def generate_action_prerequisites(
         raise
 
 def _generate_action_prerequisites_inner(
-        machine: abc_machine.machine,
+        machine: abc_machine.Machine,
         pattern_parts: Iterable[Union[fact, abc_external]],
         patterns: list[abc_pattern],
         conditions: List[Callable[[BINDING], Literal]],
@@ -188,7 +188,7 @@ def _generate_action_prerequisites_inner(
     yield patterns, conditions, bound_variables
 
 def _process_external_as_pattern(
-        machine: abc_machine.machine,
+        machine: abc_machine.Machine,
         op: Hashable,
         args: Iterable[EXTERNAL_ARG],
         bound_variables: Container[Variable] = {},

@@ -20,7 +20,11 @@ class rdfs_subclass(fact):
         self.sub_class = sub_class
         self.super_class = super_class
 
-    def create_fact_generator(cls, machine: abc_machine.machine,
+    @classmethod
+    def from_flat_translateables(cls, *args: TRANSLATEABLE_TYPES) -> "fact":
+        raise NotImplementedError()
+
+    def create_fact_generator(cls, machine: abc_machine.Machine,
                               ) -> Callable[[BINDING], "fact"]:
         raise NotImplementedError()
 
@@ -62,12 +66,12 @@ class rdfs_subclass(fact):
                    }
         return pattern
 
-    def retract_fact(self, c: abc_machine.machine,
+    def retract_fact(self, c: abc_machine.Machine,
                 bindings: BINDING = {},
                 ) -> None:
         raise NotImplementedError()
 
-    def modify_fact(self, c: abc_machine.machine,
+    def modify_fact(self, c: abc_machine.Machine,
                bindings: BINDING = {},
                ) -> None:
         raise NotImplementedError()

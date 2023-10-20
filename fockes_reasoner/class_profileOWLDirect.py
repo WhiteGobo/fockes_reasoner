@@ -9,7 +9,8 @@ from .shared import entailment, OWL, RDF, RDFS
 import logging
 logger = logging.getLogger(__name__)
 
-def import_profileOWLDirect(machine, location):
+def import_profileOWLDirect(machine: durable_reasoner.Machine, location: str,
+                            ) -> None:
     helper = profileOWLDirect._initImport(machine, location)
     helper({})
 
@@ -23,14 +24,15 @@ class profileOWLDirect:
 
     @dataclass
     class _initImport:
-        machine: durable_reasoner.machine
+        machine: durable_reasoner.Machine
         location: Union[str, IdentifiedNode]
         def __call__(self, bindings: Any) -> None:
             infograph = self.machine.load_external_resource(self.location)
             self.extract_annotations(infograph)
             logger.debug("read owl information without annotations:\n%s"
                          % infograph.serialize())
-            constructs = self.load_constructs(infograph)
+            #constructs = self.load_constructs(infograph)
+            self.load_constructs(infograph)
             mylists = self.extract_lists(infograph)
             self.load_ObjectProperties(infograph)
             self.load_ClassInformation(infograph)
@@ -54,6 +56,9 @@ class profileOWLDirect:
         def load_frames(self, infograph: Graph) -> None:
             for subj, pred, obj in infograph:
                 #infograph.remove((subj, pred, obj))
+                assert isinstance(subj, (IdentifiedNode, Literal))
+                assert isinstance(pred, (IdentifiedNode, Literal))
+                assert isinstance(obj, (IdentifiedNode, Literal))
                 f = frame(subj, pred, obj)
                 self.machine.assert_fact(f, {})
 
@@ -77,6 +82,7 @@ class profileOWLDirect:
         def load_ObjectProperties(self, infograph: Graph) -> None:
             for prop in infograph.subjects(RDF.type, OWL.ObjectProperty):
                 infograph.remove((prop, RDF.type, OWL.ObjectProperty))
+                assert isinstance(prop, (IdentifiedNode, Literal))
                 f = frame(prop, RDF.type, OWL.ObjectProperty)
                 self.machine.assert_fact(f, {})
                 for pred, info in infograph.predicate_objects(prop):
@@ -98,7 +104,8 @@ class profileOWLDirect:
                         infograph.remove((cls, pred, info))
                     elif pred == RDFS.subClassOf:
                         infograph.remove((cls, RDFS.subClassOf, info))
-                        assert isinstance(info , (BNode, URIRef, Literal))
+                        assert isinstance(info , (IdentifiedNode, Literal))
+                        assert isinstance(cls , (IdentifiedNode, Literal))
                         f = rdfs_subclass(cls, info)
                         self.machine.assert_fact(f, {})
                     else:
@@ -123,6 +130,6 @@ class profileOWLDirect:
                 f = rdfs_subclass(subj, obj)
                 self.machine.assert_fact(f, {})
 
-    def create_rules(self, machine: durable_reasoner.machine, location: str,
+    def create_rules(self, machine: durable_reasoner.Machine, location: str,
                      ) -> None:
         machine.add_init_action(self._initImport(machine, location))

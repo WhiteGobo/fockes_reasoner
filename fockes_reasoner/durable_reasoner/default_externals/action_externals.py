@@ -20,7 +20,7 @@ from .shared import is_datatype, invert, assign_rdflib
 
 _externals: Iterable
 
-def _register_actionExternals(machine: abc_machine.extensible_machine) -> None:
+def _register_actionExternals(machine: abc_machine.extensible_Machine) -> None:
     for x in _externals:
         as_ = {}
         for t in ["asassign", "aspattern", "asbinding"]:
@@ -41,11 +41,11 @@ def _register_actionExternals(machine: abc_machine.extensible_machine) -> None:
         machine.register(x.op, **as_)
 
 class builtin_print:
-    machine: abc_machine.machine
+    machine: abc_machine.Machine
     args: Iterable[RESOLVABLE]
     op: URIRef = URIRef("http://www.w3.org/2007/rif-builtin-action#print")
     asaction = (None, False)
-    def __init__(self, machine: abc_machine.machine,
+    def __init__(self, machine: abc_machine.Machine,
                  *args: RESOLVABLE):
         self.machine = machine
         self.args = list(args)

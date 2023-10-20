@@ -1,11 +1,12 @@
 from rdflib import Graph
-from .durable_reasoner import machine, fact, frame, TRANSLATEABLE_TYPES
+from .durable_reasoner import Machine, fact, frame, TRANSLATEABLE_TYPES
 from rdflib import IdentifiedNode, Literal, URIRef, BNode
 from typing import Union, Any
 from dataclasses import dataclass
 
-def import_profileSimpleEntailment(machine: machine,
-                                   location: Union[str, IdentifiedNode]):
+def import_profileSimpleEntailment(machine: Machine,
+                                   location: Union[str, IdentifiedNode],
+                                   ) -> None:
     infograph = machine.load_external_resource(location)
     for subj, pred, obj in infograph:
         assert isinstance(subj, (BNode, URIRef, Literal))
@@ -20,7 +21,7 @@ class profileSimpleEntailment:
     """
     @dataclass
     class _initImport:
-        machine: machine
+        machine: Machine
         location: Union[str, IdentifiedNode]
         def __call__(self, bindings: Any) -> None:
             infograph = self.machine.load_external_resource(self.location)
@@ -31,5 +32,5 @@ class profileSimpleEntailment:
                 f = frame(subj, pred, obj)
                 self.machine.assert_fact(f, {})
 
-    def create_rules(self, machine: machine, location: str) -> None:
+    def create_rules(self, machine: Machine, location: str) -> None:
         machine.add_init_action(self._initImport(machine, location))

@@ -43,7 +43,7 @@ class external(abc_external):
 class executable(external):
     def __init__(self, op: URIRef,
                  args: Iterable[Union[TRANSLATEABLE_TYPES, "external", Variable]],
-                 machine: abc_machine.machine,
+                 machine: abc_machine.Machine,
                  ) -> None:
         super().__init__(op, args)
         self.machine = machine
@@ -79,18 +79,10 @@ class subclass(_dict_fact):
         self.sub_class = sub_class
         self.super_class = super_class
 
-    def create_fact_generator(self, machine: abc_machine.machine,
-                              ) -> Callable[[BINDING], abc_machine.fact]:
-        #q: List[Union[abc_machine.ASSIGNMENT, fact]] = []
-        q: List[RESOLVABLE] = []
-        for x in (self.sub_class, self.super_class):
-            if isinstance(x, external):
-                q.append(machine._create_assignment_from_external(x.op,
-                                                                  x.args))
-            else:
-                raise NotImplementedError(repr(x), self)
-                #q.append(x)
-        return _resolve_fact(type(self), q)
+    @classmethod
+    def from_flat_translateables(cls, *args: TRANSLATEABLE_TYPES,
+                                 ) -> "subclass":
+        return cls(*args)
 
     def __iter__(self) -> Iterator[str]:
         yield self.SUBCLASS_SUB
@@ -154,17 +146,9 @@ class frame(fact):
         self.slotvalue = slotvalue
         self._used_variables = None
 
-
-    def create_fact_generator(self, machine: abc_machine.machine,
-                              ) -> Callable[[BINDING], fact]:
-        q: List[RESOLVABLE] = []
-        for x in (self.obj, self.slotkey, self.slotvalue):
-            if isinstance(x, external):
-                q.append(machine._create_assignment_from_external(x.op,
-                                                                  x.args))
-            else:
-                q.append(x)
-        return _resolve_fact(type(self), q)
+    @classmethod
+    def from_flat_translateables(cls, *args: TRANSLATEABLE_TYPES) -> "frame":
+        return cls(*args)
 
     def __iter__(self) -> Iterator[str]:
         yield self.FRAME_OBJ
@@ -232,16 +216,9 @@ class member(_dict_fact):
         self.instance = instance
         self.cls = cls
 
-    def create_fact_generator(self, machine: abc_machine.machine,
-                              ) -> Callable[[BINDING], abc_machine.fact]:
-        q: List[RESOLVABLE] = []
-        for x in (self.instance, self.cls):
-            if isinstance(x, external):
-                q.append(machine._create_assignment_from_external(x.op,
-                                                                  x.args))
-            else:
-                q.append(x)
-        return _resolve_fact(type(self), q)
+    @classmethod
+    def from_flat_translateables(cls, *args: TRANSLATEABLE_TYPES) -> "member":
+        return cls(*args)
 
     def __iter__(self) -> Iterator[str]:
         yield self.INSTANCE
@@ -300,18 +277,11 @@ class atom(fact):
         self.op = op
         self.args = tuple(args)
 
-    def create_fact_generator(self, machine: abc_machine.machine,
-                              ) -> Callable[[BINDING], abc_machine.fact]:
-        op: RESOLVABLE
-        if isinstance(self.op, external):
-            op = machine._create_assignment_from_external(self.op.op,
-                                                              self.op.args)
-        else:
-            op = self.op
-        args = [machine._create_assignment_from_external(x.op, x.args)
-                if isinstance(x, external) else x
-                for x in self.args]
-        return _resolve_atom(op, args)
+    @classmethod
+    def from_flat_translateables(cls, *args: TRANSLATEABLE_TYPES) -> "atom":
+        atom_op = args[0]
+        atom_args = args[1:]
+        return cls(atom_op, atom_args)
 
     def __iter__(self) -> Iterator[str]:
         yield self.ATOM_OP
@@ -372,20 +342,20 @@ class atom(fact):
 
 @overload
 def _node2string(x: Union[TRANSLATEABLE_TYPES, Variable, str, abc_external],
-                 machine: abc_machine.machine,
+                 machine: abc_machine.Machine,
                  bindings: BINDING,
                  ) -> str:
     ...
 
 @overload
 def _node2string(x: Union[TRANSLATEABLE_TYPES, Variable, str, abc_external],
-                 machine: abc_machine.machine,
+                 machine: abc_machine.Machine,
                  bindings: BINDING_WITH_BLANKS,
                  ) -> Optional[str]:
     ...
 
 def _node2string(x: Union[TRANSLATEABLE_TYPES, Variable, str, abc_external],
-                 machine: abc_machine.machine,
+                 machine: abc_machine.Machine,
                  bindings: Union[BINDING_WITH_BLANKS, BINDING],
                  ) -> Optional[str]:
     if isinstance(x, rdflib.Variable):
