@@ -13,7 +13,7 @@ import itertools as it
 import rdflib
 from rdflib import URIRef, Variable, Literal, BNode, Graph, IdentifiedNode, XSD
 from . import abc_machine
-from .abc_machine import TRANSLATEABLE_TYPES, FACTTYPE, BINDING, BINDING_WITH_BLANKS, VARIABLE_LOCATOR, NoPossibleExternal, IMPORTPROFILE, RESOLVABLE, ATOM_ARGS, abc_external, RESOLVER, RuleNotComplete, pattern_generator, VariableNotBoundError, abc_pattern, _resolve, ASSIGNMENT, StopRunning, EXTERNAL_ARG
+from .abc_machine import TRANSLATEABLE_TYPES, FACTTYPE, BINDING, BINDING_WITH_BLANKS, VARIABLE_LOCATOR, NoPossibleExternal, IMPORTPROFILE, RESOLVABLE, ATOM_ARGS, abc_external, RESOLVER, RuleNotComplete, pattern_generator, VariableNotBoundError, abc_pattern, _resolve, ASSIGNMENT, StopRunning, EXTERNAL_ARG, ACTIONGENERATOR, ACTION
 from ..class_profileOWLDirect import import_profileOWLDirect
 from ..class_profileSimpleEntailment import import_profileSimpleEntailment
 from ..class_profileRDFSEntailment import import_profileRDFSEntailment
@@ -190,10 +190,12 @@ class _base_durable_machine(abc_machine.extensible_Machine):
                                               IMPORTPROFILE]
     _registered_pattern_generator: Dict[Hashable,
                                         PATTERNGENERATOR]
-    _registered_action_generator:\
-            Dict[Hashable, Tuple[Callable[[BINDING], None], bool, bool]]
-    _registered_assignment_generator: Dict[Hashable,
-                                           Callable[..., ASSIGNMENT]]
+    _registered_superaction_generator:\
+            Dict[Hashable, ACTIONGENERATOR[Union[ACTION, fact], None]]
+    _registered_normalaction_generator:\
+            Dict[Hashable, ACTIONGENERATOR[RESOLVABLE, None]]
+    _registered_assignment_generator:\
+            Dict[Hashable, ACTIONGENERATOR[RESOLVABLE, Literal]]
     _registered_binding_generator: Dict[Hashable, BINDING_DESCRIPTION]
     _registered_groundaction_generator: Dict[Hashable, Any]
 
@@ -224,7 +226,8 @@ class _base_durable_machine(abc_machine.extensible_Machine):
         self._initialized = False
 
         self._registered_pattern_generator = {}
-        self._registered_action_generator = {}
+        self._registered_superaction_generator = {}
+        self._registered_normalaction_generator = {}
         self._registered_assignment_generator = {}
         self._registered_binding_generator = {}
         self._registered_groundaction_generator = {}
@@ -254,7 +257,7 @@ class _base_durable_machine(abc_machine.extensible_Machine):
             gen = machine._fact_generator_from_id[original_fact.ID]
             args: List[RESOLVABLE] = []
             for arg_name, x in original_fact.items():
-                if isinstance(x, external):
+                if isinstance(x, abc_external):
                     args.append(machine._create_assignment_from_external(
                                     x.op, x.args))
                 else:#isinstance(x, (TRANSLATEABLE_TYPES, Variable))
@@ -516,41 +519,34 @@ class _base_durable_machine(abc_machine.extensible_Machine):
 
     def _create_action_from_external(
             self,
-            op: IdentifiedNode,
-            args: ATOM_ARGS,
+            op: Hashable,
+            args: Iterable[EXTERNAL_ARG],
             ) -> Callable[[BINDING], None]:
         try:
-            mygen, expects_actions, expects_facts = self._registered_action_generator[op]
+            mygen = self._registered_superaction_generator[op]
         except KeyError as err:
-            raise NoPossibleExternal(op) from err
-        except ValueError:
-            logger.error("Error for registered action %s." % op)
-            raise
-        if expects_actions:
-            acts = []
+            pass
+        else:
+            acts: list[Union[fact, Callable]] = []
             for x in args:
-                if isinstance(x, external):
+                if isinstance(x, abc_external):
                     acts.append(self._create_action_from_external(x.op, x.args))
-                elif isinstance(x, Callable):
+                elif isinstance(x, fact):
                     acts.append(x)
                 else:
-                    raise NotImplementedError(x)
+                    acts.append(x)
             return mygen(self, *acts)
-        elif expects_facts:
-            useable_args = []
-            for x in args:
-                assert isinstance(x, fact)
-                gen = self._fact_generator.gen_for_machine(self, x)
-                useable_args.append(gen)
-            return mygen(self, *useable_args)
-        else:
-            useable_args = _transform_all_externals_to_calls(args, self)
-            return mygen(self, *useable_args)
+        try:
+            mygen = self._registered_normalaction_generator[op]
+        except KeyError as err:
+            raise NoPossibleExternal(op) from err
+        useable_args = _transform_all_externals_to_calls(args, self)
+        return mygen(self, *useable_args)
 
     def _create_assignment_from_external(
             self,
-            op: IdentifiedNode,
-            args: ATOM_ARGS,
+            op: Hashable,
+            args: Iterable[EXTERNAL_ARG],
             ) -> ASSIGNMENT:
         try:
             mygen = self._registered_assignment_generator[op]
@@ -570,7 +566,10 @@ class _base_durable_machine(abc_machine.extensible_Machine):
                  asgroundaction: Optional[Any] = None,
                  ) -> None:
         if asaction is not None:
-            self._registered_action_generator[op] = asaction
+            if asaction[1] or asaction[2]:
+                self._registered_superaction_generator[op] = asaction[0]
+            else:
+                self._registered_normalaction_generator[op] = asaction[0]
         if asassign is not None:
             self._registered_assignment_generator[op] = asassign
         if aspattern is not None:

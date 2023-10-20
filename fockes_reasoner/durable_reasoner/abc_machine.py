@@ -27,11 +27,28 @@ BINDING_DESCRIPTION = Mapping[tuple[bool, ...], Callable]
 """Maps a tuple representing the position of unbound variables to a generator
 """
 
-from typing import Protocol
+from typing import Protocol, Generic, TypeVar
+
+T = TypeVar("T", covariant=True)
+I = TypeVar("I", contravariant=True)
+
+class ACTION(Protocol[T]):
+    """Action of a rule that is executed via python."""
+    def __call__(self, bindings: BINDING) -> T: ...
+
+
+class ACTIONGENERATOR(Protocol[I, T]):
+    """Generic class for function generators of
+    registered :term:`external<externals>`.
+    """
+    def __call__(self, machine: "Machine", *args: I) -> ACTION[T]: ...
+
+
+ASSIGNMENTGENERATOR = ACTIONGENERATOR[RESOLVABLE, Literal]
 
 ASSIGNMENT = Callable[[BINDING], Literal]
-class ASSIGNMENTGENERATOR(Protocol):
-    def __call__(self, *args: RESOLVABLE) -> ASSIGNMENT: ...
+#class ASSIGNMENTGENERATOR(Protocol):
+#    def __call__(self, *args: RESOLVABLE) -> ASSIGNMENT: ...
 
 EXTERNAL_ARG = Union[TRANSLATEABLE_TYPES, "abc_external", Variable, "fact"]
 """All accepted types for arg of abc_external
