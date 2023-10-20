@@ -131,6 +131,9 @@ class _closure_helper(_context_helper):
 def _transform_all_externals_to_calls(args: Iterable[EXTERNAL_ARG],
                                       tmp_machine: "_base_durable_machine",
                                       ) -> Iterable[RESOLVABLE]:
+    """This is used for when a fact is expected and when resources are
+    expected. This is bad for typechecking reasons.
+    """
     useable_args: list[RESOLVABLE] = []
     tmp_assign: RESOLVABLE
     t_arg: TRANSLATEABLE_TYPES
@@ -149,10 +152,10 @@ def _transform_all_externals_to_calls(args: Iterable[EXTERNAL_ARG],
             useable_args.append(arg)
             continue
         elif isinstance(arg, fact):
-            gen = tmp_machine._fact_generator.gen_for_machine(tmp_machine, arg)
-            useable_args.append(gen)
-            #useable_args.append(arg.create_fact_generator(tmp_machine))
-            continue
+            raise SyntaxError("found fact, where a resource is expected")
+            #gen = tmp_machine._fact_generator.gen_for_machine(tmp_machine,arg)
+            #useable_args.append(gen)
+            #continue
         try:
             t_arg = arg#type: ignore[assignment]
             assert rdflib2string(t_arg)
@@ -187,9 +190,8 @@ class _base_durable_machine(abc_machine.extensible_Machine):
                                               IMPORTPROFILE]
     _registered_pattern_generator: Dict[Hashable,
                                         PATTERNGENERATOR]
-    _registered_action_generator: Dict[Hashable,
-                                       Tuple[Callable[..., RESOLVABLE],
-                                             bool]]
+    _registered_action_generator:\
+            Dict[Hashable, Tuple[Callable[[BINDING], None], bool, bool]]
     _registered_assignment_generator: Dict[Hashable,
                                            Callable[..., ASSIGNMENT]]
     _registered_binding_generator: Dict[Hashable, BINDING_DESCRIPTION]
@@ -247,7 +249,8 @@ class _base_durable_machine(abc_machine.extensible_Machine):
 
         @classmethod
         def gen_for_machine(cls, machine: "_base_durable_machine",
-                            original_fact: fact) -> "_fact_generator":
+                            original_fact: fact,
+                            )-> "_base_durable_machine._fact_generator":
             gen = machine._fact_generator_from_id[original_fact.ID]
             args: List[RESOLVABLE] = []
             for arg_name, x in original_fact.items():
@@ -517,9 +520,12 @@ class _base_durable_machine(abc_machine.extensible_Machine):
             args: ATOM_ARGS,
             ) -> Callable[[BINDING], None]:
         try:
-            mygen, expects_actions = self._registered_action_generator[op]
+            mygen, expects_actions, expects_facts = self._registered_action_generator[op]
         except KeyError as err:
             raise NoPossibleExternal(op) from err
+        except ValueError:
+            logger.error("Error for registered action %s." % op)
+            raise
         if expects_actions:
             acts = []
             for x in args:
@@ -530,6 +536,13 @@ class _base_durable_machine(abc_machine.extensible_Machine):
                 else:
                     raise NotImplementedError(x)
             return mygen(self, *acts)
+        elif expects_facts:
+            useable_args = []
+            for x in args:
+                assert isinstance(x, fact)
+                gen = self._fact_generator.gen_for_machine(self, x)
+                useable_args.append(gen)
+            return mygen(self, *useable_args)
         else:
             useable_args = _transform_all_externals_to_calls(args, self)
             return mygen(self, *useable_args)
@@ -550,7 +563,7 @@ class _base_durable_machine(abc_machine.extensible_Machine):
             raise Exception(useable_args) from err
 
     def register(self, op: rdflib.URIRef,
-                 asaction: Optional[Callable[[BINDING], None]] = None,
+                 asaction: Optional[Tuple[Callable[[BINDING], None], bool, bool]] = None,
                  asassign: Optional[Callable[[BINDING], Literal]] = None,
                  aspattern: Optional[PATTERNGENERATOR] = None,
                  asbinding: Optional[BINDING_DESCRIPTION] = None,

@@ -49,10 +49,11 @@ Document(
             asd.append(True)
 
     expects_actions = False
+    expects_facts = False
 
     mymachine = fockes_reasoner.machineWithImport()
     mymachine.register(act.save,
-            asaction=(myact, expects_actions),
+            asaction=(myact, expects_actions, expects_facts),
             #asassign=,
             #aspattern=,
             #asbinding=,

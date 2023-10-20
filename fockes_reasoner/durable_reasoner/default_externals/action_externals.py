@@ -31,11 +31,11 @@ def _register_actionExternals(machine: abc_machine.extensible_Machine) -> None:
                 else:
                     as_[t] = x
         try:
-            act, expects_actions = x.asaction
+            act, expects_actions, expects_facts = x.asaction
             if act is None:
-                as_["asaction"] = x, expects_actions
+                as_["asaction"] = x, expects_actions, expects_facts
             else:
-                as_["asaction"] = act, expects_actions
+                as_["asaction"] = act, expects_actions, expects_facts
         except AttributeError:
             pass
         machine.register(x.op, **as_)
@@ -44,7 +44,7 @@ class builtin_print:
     machine: abc_machine.Machine
     args: Iterable[RESOLVABLE]
     op: URIRef = URIRef("http://www.w3.org/2007/rif-builtin-action#print")
-    asaction = (None, False)
+    asaction = (None, False, False)
     def __init__(self, machine: abc_machine.Machine,
                  *args: RESOLVABLE):
         self.machine = machine

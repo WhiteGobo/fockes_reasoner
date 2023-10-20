@@ -23,7 +23,7 @@ class _id:
 @dataclass
 class _special_external(Mapping[str, Union[Tuple, Callable, Mapping, Any]]):
     op: _id
-    asaction: Optional[Tuple[Callable, bool]]\
+    asaction: Optional[Tuple[Callable, bool, bool]]\
             = field(default=None)
     asassign: Optional[Callable] = field(default=None)
     aspattern: Optional[Callable] = field(default=None)
@@ -107,7 +107,7 @@ class _assert_fact_function:
                 f_ = f(bindings)
                 self.machine.assert_fact(f_, bindings)
 assert_fact = _special_external(_id("assert_fact"),
-                                 asaction=(_assert_fact_function, False))
+                                 asaction=(_assert_fact_function, False, True))
 
 @dataclass
 class _retract_object_function:
@@ -123,7 +123,7 @@ class _retract_object_function:
     def __repr__(self) -> str:
         return "Retract(%s)" % self.atom
 retract_object = _special_external(_id("retract_object"),
-                                   asaction=(_retract_object_function, False))
+                                   asaction=(_retract_object_function, False, False))
 
 class _do_function:
     actions: Iterable[Callable[[BINDING], None]]
@@ -137,7 +137,7 @@ class _do_function:
             act(bindings)
 
 do = _special_external(_id("do"),
-                       asaction=(_do_function, True))
+                       asaction=(_do_function, True, False))
 
 _import_id = _id("import")
 def _register_import_as_init_action(machine: abc_machine.Machine,
@@ -168,7 +168,7 @@ class _import_action:
                             "registered", str(self.profile))
         usedImportProfile(self.machine, self.location)
 import_data = _special_external(_import_id,
-                                asaction=(_import_action, False),
+                                asaction=(_import_action, False, False),
                                 asgroundaction=_register_import_as_init_action,
                                 )
 
