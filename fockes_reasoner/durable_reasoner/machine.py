@@ -254,7 +254,7 @@ class _base_durable_machine(abc_machine.extensible_Machine):
                 if isinstance(x, external):
                     args.append(machine._create_assignment_from_external(
                                     x.op, x.args))
-                else:#isinstance(x, TRANSLATEABLE_TYPES)
+                else:#isinstance(x, (TRANSLATEABLE_TYPES, Variable))
                     args.append(x)
             return cls(gen, original_fact, args)
 
