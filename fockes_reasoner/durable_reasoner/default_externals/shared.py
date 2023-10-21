@@ -1,4 +1,4 @@
-from typing import Callable, Union, TypeVar, Iterable, Container, Tuple, Hashable, Optional, Any, Mapping
+from typing import Callable, Union, TypeVar, Iterable, Container, Tuple, Hashable, Optional, Any, Mapping, Iterator, overload
 import rdflib
 from rdflib import URIRef
 import itertools as it
@@ -9,7 +9,7 @@ from dataclasses import dataclass, field
 import math
 from ..bridge_rdflib import term_list, _term_list, TRANSLATEABLE_TYPES
 
-from ..abc_machine import BINDING, RESOLVABLE, _resolve, RESOLVER, abc_pattern, ATOM_ARGS, ASSIGNMENTGENERATOR, ASSIGNMENT, ACTIONGENERATOR, ACTION, INDIPENDENTACTIONGENERATOR, PATTERNGENERATOR, BINDING_DESCRIPTION, fact, Machine
+from ..abc_machine import BINDING, RESOLVABLE, _resolve, RESOLVER, abc_pattern, ATOM_ARGS, ASSIGNMENTGENERATOR, ASSIGNMENT, ACTIONGENERATOR, ACTION, INDIPENDENTACTIONGENERATOR, PATTERNGENERATOR, BINDING_DESCRIPTION, fact, extensible_Machine
 from ...shared import pred, func
 
 @dataclass
@@ -32,7 +32,7 @@ class RegisterInformation(Mapping):
             self,
             action_gen: ACTIONGENERATOR[RESOLVABLE, None],
             ) -> None:
-        self.assuperaction = action_gen
+        self.asnormalaction = action_gen
 
     def set_asassign(
             self,
@@ -58,19 +58,22 @@ class RegisterInformation(Mapping):
             ) -> None:
         self.asgroundaction = action_gen
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[str]:
         for key, value in self.__dict__.items():
             if value is not None:
                 yield key
 
-    def __getitem__(self, key):
+    def __getitem__(self, key: str) -> Any:
         return getattr(self, key)
 
     def __len__(self) -> int:
         return len([x for x in self.__dict__.values() if x is not None])
 
-    def register_at(self, machine: Machine):
-        machine.register(self.id,
+    def register_at(self, machine: extensible_Machine) -> None:
+        """Own registering action because of typechecking.
+        Same as machine.register(**self).
+        """
+        machine.register(self.op,
                          self.assuperaction,
                          self.asnormalaction,
                          self.asassign,

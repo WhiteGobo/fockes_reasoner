@@ -562,7 +562,7 @@ class _base_durable_machine(abc_machine.extensible_Machine):
         except Exception as err:
             raise Exception(useable_args) from err
 
-    def register(self, op: rdflib.URIRef,
+    def register(self, op: rdflib.URIRef | Hashable,
                  assuperaction: Optional[ACTIONGENERATOR[Union[ACTION, fact], None]] = None,
                  asnormalaction: Optional[ACTIONGENERATOR[RESOLVABLE, None]] = None,
                  asassign: Optional[INDIPENDENTACTIONGENERATOR[RESOLVABLE, Literal]] = None,
@@ -932,8 +932,8 @@ class _machine_default_externals(_base_durable_machine):
         #              asassign=def_ext.numeric_equal)
         #self.register(pred["numeric-not-equal"],
         #              asassign=invert.gen(def_ext.numeric_equal))
-        self.register(**def_ext.numeric_equal)
-        self.register(**def_ext.numeric_not_equal)
+        def_ext.numeric_equal.register_at(self)
+        def_ext.numeric_not_equal.register_at(self)
         self.register(pred["numeric-greater-than"],
                       asassign=def_ext.pred_greater_than)
         self.register(pred["numeric-less-than-or-equal"],

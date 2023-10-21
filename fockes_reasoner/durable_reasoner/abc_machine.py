@@ -16,8 +16,8 @@ BINDING = MutableMapping[rdflib.Variable, TRANSLATEABLE_TYPES]
 BINDING_WITH_BLANKS = MutableMapping[rdflib.Variable,
                                      Union[TRANSLATEABLE_TYPES, None]]
 
-RESOLVER = Callable[[BINDING], TRANSLATEABLE_TYPES]
-RESOLVABLE = Union[Variable, TRANSLATEABLE_TYPES, RESOLVER]
+RESOLVER: TypeAlias = Callable[[BINDING], TRANSLATEABLE_TYPES]
+RESOLVABLE: TypeAlias = Union[Variable, TRANSLATEABLE_TYPES, RESOLVER]
 #VARIABLE_LOCATOR = Callable[[typ.Union[durable.engine.Closure, None]], TRANSLATEABLE_TYPES]
 VARIABLE_LOCATOR = Callable[[typ.Any], TRANSLATEABLE_TYPES]
 CLOSURE_BINDINGS = MutableMapping[rdflib.Variable, VARIABLE_LOCATOR]
@@ -315,7 +315,7 @@ class extensible_Machine(Machine):
     """This machine can be extended with python code
     """
     @abc.abstractmethod
-    def register(self, op: rdflib.URIRef,
+    def register(self, op: rdflib.URIRef | Hashable,
                  assuperaction: Optional[ACTIONGENERATOR[Union[ACTION, fact], None]] = None,
                  asnormalaction: Optional[ACTIONGENERATOR[RESOLVABLE, None]] = None,
                  asassign: Optional[INDIPENDENTACTIONGENERATOR[RESOLVABLE, Literal]] = None,

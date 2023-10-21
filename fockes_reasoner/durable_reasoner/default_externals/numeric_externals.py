@@ -16,14 +16,13 @@ from .shared import RegisterInformation, invert
 class _check_numerical_equality:
     left: RESOLVABLE
     right: RESOLVABLE
-    #def __init__(self, left, right, *args):
-    #    if args:
-    #        raise TypeError("pred:numeric_equal expects exactly 2 arguments "
-    #                        "got %d" % len(args)+2)
-    #    self.left = left
-    #    self.right = right
+    def __init__(self, *args: RESOLVABLE) -> None:
+        """
+        :param args: Expects exactly two arguments, left and right.
+        """
+        self.left, self.right = args
 
-    def __call__(self, bindings:BINDING) -> Literal:
+    def __call__(self, bindings: BINDING) -> Literal:
         left = _resolve(self.left, bindings)
         right = _resolve(self.right, bindings)
         return Literal(left.value == right.value) #type: ignore[union-attr]
