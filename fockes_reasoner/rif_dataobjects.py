@@ -126,7 +126,9 @@ class rif_fact(_rif_check, _action_gen, _rule_gen):
     def generate_retract_action(self,
                       machine: durable_reasoner.machine,
                       ) -> action_retract:
-        return action_retract(self._create_facts(), machine)
+        return external(special_externals.retract_fact.op,
+                        self._create_facts())
+    #return action_retract(self._create_facts(), machine)
 
     def create_rules(self, machine: durable_reasoner.machine) -> None:
         """Is called, when frame is direct sub to a Group"""

@@ -1,7 +1,7 @@
 import abc
 import logging
 import typing as typ
-from typing import MutableMapping, Mapping, Union, Iterable, Optional, overload, Any, Tuple, Hashable
+from typing import MutableMapping, Mapping, Union, Iterable, Optional, overload, Any, Tuple, Hashable, TypeAlias
 from collections.abc import MutableSequence, Callable, Collection, Container
 import rdflib
 from rdflib import IdentifiedNode, Graph, Literal, Variable
@@ -29,19 +29,16 @@ BINDING_DESCRIPTION = Mapping[tuple[bool, ...], Callable]
 
 from typing import Protocol, Generic, TypeVar
 
-T = TypeVar("T", covariant=True)
-I = TypeVar("I", contravariant=True)
+_T = TypeVar("_T", covariant=True)
+_I = TypeVar("_I", contravariant=True)
 
-class ACTION(Protocol[T]):
-    """Action of a rule that is executed via python."""
-    def __call__(self, bindings: BINDING) -> T: ...
+ACTION: TypeAlias = Callable[[BINDING], _T]
 
-
-class ACTIONGENERATOR(Protocol[I, T]):
+class ACTIONGENERATOR(Protocol[_I, _T]):
     """Generic class for function generators of
     registered :term:`external<externals>`.
     """
-    def __call__(self, machine: "Machine", *args: I) -> ACTION[T]: ...
+    def __call__(self, machine: "Machine", *args: _I) -> ACTION[_T]: ...
 
 
 ASSIGNMENTGENERATOR = ACTIONGENERATOR[RESOLVABLE, Literal]

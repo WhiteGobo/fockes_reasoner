@@ -527,14 +527,15 @@ class _base_durable_machine(abc_machine.extensible_Machine):
         except KeyError as err:
             pass
         else:
-            acts: list[Union[fact, Callable]] = []
+            acts: list[Union[fact, Callable[[BINDING], None]]] = []
             for x in args:
                 if isinstance(x, abc_external):
                     acts.append(self._create_action_from_external(x.op, x.args))
                 elif isinstance(x, fact):
                     acts.append(x)
                 else:
-                    acts.append(x)
+                    raise Exception(x, op, args)
+                    #acts.append(x)
             return mygen(self, *acts)
         try:
             mygen = self._registered_normalaction_generator[op]

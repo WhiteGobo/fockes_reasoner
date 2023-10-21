@@ -110,6 +110,22 @@ assert_fact = _special_external(_id("assert_fact"),
                                  asaction=(_assert_fact_function, False, True))
 
 @dataclass
+class _retract_fact_function:
+    machine: abc_machine.Machine
+    facts: Iterable[Union[fact, Callable[[BINDING], fact]]]
+    def __init__(self, machine:abc_machine.Machine,
+                 *facts: Union[fact, Callable[[BINDING], fact]],
+                 ) -> None:
+        self.machine = machine
+        self.facts = facts
+
+    def __call__(self, bindings: BINDING) -> None:
+        for f in self.facts:
+            self.machine.retract_fact(f, bindings)
+retract_fact = _special_external(_id("retract_fact"),
+                                 asaction=(_retract_fact_function, False, True))
+
+@dataclass
 class _retract_object_function:
     machine: abc_machine.Machine
     atom: Union[TRANSLATEABLE_TYPES, abc_external, Variable]
@@ -287,6 +303,7 @@ _special_externals = [
         retract_object,
         do,
         assert_fact,
+        retract_fact,
         import_data,
         stop_condition,
         condition_and,

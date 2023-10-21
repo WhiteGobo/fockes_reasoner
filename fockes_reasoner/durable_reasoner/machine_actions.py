@@ -24,6 +24,7 @@ class action_retract(abc_action):
     machine: Machine
     def __init__(self, facts: Iterable[fact], machine: Machine,
                  ) -> None:
+        raise Exception()
         self.facts = list(facts)
         self.machine = machine
 
