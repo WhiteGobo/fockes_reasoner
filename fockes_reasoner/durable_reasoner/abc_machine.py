@@ -40,6 +40,12 @@ class ACTIONGENERATOR(Protocol[_I, _T]):
     """
     def __call__(self, machine: "Machine", *args: _I) -> ACTION[_T]: ...
 
+class INDIPENDENTACTIONGENERATOR(Protocol[_I, _T]):
+    """Generic class for function generators of
+    registered :term:`external<externals>`.
+    """
+    def __call__(self, *args: _I) -> ACTION[_T]: ...
+
 
 ASSIGNMENTGENERATOR = ACTIONGENERATOR[RESOLVABLE, Literal]
 
@@ -310,8 +316,9 @@ class extensible_Machine(Machine):
     """
     @abc.abstractmethod
     def register(self, op: rdflib.URIRef,
-                 asaction: Optional[Callable[[BINDING], None]] = None,
-                 asassign: Optional[ASSIGNMENTGENERATOR] = None,
+                 assuperaction: Optional[ACTIONGENERATOR[Union[ACTION, fact], None]] = None,
+                 asnormalaction: Optional[ACTIONGENERATOR[RESOLVABLE, None]] = None,
+                 asassign: Optional[Callable[[BINDING], Literal]] = None,
                  aspattern: Optional[PATTERNGENERATOR] = None,
                  asbinding: Optional[BINDING_DESCRIPTION] = None,
                  #asgroundaction: Optional[Any] = None,

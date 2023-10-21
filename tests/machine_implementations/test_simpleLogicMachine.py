@@ -48,12 +48,9 @@ Document(
             args = tuple(_resolve(x, bindings) for x in self.args)
             asd.append(True)
 
-    expects_actions = False
-    expects_facts = False
-
     mymachine = fockes_reasoner.machineWithImport()
     mymachine.register(act.save,
-            asaction=(myact, expects_actions, expects_facts),
+            asnormalaction=myact,
             #asassign=,
             #aspattern=,
             #asbinding=,

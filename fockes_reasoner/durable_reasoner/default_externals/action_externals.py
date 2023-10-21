@@ -23,7 +23,7 @@ _externals: Iterable
 def _register_actionExternals(machine: abc_machine.extensible_Machine) -> None:
     for x in _externals:
         as_ = {}
-        for t in ["asassign", "aspattern", "asbinding"]:
+        for t in ["asassign", "aspattern", "asbinding", "assuperaction", "asnormalaction"]:
             if hasattr(x, t):
                 foo = getattr(x, t)
                 if foo is not None:
@@ -44,7 +44,7 @@ class builtin_print:
     machine: abc_machine.Machine
     args: Iterable[RESOLVABLE]
     op: URIRef = URIRef("http://www.w3.org/2007/rif-builtin-action#print")
-    asaction = (None, False, False)
+    asnormalaction = None
     def __init__(self, machine: abc_machine.Machine,
                  *args: RESOLVABLE):
         self.machine = machine

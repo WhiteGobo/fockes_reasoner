@@ -13,7 +13,7 @@ import itertools as it
 import rdflib
 from rdflib import URIRef, Variable, Literal, BNode, Graph, IdentifiedNode, XSD
 from . import abc_machine
-from .abc_machine import TRANSLATEABLE_TYPES, FACTTYPE, BINDING, BINDING_WITH_BLANKS, VARIABLE_LOCATOR, NoPossibleExternal, IMPORTPROFILE, RESOLVABLE, ATOM_ARGS, abc_external, RESOLVER, RuleNotComplete, pattern_generator, VariableNotBoundError, abc_pattern, _resolve, ASSIGNMENT, StopRunning, EXTERNAL_ARG, ACTIONGENERATOR, ACTION
+from .abc_machine import TRANSLATEABLE_TYPES, FACTTYPE, BINDING, BINDING_WITH_BLANKS, VARIABLE_LOCATOR, NoPossibleExternal, IMPORTPROFILE, RESOLVABLE, ATOM_ARGS, abc_external, RESOLVER, RuleNotComplete, pattern_generator, VariableNotBoundError, abc_pattern, _resolve, ASSIGNMENT, StopRunning, EXTERNAL_ARG, ACTIONGENERATOR, ACTION, INDIPENDENTACTIONGENERATOR
 from ..class_profileOWLDirect import import_profileOWLDirect
 from ..class_profileSimpleEntailment import import_profileSimpleEntailment
 from ..class_profileRDFSEntailment import import_profileRDFSEntailment
@@ -195,7 +195,7 @@ class _base_durable_machine(abc_machine.extensible_Machine):
     _registered_normalaction_generator:\
             Dict[Hashable, ACTIONGENERATOR[RESOLVABLE, None]]
     _registered_assignment_generator:\
-            Dict[Hashable, ACTIONGENERATOR[RESOLVABLE, Literal]]
+            Dict[Hashable, INDIPENDENTACTIONGENERATOR[RESOLVABLE, Literal]]
     _registered_binding_generator: Dict[Hashable, BINDING_DESCRIPTION]
     _registered_groundaction_generator: Dict[Hashable, Any]
 
@@ -522,6 +522,8 @@ class _base_durable_machine(abc_machine.extensible_Machine):
             op: Hashable,
             args: Iterable[EXTERNAL_ARG],
             ) -> Callable[[BINDING], None]:
+        mygen: ACTIONGENERATOR[Union[ACTION, fact], None]\
+                | ACTIONGENERATOR[Union[RESOLVABLE], None]
         try:
             mygen = self._registered_superaction_generator[op]
         except KeyError as err:
@@ -535,7 +537,6 @@ class _base_durable_machine(abc_machine.extensible_Machine):
                     acts.append(x)
                 else:
                     raise Exception(x, op, args)
-                    #acts.append(x)
             return mygen(self, *acts)
         try:
             mygen = self._registered_normalaction_generator[op]
@@ -560,17 +561,17 @@ class _base_durable_machine(abc_machine.extensible_Machine):
             raise Exception(useable_args) from err
 
     def register(self, op: rdflib.URIRef,
-                 asaction: Optional[Tuple[Callable[[BINDING], None], bool, bool]] = None,
+                 assuperaction: Optional[ACTIONGENERATOR[Union[ACTION, fact], None]] = None,
+                 asnormalaction: Optional[ACTIONGENERATOR[RESOLVABLE, None]] = None,
                  asassign: Optional[Callable[[BINDING], Literal]] = None,
                  aspattern: Optional[PATTERNGENERATOR] = None,
                  asbinding: Optional[BINDING_DESCRIPTION] = None,
                  asgroundaction: Optional[Any] = None,
                  ) -> None:
-        if asaction is not None:
-            if asaction[1] or asaction[2]:
-                self._registered_superaction_generator[op] = asaction[0]
-            else:
-                self._registered_normalaction_generator[op] = asaction[0]
+        if assuperaction is not None:
+            self._registered_superaction_generator[op] = assuperaction
+        if asnormalaction is not None:
+            self._registered_normalaction_generator[op] = asnormalaction
         if asassign is not None:
             self._registered_assignment_generator[op] = asassign
         if aspattern is not None:
