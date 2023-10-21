@@ -35,6 +35,10 @@ class is_datatype:
 
 @dataclass
 class assign_rdflib:
+    """
+    :TODO: repack this class and make generator of assign_rdflib the outer
+        class and assign_rdflib the inner
+    """
     target: RESOLVABLE
     type_uri: RESOLVABLE
     def __call__(self, bindings: BINDING) -> Literal:
@@ -46,8 +50,17 @@ class assign_rdflib:
     def __repr__(self) -> str:
         return "%s: %s" % (self.type_uri, self.target)
 
+    @dataclass
+    class _gen_cont:
+        cls: type["assign_rdflib"]
+        type_uri: URIRef
+        def __call__(self, *args: RESOLVABLE) -> "assign_rdflib":
+            assert len(args) == 1
+            return self.cls(args[0], self.type_uri)
+
     @classmethod
-    def gen(cls, type_uri: URIRef) -> ASSIGNMENTGENERATOR:
+    def gen(cls, type_uri: URIRef) -> _gen_cont:
         #ignoring, that there may be more inputargs as expected. Getting more
         #args whithin the generation is expected and will throw a TypeError.
-        return lambda target: cls(target, type_uri) #type: ignore[return-value]
+        return cls._gen_cont(cls, type_uri)
+        #return lambda target: cls(target, type_uri) #type: ignore[return-value]

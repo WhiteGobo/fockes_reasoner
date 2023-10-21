@@ -563,7 +563,7 @@ class _base_durable_machine(abc_machine.extensible_Machine):
     def register(self, op: rdflib.URIRef,
                  assuperaction: Optional[ACTIONGENERATOR[Union[ACTION, fact], None]] = None,
                  asnormalaction: Optional[ACTIONGENERATOR[RESOLVABLE, None]] = None,
-                 asassign: Optional[Callable[[BINDING], Literal]] = None,
+                 asassign: Optional[INDIPENDENTACTIONGENERATOR[RESOLVABLE, Literal]] = None,
                  aspattern: Optional[PATTERNGENERATOR] = None,
                  asbinding: Optional[BINDING_DESCRIPTION] = None,
                  asgroundaction: Optional[Any] = None,
