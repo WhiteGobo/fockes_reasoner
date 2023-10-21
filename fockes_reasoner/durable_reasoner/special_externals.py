@@ -6,7 +6,6 @@ from rdflib import Variable, URIRef, Literal, IdentifiedNode
 from .abc_machine import abc_external, TRANSLATEABLE_TYPES, RESOLVABLE, BINDING, _resolve, fact, abc_pattern, ASSIGNMENT
 from .machine_facts import _node2string, external
 from . import abc_machine
-from .default_externals import literal_equal
 from .machine_patterns import _pattern, generate_action_prerequisites, RUNNING_STATE, MACHINESTATE
 import logging
 logger = logging.getLogger(__name__)
@@ -74,6 +73,17 @@ class _bind_first:
         right = _resolve(self.right, bindings)
         bindings[self.left] = right
         return Literal(True)
+
+@dataclass
+class _literal_equal:
+    left: RESOLVABLE
+    right: RESOLVABLE
+
+    def __call__(self, bindings:BINDING) -> Literal:
+        left = _resolve(self.left, bindings)
+        right = _resolve(self.right, bindings)
+        logger.critical((left, right))
+        return Literal(left == right)
 @dataclass
 class _bind_second:
     left: RESOLVABLE
@@ -84,7 +94,7 @@ class _bind_second:
         bindings[self.right] = left
         return Literal(True)
 equality = _special_external(_id("rif equality"),
-                             asassign=literal_equal,
+                             asassign=_literal_equal,
                              asbinding={(True, False): _bind_first,
                                         (False, True): _bind_second},
                              )

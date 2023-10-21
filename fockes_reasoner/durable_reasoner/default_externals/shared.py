@@ -25,38 +25,44 @@ class RegisterInformation(Mapping):
     def set_assuperaction(
             self,
             action_gen: ACTIONGENERATOR[Union[ACTION, fact], None],
-            ) -> None:
+            ) -> ACTIONGENERATOR[Union[ACTION, fact], None]:
         self.assuperaction = action_gen
+        return action_gen
 
     def set_asnormalaction(
             self,
             action_gen: ACTIONGENERATOR[RESOLVABLE, None],
-            ) -> None:
+            ) -> ACTIONGENERATOR[RESOLVABLE, None]:
         self.asnormalaction = action_gen
+        return action_gen
 
     def set_asassign(
             self,
             action_gen: INDIPENDENTACTIONGENERATOR[RESOLVABLE, Literal],
-            ) -> None:
+            ) -> INDIPENDENTACTIONGENERATOR[RESOLVABLE, Literal]:
         self.asassign = action_gen
+        return action_gen
 
     def set_aspattern(
             self,
             action_gen: PATTERNGENERATOR,
-            ) -> None:
+            ) -> PATTERNGENERATOR:
         self.aspattern = action_gen
+        return action_gen
 
     def set_asbinding(
             self,
             action_gen: BINDING_DESCRIPTION,
-            ) -> None:
+            ) -> BINDING_DESCRIPTION:
         self.asbinding = action_gen
+        return action_gen
 
     def set_asgroundaction(
             self,
             action_gen: Any,
-            ) -> None:
+            ) -> Any:
         self.asgroundaction = action_gen
+        return action_gen
 
     def __iter__(self) -> Iterator[str]:
         for key, value in self.__dict__.items():
@@ -134,3 +140,16 @@ class assign_rdflib:
         #args whithin the generation is expected and will throw a TypeError.
         return cls._gen_cont(cls, type_uri)
         #return lambda target: cls(target, type_uri) #type: ignore[return-value]
+
+@dataclass
+class RegisterHelper:
+    """Class of callables to register a set of externals within a machine.
+    """
+    datatypes: Iterable[URIRef]
+    externals: Iterable[RegisterInformation]
+
+    def __call__(self, machine: extensible_Machine) -> None:
+        for dt in self.datatypes:
+            machine.register(dt, asassign=assign_rdflib.gen(dt))
+        for y in self.externals:
+            y.register_at(machine)

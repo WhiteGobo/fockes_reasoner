@@ -12,11 +12,12 @@ import re
 from ..abc_machine import BINDING, RESOLVABLE, _resolve, RESOLVER, abc_pattern, ATOM_ARGS
 from .. import abc_machine
 from ...shared import pred, func
-from .shared import is_datatype, invert, assign_rdflib
+from .shared import is_datatype, invert, assign_rdflib, RegisterInformation
 import locale
 
 VALID_STRING_TYPES = {None, RDF.PlainLiteral, XSD.string}
 _externals: Iterable
+_externals_new: Iterable[RegisterInformation]
 _datatypes: Iterable[URIRef] = [
         RDF.XMLLiteral
         ]
@@ -24,6 +25,8 @@ _datatypes: Iterable[URIRef] = [
 def _register_xmlExternals(machine: abc_machine.extensible_Machine) -> None:
     for dt in _datatypes:
         machine.register(dt, asassign=assign_rdflib.gen(dt))
+    for y in _externals_new:
+        y.register_at(machine)
     for x in _externals:
         as_ = {}
         for t in ["asassign", "aspattern", "asbinding"]:
@@ -36,6 +39,20 @@ def _register_xmlExternals(machine: abc_machine.extensible_Machine) -> None:
                 else:
                     as_[t] = foo
         machine.register(x.op, **as_)
+
+xmlliteral_equal = RegisterInformation(pred["XMLLiteral-equal"])
+@xmlliteral_equal.set_asassign
+class literal_equal:
+    left: RESOLVABLE
+    right: RESOLVABLE
+    def __init__(self, *args: RESOLVABLE) -> None:
+        self.left, self.right = args
+
+    def __call__(self, bindings:BINDING) -> Literal:
+        left = _resolve(self.left, bindings)
+        right = _resolve(self.right, bindings)
+        logger.critical((left, right))
+        return Literal(left == right)
 
 @dataclass
 class is_literal_xmlliteral:
@@ -54,4 +71,7 @@ class is_literal_not_xmlliteral:
 _externals = [
         is_literal_xmlliteral,
         is_literal_not_xmlliteral,
+        ]
+_externals_new = [
+        xmlliteral_equal,
         ]

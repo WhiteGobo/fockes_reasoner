@@ -11,7 +11,9 @@ from ..bridge_rdflib import term_list, _term_list, TRANSLATEABLE_TYPES
 from ..abc_machine import BINDING, RESOLVABLE, _resolve, RESOLVER, abc_pattern, ATOM_ARGS
 from ...shared import pred, func
 from .numeric_externals import *
+from .numeric_externals import register_numeric_externals
 from .list_externals import *
+from .list_externals import register_list_externals
 from .time_externals import _register_timeExternals
 from .plainLiteral_externals import _register_plainLiteralExternals
 from .xml_externals import _register_xmlExternals

@@ -15,7 +15,7 @@ from ..abc_machine import BINDING, RESOLVABLE, _resolve, RESOLVER, abc_pattern, 
 from .. import abc_machine
 from ...shared import pred, func
 from .shared import is_datatype, invert, assign_rdflib
-from .numeric_externals import literal_equal, pred_less_than, pred_greater_than
+from .numeric_externals import pred_less_than, pred_greater_than
 
 _externals: Iterable
 _datatypes: Iterable[URIRef] = [
