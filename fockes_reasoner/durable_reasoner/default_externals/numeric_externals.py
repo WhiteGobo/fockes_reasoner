@@ -10,15 +10,37 @@ from ..bridge_rdflib import term_list, _term_list, TRANSLATEABLE_TYPES
 
 from ..abc_machine import BINDING, RESOLVABLE, _resolve, RESOLVER, abc_pattern, ATOM_ARGS
 from ...shared import pred, func
+from .shared import RegisterInformation, invert
 
 @dataclass
-class numeric_equal:
+class _check_numerical_equality:
     left: RESOLVABLE
     right: RESOLVABLE
+    #def __init__(self, left, right, *args):
+    #    if args:
+    #        raise TypeError("pred:numeric_equal expects exactly 2 arguments "
+    #                        "got %d" % len(args)+2)
+    #    self.left = left
+    #    self.right = right
+
     def __call__(self, bindings:BINDING) -> Literal:
         left = _resolve(self.left, bindings)
         right = _resolve(self.right, bindings)
         return Literal(left.value == right.value) #type: ignore[union-attr]
+
+numeric_equal = RegisterInformation(pred["numeric-equal"])
+numeric_equal.set_asassign(_check_numerical_equality)
+numeric_not_equal = RegisterInformation(pred["numeric-not-equal"])
+numeric_not_equal.set_asassign(invert.gen(_check_numerical_equality))
+
+#@dataclass
+#class numeric_equal:
+#    left: RESOLVABLE
+#    right: RESOLVABLE
+#    def __call__(self, bindings:BINDING) -> Literal:
+#        left = _resolve(self.left, bindings)
+#        right = _resolve(self.right, bindings)
+#        return Literal(left.value == right.value) #type: ignore[union-attr]
 
 @dataclass
 class literal_equal:

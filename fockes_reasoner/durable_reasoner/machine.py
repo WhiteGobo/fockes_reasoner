@@ -928,10 +928,12 @@ class _machine_default_externals(_base_durable_machine):
         for ext in special_externals._special_externals:
             self.register(**ext)
         #self.register(RIF.Or, asassign=def_ext.rif_or)
-        self.register(pred["numeric-equal"],
-                      asassign=def_ext.numeric_equal)
-        self.register(pred["numeric-not-equal"],
-                      asassign=invert.gen(def_ext.numeric_equal))
+        #self.register(pred["numeric-equal"],
+        #              asassign=def_ext.numeric_equal)
+        #self.register(pred["numeric-not-equal"],
+        #              asassign=invert.gen(def_ext.numeric_equal))
+        self.register(**def_ext.numeric_equal)
+        self.register(**def_ext.numeric_not_equal)
         self.register(pred["numeric-greater-than"],
                       asassign=def_ext.pred_greater_than)
         self.register(pred["numeric-less-than-or-equal"],
