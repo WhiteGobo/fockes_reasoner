@@ -1,12 +1,12 @@
-from typing import Union, Optional, Tuple, Callable, List, Set, Hashable, overload
+from typing import Union, Optional, Tuple, Callable, List, Set, Hashable, overload, Dict
 from collections.abc import Mapping, MutableMapping, Iterable, Container
 from rdflib import  Variable, URIRef, BNode, Literal, IdentifiedNode
 from hashlib import sha1
 import durable.lang as rls
 import durable.engine
 from . import abc_machine
-from .abc_machine import abc_pattern, TRANSLATEABLE_TYPES, VARIABLE_LOCATOR, FACTTYPE, BINDING, abc_external, ATOM_ARGS, NoPossibleExternal, VariableNotBoundError, EXTERNAL_ARG
-from .bridge_rdflib import rdflib2string
+from .abc_machine import abc_pattern, TRANSLATEABLE_TYPES, VARIABLE_LOCATOR, FACTTYPE, BINDING, abc_external, ATOM_ARGS, NoPossibleExternal, VariableNotBoundError, EXTERNAL_ARG, RESOLVABLE
+from .bridge_rdflib import rdflib2string, _term_list
 from .machine_facts import frame, member, subclass, atom, fact, external, rdflib2string, _node2string, string2rdflib
 import logging
 logger = logging.getLogger(__name__)
@@ -35,10 +35,14 @@ class _pattern(abc_pattern):
         return "f(%s): %s" % (self.factname, self.pattern)
 
     @classmethod
-    def from_fact(cls, factid: str, myfact: dict[str, str],
+    def from_fact(cls, factid: str, myfact: Mapping[str, str |TRANSLATEABLE_TYPES| abc_external| Variable],
                   name: Optional[str] = None,
                   ) -> "_pattern":
-        d = {FACTTYPE: factid, **myfact}
+        d: Dict[str, Union[Variable, str, TRANSLATEABLE_TYPES]]\
+                = {FACTTYPE: factid}
+        for key, value in myfact.items():
+            assert isinstance(value, (Variable, str, BNode, URIRef, _term_list))
+            d[key] = value
         if name is not None:
             return cls(d, name)
         else:

@@ -33,4 +33,5 @@ class profileSimpleEntailment:
                 self.machine.assert_fact(f, {})
 
     def create_rules(self, machine: Machine, location: str) -> None:
-        machine.add_init_action(self._initImport(machine, location))
+        raise Exception()
+        #machine.add_init_action(self._initImport(machine, location))

@@ -9,6 +9,7 @@ import traceback
 from typing import Union, Mapping, Iterable, Callable, Any, MutableMapping, Optional, Container, Dict, Set, get_args, Tuple, List, Iterator, Hashable
 from collections.abc import Collection
 from dataclasses import dataclass
+from hashlib import sha1
 import itertools as it
 import rdflib
 from rdflib import URIRef, Variable, Literal, BNode, Graph, IdentifiedNode, XSD
@@ -355,6 +356,7 @@ class _base_durable_machine(abc_machine.extensible_Machine):
 
     def _make_rule(self, patterns: Iterable[abc_pattern],
                    actions: Iterable[Union[Callable, fact]],
+                   *,
                    error_message: str = "",
                    priority: int = 5) -> None:
         assert 0 < priority < 10, "expect priorities within 1-9"
@@ -445,7 +447,7 @@ class _base_durable_machine(abc_machine.extensible_Machine):
     def _rulename(self) -> str:
         return self._ruleset.name #type: ignore[no-any-return]
 
-    def add_init_action(self, action: Union[Callable[[BINDING], None], abc_external]) -> None:
+    def add_init_action(self, action: abc_external) -> None:
         q = durable_rule(self)
         #def act(bindings: BINDING) -> None:
         #    logger.debug("execute init: %s" % action)
@@ -608,7 +610,7 @@ class OWLmachine(_base_durable_machine):
                 frame(inst, RDF.type, sub_type),
                 "ObjMember")
         newObjMember = frame(inst, RDF.type, super_type)
-        self._make_rule([desc_subclass, desc_objMember], [newObjMember], 3)
+        self._make_rule([desc_subclass, desc_objMember], [newObjMember], priority=3)
 
     def __inconsistency_rules(self) -> None:
         x = Variable("x")
@@ -633,7 +635,7 @@ class OWLmachine(_base_durable_machine):
                 logger.error(err_message)
                 raise FailedInternalAction(err_message)
         self._make_rule([desc_findObjectProperty, desc_valueToProperty],
-                        [evaluate_inconsistency], 3)
+                        [evaluate_inconsistency], priority=3)
 
 
 class RDFSmachine(_base_durable_machine):
@@ -658,7 +660,7 @@ class RDFSmachine(_base_durable_machine):
             member.CLASS: sub_type,
             }, "ObjMember")
         newObjMember = member(inst, super_type)
-        self._make_rule([desc_subclass, desc_objMember], [newObjMember], 3)
+        self._make_rule([desc_subclass, desc_objMember], [newObjMember], priority=3)
 
 
 class durable_rule(abc_machine.implication, abc_machine.rule):
@@ -666,7 +668,7 @@ class durable_rule(abc_machine.implication, abc_machine.rule):
     bindings: MutableMapping[Variable, VARIABLE_LOCATOR]
     machine: _base_durable_machine
     conditions: list[Callable[[BINDING], Literal]]
-    actions: Iterable[Callable[[BINDING], None]]
+    actions: List[abc_external | fact]
     needed_variables: Iterable[Variable]
     finalized: bool = False
     _orig_pattern: list[Any]
@@ -732,7 +734,7 @@ class durable_rule(abc_machine.implication, abc_machine.rule):
 
     @dataclass
     class _conditional_action:
-        actions: Iterable[Callable[[BINDING], None]]
+        actions: Iterable[ACTION[None] | fact]
         logger: logging.Logger
         conditions: Iterable[Callable[[BINDING], Literal]]
         def __call__(self, bindings: BINDING) -> None:
@@ -752,30 +754,33 @@ class durable_rule(abc_machine.implication, abc_machine.rule):
             #if self.actions is None:
             #    raise RuleNotComplete("action is missing")
             for act in self.actions:
-                try:
-                    act(bindings)
-                except Exception as err:
-                    self.logger.info("Failed at action %r with bindings %s.\n"
-                                     "Produced traceback:\n%s"
-                                     % (act, bindings,
-                                        traceback.format_exc()))
-                    raise FailedInternalAction() from err
+                if isinstance(act, fact):
+                    raise NotImplementedError()
+                else:
+                    try:
+                        act(bindings)
+                    except Exception as err:
+                        self.logger.info("Failed at action %r with bindings %s.\n"
+                                         "Produced traceback:\n%s"
+                                         % (act, bindings,
+                                            traceback.format_exc()))
+                        raise FailedInternalAction() from err
 
     def _generate_action(
             self,
             conditions: Iterable[Callable[[BINDING], Literal]],
-            actions: Iterable[Union[Callable[[BINDING], None], external]],
+            actions: Iterable[abc_external | fact],
             ) -> Iterable[Union[Callable[[BINDING], None], fact]]:
-        actions_ = []
+        actions_: List[ACTION[None] | fact] = []
         for act in actions:
-            if isinstance(act, external):
+            if isinstance(act, abc_external):
                 actions_.append(self.machine._create_action_from_external(act.op, act.args))
             elif isinstance(act, fact):
                 actions_.append(act)
             else:
-                act.__call__
+                #act.__call__
                 raise Exception(act)
-                actions_.append(act)
+                #actions_.append(act)
         if conditions:
             return [self._conditional_action(actions_, self.machine.logger,
                                              conditions)]
@@ -803,7 +808,7 @@ class durable_rule(abc_machine.implication, abc_machine.rule):
             actions = self._generate_action(conditions, self.actions)
             self.machine._make_rule(patterns, actions)
 
-    def set_action(self, action: Union[Callable[[BINDING], None], abc_external],
+    def set_action(self, action: abc_external | fact,
                    needed_variables: Iterable[Variable]) -> None:
         self.actions.append(action)
         self.needed_variables = list(needed_variables)
@@ -922,7 +927,7 @@ class _machine_default_externals(_base_durable_machine):
         def_ext._register_actionExternals(self)
         for ext in special_externals._special_externals:
             self.register(**ext)
-        self.register(RIF.Or, asassign=def_ext.rif_or)
+        #self.register(RIF.Or, asassign=def_ext.rif_or)
         self.register(pred["numeric-equal"],
                       asassign=def_ext.numeric_equal)
         self.register(pred["numeric-not-equal"],

@@ -64,7 +64,7 @@ PATTERNGENERATOR\
                                   Iterable[Variable]]]]
 
 
-IMPORTPROFILE = Callable[["Machine", str], Graph]
+IMPORTPROFILE = Callable[["Machine", str], None]
 
 
 class RuleNotComplete(Exception):
@@ -302,7 +302,7 @@ class Machine(abc.ABC):
         ...
 
     @abc.abstractmethod
-    def add_init_action(self, action: Union[Callable[[BINDING], None], abc_external]) -> None:
+    def add_init_action(self, action: abc_external) -> None:
         ...
 
     @abc.abstractmethod
@@ -328,6 +328,7 @@ class extensible_Machine(Machine):
     @abc.abstractmethod
     def _make_rule(self, patterns: Iterable["abc_pattern"],
                    actions: Iterable[Union[Callable, fact]],
+                   *,
                    error_message: str = "",
                    priority: int = 5) -> None:
         ...
@@ -353,7 +354,7 @@ class rule(abc.ABC):
     machine: Machine
 
     @abc.abstractmethod
-    def set_action(self, action: Callable[[BINDING], None],
+    def set_action(self, action: abc_external | fact,
                    needed_variables: Iterable[Variable]) -> None:
         ...
 

@@ -132,4 +132,5 @@ class profileOWLDirect:
 
     def create_rules(self, machine: durable_reasoner.Machine, location: str,
                      ) -> None:
-        machine.add_init_action(self._initImport(machine, location))
+        #machine.add_init_action(self._initImport(machine, location))
+        raise Exception()
