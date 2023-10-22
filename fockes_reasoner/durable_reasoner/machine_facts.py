@@ -7,7 +7,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 import rdflib
-from rdflib import URIRef, BNode, Literal, Variable
+from rdflib import URIRef, BNode, Literal, Variable, IdentifiedNode
 import typing as typ
 from typing import MutableMapping, Mapping, Union, Callable, Iterable, Tuple, Optional, overload, cast, Hashable
 from collections.abc import Collection
@@ -41,7 +41,7 @@ class external(abc_external):
                                     ", ".join(_pretty(x) for x in self.args))
 
 class executable(external):
-    def __init__(self, op: URIRef,
+    def __init__(self, op: IdentifiedNode,
                  args: Iterable[Union[TRANSLATEABLE_TYPES, "external", Variable]],
                  machine: abc_machine.Machine,
                  ) -> None:

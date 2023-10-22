@@ -3,6 +3,7 @@ import logging
 logger = logging.getLogger(__name__)
 import uuid
 import itertools as it
+from . import durable_reasoner
 from .durable_reasoner import machine_facts, fact, NoPossibleExternal, _resolve, ATOM_ARGS, term_list, pattern_generator, rule
 from .durable_reasoner.machine_facts import external, TRANSLATEABLE_TYPES, executable
 import rdflib
@@ -754,7 +755,7 @@ class rif_external(_external_gen):
         return cls(op, args)
 
 class rif_or(_external_gen, _rif_formula):
-    _formulas_generators: Mapping[IdentifiedNode, Callable[[Graph, IdentifiedNode], _rif_check]]
+    _formulas_generators: Mapping[IdentifiedNode, Callable[[Graph, IdentifiedNode], _rif_formula]]
     op: Hashable = special_externals.condition_or.op
     def __init__(self, formulas: Iterable[_rif_formula]):
         self._args = list(formulas)
@@ -934,15 +935,16 @@ class rif_frame(rif_fact):
                 "rif_external not valid as input for frame.obj"
         return cls(obj, slotinfo, **kwargs)
 
-R = TypeVar('R', bound=rif_fact | IdentifiedNode, covariant=True)
+R = TypeVar('R', bound=rif_fact | IdentifiedNode | Variable, covariant=True)
 
 class rif_retract(_action_gen, Generic[R]):
     #fact: Optional[Union[rif_frame]]
     #atom: Optional[Union[IdentifiedNode]]
     _fact_or_atom: R
-    _target_generator: Mapping[URIRef, Callable[[Graph, IdentifiedNode],
-                                                IdentifiedNode | rif_fact]]
-    def __init__(self, fact_or_atom: R):
+    _target_generator: Mapping[IdentifiedNode,
+                               Callable[[Graph, IdentifiedNode],
+                                        IdentifiedNode | rif_fact]]
+    def __init__(self, fact_or_atom: R) -> None:
         self._fact_or_atom = fact_or_atom
         if isinstance(fact_or_atom, rif_fact):
             self.fact = fact_or_atom
@@ -969,25 +971,26 @@ class rif_retract(_action_gen, Generic[R]):
     def generate_action(self,
                         machine: durable_reasoner.Machine,
                         ) -> Tuple[external | fact, Iterable[Variable]]:
-        if getattr(self, "fact", None) is not None:
-            return self.fact.generate_retract_action(machine), self.used_variables
+        if isinstance(self._fact_or_atom, rif_fact):
+            return self._fact_or_atom.generate_retract_action(machine), self.used_variables
+        elif isinstance(self._fact_or_atom, Variable):
+            op = special_externals.retract_object.op
+            return external(op, [self._fact_or_atom]), [self._fact_or_atom]
         else:
             op = special_externals.retract_object.op
-            if isinstance(self.atom, Variable):
-                return external(op, [self.atom]), [self.atom]
-            else:
-                return external(op, [self.atom]), []
+            return external(op, [self._fact_or_atom]), [] #type: ignore[list-item]
 
     @classmethod
     def from_rdf(cls, infograph: rdflib.Graph,
                  rootnode: rdflib.IdentifiedNode,
-                 **kwargs: typ.Any) -> "rif_modify":
+                 **kwargs: typ.Any,
+                 ) -> "rif_retract":
         target: rdflib.IdentifiedNode = infograph.value(rootnode, RIF.target) #type: ignore[assignment]
         try:
-            fact = _generate_object(infograph, target, cls._target_generator)
+            fact_or_atom = _generate_object(infograph, target, cls._target_generator)
         except KeyError as err:
             raise ValueError("Cant generate 'fact' for %s." % cls) from err
-        return cls(fact, **kwargs)
+        return cls(fact_or_atom, **kwargs) #type: ignore[arg-type]
 
 
 class rif_ineg(_rif_check):
@@ -1022,13 +1025,19 @@ class rif_ineg(_rif_check):
         return "INeg(%s)" % self.formula
 
 class rif_modify(_action_gen):
-    fact: Union[rif_frame]
-    def __init__(self, fact: Union[rif_frame]):
+    fact: rif_fact
+    _target_generator: Mapping[IdentifiedNode,
+                               Callable[[Graph, IdentifiedNode], rif_fact]]
+    def __init__(self, fact: rif_fact):
         self.fact = fact
 
     def generate_action(self,
                         machine: durable_reasoner.Machine,
-                        ) -> Tuple[external | fact, Iterable[Variable]]:
+                        ) -> Tuple[external, Iterable[Variable]]:
+        """
+        :TODO: This is wrong. It should modify and not assert
+        """
+        #return external(special_externals.modify_fact.op, self._create_facts())
         return self.fact.generate_assert_action(machine), self.fact.used_variables
 
     @classmethod
@@ -1047,14 +1056,14 @@ class rif_modify(_action_gen):
 
 
 class rif_assert(_action_gen):
-    fact: Union[rif_frame]
-    _fact_generator: Mapping[IdentifiedNode, Callable[[Graph, IdentifiedNode], ATOM]]
-    def __init__(self, fact: Union[rif_frame]):
-        self.fact = fact
+    fact: rif_fact
+    _target_generator: Mapping[IdentifiedNode, Callable[[Graph, IdentifiedNode], rif_fact]]
+    def __init__(self, myfact: rif_fact) -> None:
+        self.fact = myfact
 
     def generate_action(self,
                         machine: durable_reasoner.Machine,
-                        ) -> Tuple[external | fact, Iterable[Variable]]:
+                        ) -> Tuple[external, Iterable[Variable]]:
         return self.fact.generate_assert_action(machine),\
                 self.fact.used_variables
 
@@ -1064,10 +1073,10 @@ class rif_assert(_action_gen):
                  **kwargs: typ.Any) -> "rif_assert":
         target: rdflib.IdentifiedNode = infograph.value(rootnode, RIF.target) #type: ignore[assignment]
         try:
-            fact = _generate_object(infograph, target, cls._target_generator)
+            myfact = _generate_object(infograph, target, cls._target_generator)
         except KeyError as err:
             raise ValueError("Cant generate 'fact' for %s." % cls) from err
-        return cls(fact, **kwargs)
+        return cls(myfact, **kwargs)
 
     def __repr__(self) -> str:
         return "Assert( %s )" % self.fact
@@ -1098,6 +1107,8 @@ class rif_equal(_external_gen):
                  **kwargs: typ.Any) -> "rif_equal":
         leftnode = infograph.value(rootnode, RIF.left)
         rightnode = infograph.value(rootnode, RIF.right)
+        assert isinstance(leftnode, IdentifiedNode)
+        assert isinstance(rightnode, IdentifiedNode)
         left = slot2node(infograph, leftnode)
         right = slot2node(infograph, rightnode)
         #left = _generate_object(infograph, leftnode, cls._side_generators)
@@ -1123,7 +1134,9 @@ class rif_list(_resolvable_gen):
         item_list = rdflib.collection.Collection(infograph, item_list_node)
         items = []
         for item in item_list:
+            assert isinstance(item, IdentifiedNode)
             item_type = infograph.value(item, RDF.type)
+            assert isinstance(item_type, IdentifiedNode)
             q = cls._item_generator[item_type](infograph, item)
             assert not isinstance(q, (Variable, rif_external))
             items.append(q)
@@ -1136,14 +1149,16 @@ class rif_list(_resolvable_gen):
 
 class rif_execute(_action_gen):
     target: rif_atom
-    _target_generator: Mapping[IdentifiedNode, Callable[[Graph, IdentifiedNode], ATOM]]
+    _target_generator: Mapping[IdentifiedNode, Callable[[Graph, IdentifiedNode], rif_atom]]
     def __init__(self, target: rif_atom):
         self.target = target
 
     def generate_action(self,
                         machine: durable_reasoner.Machine,
                         ) -> Tuple[external | fact, Iterable[Variable]]:
-        return executable(self.target.op, self.target.args, machine),\
+        args = it.chain.from_iterable(_try_as_machineterm(arg)
+                                      for arg in self.target.args)
+        return executable(self.target.op, args, machine),\
                 self.target.used_variables
 
     @classmethod

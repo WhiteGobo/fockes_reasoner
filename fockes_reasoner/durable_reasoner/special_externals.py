@@ -99,6 +99,9 @@ equality = _special_external(_id("rif equality"),
                                         (False, True): _bind_second},
                              )
 
+#@dataclass
+#class _modify_fact_function:
+
 @dataclass
 class _assert_fact_function:
     machine: abc_machine.Machine
