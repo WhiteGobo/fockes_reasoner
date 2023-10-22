@@ -7,8 +7,9 @@ from .durable_reasoner import machine_facts, fact, NoPossibleExternal, _resolve,
 from .durable_reasoner.machine_facts import external, TRANSLATEABLE_TYPES, executable
 import rdflib
 from rdflib import IdentifiedNode, Graph, Variable, Literal, URIRef, BNode
+from rdflib.collection import Collection
 import typing as typ
-from typing import Union, Iterable, Any, Callable, MutableMapping, List, Tuple, Optional, Mapping, Set
+from typing import Union, Iterable, Any, Callable, MutableMapping, List, Tuple, Optional, Mapping, Set, overload, cast, Hashable, TypeVar, Generic
 from .shared import RIF, pred, XSD
 from rdflib import RDF
 from . import durable_reasoner
@@ -20,7 +21,7 @@ from collections.abc import Sequence
 
 ATOM = Union[TRANSLATEABLE_TYPES, Variable, "rif_external", "rif_list"]
 SLOT = Tuple[ATOM, ATOM]
-RIF_ATOM = Union[TRANSLATEABLE_TYPES, "rif_external"]
+RIF_ATOM = Union[TRANSLATEABLE_TYPES, "rif_external", Variable, "rif_list"]
 FORMULA = Union["rif_frame",
                 "rif_atom",
                 "rif_member",
@@ -43,14 +44,14 @@ class RIFSyntaxError(Exception):
 
 class _rule_gen(abc.ABC):
     @abc.abstractmethod
-    def create_rules(self, machine: durable_reasoner.machine) -> None:
+    def create_rules(self, machine: durable_reasoner.Machine) -> None:
         ...
 
 class _action_gen(abc.ABC):
     @abc.abstractmethod
     def generate_action(self,
-                        machine: durable_reasoner.machine,
-                        ) -> Tuple[Callable[..., None], Iterable[Variable]]:
+                        machine: durable_reasoner.Machine,
+                        ) -> Tuple[external | fact, Iterable[Variable]]:
         ...
 
 class _rif_check(pattern_generator, abc.ABC):
@@ -59,7 +60,7 @@ class _rif_check(pattern_generator, abc.ABC):
     """
     @abc.abstractmethod
     def check(self,
-            machine: durable_reasoner.machine,
+            machine: durable_reasoner.Machine,
             bindings: BINDING_WITH_BLANKS = {},
             ) -> bool:
         ...
@@ -69,10 +70,6 @@ class _resolvable_gen(abc.ABC):
     """Subclass can be used to retrieve a :term:`translateable object` as
     described in bridge-rdflib. Is equal to a :term:`formula` in :term:`RIF`
     """
-    @abc.abstractmethod
-    def as_resolvable(self, machine: durable_reasoner.machine) -> RESOLVABLE:
-        ...
-
     @abc.abstractmethod
     def as_machineterm(self) -> Union[external, TRANSLATEABLE_TYPES]:
         """
@@ -98,7 +95,7 @@ class rif_fact(_rif_check, _action_gen, _rule_gen):
         rule.orig_pattern.extend(self._create_facts())
 
     def check(self,
-            machine: durable_reasoner.machine,
+            machine: durable_reasoner.Machine,
             bindings: BINDING_WITH_BLANKS = {},
             ) -> bool:
         test_facts = list(self._create_facts())
@@ -110,13 +107,13 @@ class rif_fact(_rif_check, _action_gen, _rule_gen):
             raise
 
     def generate_action(self,
-                        machine: durable_reasoner.machine,
-                        ) -> Tuple[Callable[..., None], Iterable[Variable]]:
+                        machine: durable_reasoner.Machine,
+                        ) -> Tuple[external | fact, Iterable[Variable]]:
         return self.generate_assert_action(machine), self.used_variables
 
     def generate_assert_action(self,
-                               machine: durable_reasoner.machine,
-                               ) -> action_assert:
+                               machine: durable_reasoner.Machine,
+                               ) -> external:
         """
         :TODO: Creation of variable is not safe
         """
@@ -124,30 +121,46 @@ class rif_fact(_rif_check, _action_gen, _rule_gen):
         return external(special_externals.assert_fact.op, self._create_facts())
 
     def generate_retract_action(self,
-                      machine: durable_reasoner.machine,
-                      ) -> action_retract:
+                      machine: durable_reasoner.Machine,
+                      ) -> external:
         return external(special_externals.retract_fact.op,
                         self._create_facts())
     #return action_retract(self._create_facts(), machine)
 
-    def create_rules(self, machine: durable_reasoner.machine) -> None:
+    def create_rules(self, machine: durable_reasoner.Machine) -> None:
         """Is called, when frame is direct sub to a Group"""
         action = self.generate_assert_action(machine)
         machine.add_init_action(action)
 
-def _try_as_machineterm(x: Union[TRANSLATEABLE_TYPES, external, Variable, _resolvable_gen, rif_fact, _rif_check],
-                        ) -> Union[TRANSLATEABLE_TYPES, external, Variable]:
+@overload
+def _try_as_machineterm(
+        x: Union[rif_fact],
+        ) -> Iterable[fact]: ...
+
+@overload
+def _try_as_machineterm(
+        x: Union[TRANSLATEABLE_TYPES, external, Variable,
+                 _resolvable_gen],
+        ) -> Iterable[Union[TRANSLATEABLE_TYPES, external, Variable]]: ...
+
+def _try_as_machineterm(
+        x: Union[TRANSLATEABLE_TYPES, external, Variable,
+                 _resolvable_gen, rif_fact],
+        ) -> Iterable[Union[TRANSLATEABLE_TYPES, external, Variable, fact]]:
+    """
+    :TODO: Split this method into one for facts and one for others
+    """
     if isinstance(x, _resolvable_gen):
         return [x.as_machineterm()]
     elif isinstance(x, rif_fact):
         return x._create_facts()
-    elif isinstance(x, _rif_check):
-        raise NotImplementedError()
     else:
         return [x]
 
+T = TypeVar('T')
 def _generate_object(infograph: Graph, target: IdentifiedNode,
-                     type_to_generator: Mapping[IdentifiedNode, Callable[[Graph, IdentifiedNode], Any]]) -> Any:
+                     type_to_generator: Mapping[IdentifiedNode, Callable[[Graph, IdentifiedNode], T]],
+                     ) -> T:
     """
     :raises KeyError:
     """
@@ -204,7 +217,7 @@ class rif_document:
         self.payload = payload
         self.directives = list(directives)
 
-    def create_rules(self, machine: durable_reasoner.machine,
+    def create_rules(self, machine: durable_reasoner.Machine,
                      ) -> None:
         for directive in self.directives:
             directive.apply_to(machine)
@@ -235,8 +248,8 @@ class rif_document:
 
         try:
             directives_node, = infograph.objects(rootnode, RIF.directives)
-            directives_lists = rdflib.collection.Collection(infograph, directives_node)
-            typ.cast(Iterable[IdentifiedNode], directives_lists)
+            directives_lists = cast(Iterable[IdentifiedNode],
+                                    Collection(infograph, directives_node))
         except ValueError:
             directives_lists = []
         for directive_node in directives_lists:
@@ -266,16 +279,17 @@ class rif_import:
     profile: Optional[Literal]
     location: URIRef
     def __init__(self,
-                 location: Literal,
+                 location: Literal | URIRef,
                  profile: Optional[Literal] = None):
-        if isinstance(location, IdentifiedNode):
+        if isinstance(location, URIRef):
             self.location = location
         else:
             self.location = URIRef(location)
         self.profile = profile
 
-    def apply_to(self, machine: durable_reasoner.machine,
+    def apply_to(self, machine: durable_reasoner.Machine,
                  ) -> None:
+        args: Iterable[Literal | URIRef]
         op = special_externals.import_data.op
         if self.profile is not None:
             args = [self.location, self.profile]
@@ -288,8 +302,9 @@ class rif_import:
                  rootnode: rdflib.IdentifiedNode,
                  extraDocuments: Mapping[IdentifiedNode, Graph] = {},
                  **kwargs: Any) -> "rif_import":
-        location, = infograph.objects(rootnode, RIF.location)
-        profile = infograph.value(rootnode, RIF.profile)
+        location, = cast(Iterable[Literal | URIRef],
+                         infograph.objects(rootnode, RIF.location))
+        profile = cast(Literal, infograph.value(rootnode, RIF.profile))
         #assert isinstance(location, URIRef), repr(location)
         if profile:
             return cls(location, profile)
@@ -304,7 +319,7 @@ class rif_group(_rule_gen):
                  ) -> None:
         self.sentences = tuple(sentences)
 
-    def create_rules(self, machine: durable_reasoner.machine) -> None:
+    def create_rules(self, machine: durable_reasoner.Machine) -> None:
         for s in self.sentences:
             s.create_rules(machine)
 
@@ -319,6 +334,7 @@ class rif_group(_rule_gen):
                 = rdflib.collection.Collection(infograph, sentences_list_node) #type: ignore[assignment]
         for sentence_node in sentences_list:
             sentence_type = infograph.value(sentence_node, RDF.type)
+            assert isinstance(sentence_type, IdentifiedNode)
             gen = cls._sentence_generators[sentence_type]
             next_sentence =  gen(infograph, sentence_node)
             sentences.append(next_sentence)
@@ -336,7 +352,7 @@ class rif_forall(_rule_gen):
         self.formula = formula
         self.pattern = pattern
 
-    def _create_implication(self, machine: durable_reasoner.machine) -> None:
+    def _create_implication(self, machine: durable_reasoner.Machine) -> None:
         newrule = machine.create_rule_builder()
         conditions: list[Callable[[BINDING], Union[Literal, bool]]] = []
         self.formula._add_condition_as_pattern(newrule)
@@ -351,7 +367,7 @@ class rif_forall(_rule_gen):
         logger.info("create rule %r" % newrule)
         newrule.finalize()
 
-    def create_rules(self, machine: durable_reasoner.machine) -> None:
+    def create_rules(self, machine: durable_reasoner.Machine) -> None:
         #if self.pattern is None and isinstance(self.formula, rif_implies)\
         #        and isinstance(self.formula.then_, (rif_frame,)):
         #    return self._create_implication(machine)
@@ -412,7 +428,7 @@ class rif_implies(_rule_gen):
         parent: "rif_implies"
         conditions: list[Callable]
         action: Callable
-        machine: durable_reasoner.machine
+        machine: durable_reasoner.Machine
         def __call__(self, bindings: BINDING) -> None:
             for c in self.conditions:
                 if not c(bindings):
@@ -431,7 +447,7 @@ class rif_implies(_rule_gen):
         else:
             newrule.orig_pattern.append(self.if_)
 
-    def create_rules(self, machine: durable_reasoner.machine) -> None:
+    def create_rules(self, machine: durable_reasoner.Machine) -> None:
         """Create this as a rule for an expertsystem.
 
         """
@@ -453,8 +469,8 @@ class rif_implies(_rule_gen):
 
 
     def generate_action(self,
-                        machine: durable_reasoner.machine,
-                        ) -> Tuple[Callable[[BINDING], None], Iterable[Variable]]:
+                        machine: durable_reasoner.Machine,
+                        ) -> Tuple[external | fact, Iterable[Variable]]:
         raise NotImplementedError("removed generate_condition completly")
         condition = self.if_.generate_condition(machine)
         implicated_action, used_variables = self.then_.generate_action(machine)
@@ -497,7 +513,7 @@ class rif_exists(_rif_check):
         raise NotImplementedError()
 
     def check(self,
-            machine: durable_reasoner.machine,
+            machine: durable_reasoner.Machine,
             bindings: Optional[BINDING_WITH_BLANKS] = None,
             ) -> bool:
         if bindings is None:
@@ -515,6 +531,7 @@ class rif_exists(_rif_check):
         var_list = rdflib.collection.Collection(infograph, vars_node)
         blank_vars: List[Variable] = []
         for x in var_list:
+            assert isinstance(x, IdentifiedNode)
             x_var = slot2node(infograph, x)
             assert isinstance(x_var, Variable)
             blank_vars.append(x_var)
@@ -527,23 +544,24 @@ class rif_exists(_rif_check):
 class rif_and(_resolvable_gen, _rif_check):
     formulas: Iterable[_rif_check]
     _formulas_generators: Mapping[IdentifiedNode, Callable[[Graph, IdentifiedNode], _rif_check]]
-    def __init__(self, formulas: Iterable[_rif_check]):
+    def __init__(self, formulas: Iterable[_rif_check | rif_fact]):
         self.formulas = list(formulas)
 
     def as_machineterm(self) -> Union[external, TRANSLATEABLE_TYPES]:
+        facts_: List[rif_fact] = []
+        for x in self.formulas:
+            assert isinstance(x, rif_fact)
+            facts_.append(x)
         args = list(it.chain.from_iterable(_try_as_machineterm(x)
-                                           for x in self.formulas))
+                                           for x in facts_))
         return external(special_externals.condition_and.op, args)
         #return machine_and(RIF.And, args)
-
-    def as_resolvable(self, machine: durable_reasoner.machine) -> RESOLVABLE:
-        raise NotImplementedError()
 
     def __repr__(self) -> str:
         return "(%s)" % " & ".join(repr(x) for x in self.formulas)
 
     def check(self,
-            machine: durable_reasoner.machine,
+            machine: durable_reasoner.Machine,
             bindings: BINDING_WITH_BLANKS = {},
             ) -> bool:
         return all(f.check(machine, bindings) for f in self.formulas)
@@ -561,22 +579,21 @@ class rif_and(_resolvable_gen, _rif_check):
         except ValueError as err:
             raise Exception("Syntaxerror of RIF document") from err
         formula_list: Iterable[IdentifiedNode] = rdflib.collection.Collection(infograph, formula_list_node) #type: ignore[assignment]
-        formulas: list[Union["rif_frame"]] = []
+        formulas: list[Union["_rif_check"]] = []
         for formula_node in formula_list:
             next_formula = _generate_object(infograph, formula_node, cls._formulas_generators)
             formulas.append(next_formula)
         return cls(formulas)
 
 class rif_do(_action_gen):
-    target: List[Union["rif_assert", "rif_retract", "rif_modify"]]
+    target: List[Union["rif_assert", "rif_retract", "rif_modify", "rif_execute"]]
     _do_action_generator: Mapping[IdentifiedNode, Callable[[Graph, IdentifiedNode], ATOM]]
-    def __init__(self, actions: Iterable[Union["rif_assert", "rif_retract", "rif_modify"]]):
+    def __init__(self, actions: Iterable[Union["rif_assert", "rif_retract", "rif_modify", "rif_execute"]]):
         self.actions = list(actions)
 
     def generate_action(self,
-                        machine: durable_reasoner.machine,
-                        ) -> Tuple[Union[Callable[[BINDING], None], external],
-                                   Iterable[Variable]]:
+                        machine: durable_reasoner.Machine,
+                        ) -> Tuple[external | fact, Iterable[Variable]]:
         self._all_actions = []
         used_variables: Set[Variable] = set()
         for act in self.actions:
@@ -587,14 +604,6 @@ class rif_do(_action_gen):
                 used_variables
         #return self._act, used_variables
 
-    def _act(self, bindings: BINDING) -> None:
-        for act in self._all_actions:
-            try:
-                act(bindings)
-            except Exception:
-                logger.info("Failed at: %s" % act)
-                raise
-
     @classmethod
     def from_rdf(cls, infograph: rdflib.Graph,
                  rootnode: IdentifiedNode,
@@ -604,7 +613,7 @@ class rif_do(_action_gen):
         except ValueError as err:
             raise Exception("Syntaxerror of RIF document") from err
         target_list: Iterable[IdentifiedNode] = rdflib.collection.Collection(infograph, target_list_node) #type: ignore[assignment]
-        actions: List[Union[rif_assert, "rif_retract", "rif_modify"]] = []
+        actions: List[Union[rif_assert, "rif_retract", "rif_modify", "rif_execute"]] = []
         for target_node in target_list:
             try:
                 next_target = _generate_object(infograph, target_node,
@@ -646,33 +655,40 @@ class rif_atom(rif_fact):
             op = _generate_object(infograph, op_node, cls._atom_op_generator)
         except KeyError as err:
             raise ValueError("Cant generate 'op' for %s." % cls) from err
-        args = []
+        assert isinstance(op, IdentifiedNode)
+        args: List[RIF_ATOM] = []
         arg_list_node = infograph.value(rootnode, RIF.args)
         if arg_list_node is not None:
             arg_list = rdflib.collection.Collection(infograph, arg_list_node)
             for x in arg_list:
                 assert isinstance(x, IdentifiedNode)
                 try:
-                    args.append(_generate_object(infograph, x,
-                                             cls._atom_args_generator))
+                    x_ = _generate_object(infograph, x,
+                                          cls._atom_args_generator)
                 except KeyError as err:
                     raise ValueError("Cant generate 'args' for %s."
                                      % cls) from err
+                assert isinstance(x_, (IdentifiedNode, Variable, Literal,
+                                       rif_external, term_list, rif_list)), x_
+                args.append(x_)
         return cls(op, args)
 
     def __repr__(self) -> str:
         return "%s (%s)" % (self.op, ", ".join(str(x) for x in self.args))
 
-class rif_external(_resolvable_gen, _rif_check):
-    op: URIRef
-    args: Sequence[ATOM]
-    _atom_args_generator: Mapping[IdentifiedNode, Callable[[Graph, IdentifiedNode], ATOM]]
-    def __init__(self, op: URIRef, args: Iterable[ATOM]):
-        self.op = op
-        self.args = list(args)
+class _external_gen(_resolvable_gen, _rif_check):
+    @property
+    @abc.abstractmethod
+    def args(self) -> Iterable[ATOM | _rif_formula]:
+        ...
+
+    @property
+    @abc.abstractmethod
+    def op(self) -> Hashable | URIRef:
+        ...
 
     def check(self,
-            machine: durable_reasoner.machine,
+            machine: durable_reasoner.Machine,
             bindings: BINDING_WITH_BLANKS = {},
             ) -> bool:
         args = list(it.chain.from_iterable(_try_as_machineterm(arg)
@@ -680,34 +696,42 @@ class rif_external(_resolvable_gen, _rif_check):
         q = external(self.op, args)
         return machine.check_statement([q], bindings)
 
-    @property
-    def used_variables(self) -> Iterable[Variable]:
-        return _get_variables((self.op, *self.args))
-
     def as_machineterm(self) -> external:
         args = list(it.chain.from_iterable(_try_as_machineterm(arg)
                                            for arg in self.args))
         return external(self.op, args)
 
-    def as_resolvable(self, machine: durable_reasoner.machine) -> RESOLVABLE:
-        args = [_get_resolveable(x, machine) for x in self.args]
-        return machine.get_binding_action(self.op, args)
-
     def get_replacement_node(self,
-                      machine: durable_reasoner.machine,
+                      machine: durable_reasoner.Machine,
             ) -> TRANSLATEABLE_TYPES:
         args = [_get_resolveable(x, machine) for x in self.args]
         return machine.get_replacement_node(self.op, args)
 
-    def get_binding_action(self,
-                      machine: durable_reasoner.machine,
-            ) -> RESOLVABLE:
-        return self.as_resolvable(machine)
-        #return machine.get_binding_action(self.op, self.args)
-
     def _add_pattern(self, rule: durable_reasoner.rule) -> None:
         m = self.as_machineterm()
         rule.orig_pattern.append(m)
+
+
+    def __repr__(self) -> str:
+        return "external %s (%s)" % (self.op, ", ".join(str(x) for x in self.args))
+
+class rif_external(_external_gen):
+    _atom_args_generator: Mapping[IdentifiedNode, Callable[[Graph, IdentifiedNode], ATOM]]
+    def __init__(self, op: URIRef, args: Iterable[ATOM]) -> None:
+        self._op = op
+        self._args = list(args)
+
+    @property
+    def args(self) -> Sequence[ATOM]:
+        return self._args
+
+    @property
+    def op(self) -> URIRef:
+        return self._op
+
+    @property
+    def used_variables(self) -> Iterable[Variable]:
+        return _get_variables((self.op, *self.args))
 
     @classmethod
     def from_rdf(cls, infograph: rdflib.Graph,
@@ -725,35 +749,32 @@ class rif_external(_resolvable_gen, _rif_check):
         for x in arg_list:
             assert isinstance(x, IdentifiedNode)
             x_type = infograph.value(x, RDF.type)
+            assert isinstance(x_type, IdentifiedNode)
             args.append(cls._atom_args_generator[x_type](infograph, x))
         return cls(op, args)
 
-    def __repr__(self) -> str:
-        return "external %s (%s)" % (self.op, ", ".join(str(x) for x in self.args))
-
-
-class rif_or(rif_external, _rif_formula):
-    args: Iterable[_rif_formula]
+class rif_or(_external_gen, _rif_formula):
     _formulas_generators: Mapping[IdentifiedNode, Callable[[Graph, IdentifiedNode], _rif_check]]
-    op: Any = special_externals.condition_or.op
+    op: Hashable = special_externals.condition_or.op
     def __init__(self, formulas: Iterable[_rif_formula]):
-        self.args = list(formulas)
+        self._args = list(formulas)
+
+    @property
+    def args(self) -> Iterable[_rif_formula]:
+        return self._args
 
     @property
     def formulas(self) -> Iterable[_rif_formula]:
         return self.args
 
     def check(self,
-            machine: durable_reasoner.machine,
+            machine: durable_reasoner.Machine,
             bindings: BINDING_WITH_BLANKS = {},
             ) -> bool:
         return any(f.check(machine, bindings) for f in self.formulas)
 
     def _add_pattern(self, rule: durable_reasoner.rule) -> None:
         rule.orig_pattern.append(self.as_machineterm())
-
-    def as_resolvable(self, machine: durable_reasoner.machine) -> RESOLVABLE:
-        raise NotImplementedError()
 
     @classmethod
     def from_rdf(cls, infograph: rdflib.Graph,
@@ -791,6 +812,7 @@ class rif_member(rif_fact):
         self.cls = cls
 
     def _create_facts(self) -> Iterable[machine_facts.member]:
+        assert not isinstance(self.instance, rif_fact)
         cls, = _try_as_machineterm(self.cls)
         instance, = _try_as_machineterm(self.instance)
         yield machine_facts.member(instance, cls)
@@ -912,11 +934,17 @@ class rif_frame(rif_fact):
                 "rif_external not valid as input for frame.obj"
         return cls(obj, slotinfo, **kwargs)
 
-class rif_retract(_action_gen):
+R = TypeVar('R', bound=rif_fact | IdentifiedNode, covariant=True)
+
+class rif_retract(_action_gen, Generic[R]):
     #fact: Optional[Union[rif_frame]]
     #atom: Optional[Union[IdentifiedNode]]
-    def __init__(self, fact_or_atom: Union[rif_frame, IdentifiedNode]):
-        if isinstance(fact_or_atom, (rif_frame,)):
+    _fact_or_atom: R
+    _target_generator: Mapping[URIRef, Callable[[Graph, IdentifiedNode],
+                                                IdentifiedNode | rif_fact]]
+    def __init__(self, fact_or_atom: R):
+        self._fact_or_atom = fact_or_atom
+        if isinstance(fact_or_atom, rif_fact):
             self.fact = fact_or_atom
         elif isinstance(fact_or_atom, (IdentifiedNode, Variable)):
             self.atom = fact_or_atom
@@ -924,26 +952,23 @@ class rif_retract(_action_gen):
             raise TypeError(fact_or_atom, type(fact_or_atom))
 
     @property
-    def fact_or_atom(self) -> Union["rif_frame", IdentifiedNode]:
-        try:
-            return self.fact
-        except AttributeError:
-            return self.atom
-
-    @property
     def used_variables(self) -> Iterable[Variable]:
-        for x in (self.fact_or_atom,):
-            if isinstance(x, Variable):
-                yield x
-            elif isinstance(x, (IdentifiedNode, Literal)):
-                pass
-            else:
-                for y in x.used_variables:
-                    yield y
+        if isinstance(self._fact_or_atom, rif_fact):
+            for x in (self._fact_or_atom,):
+                if isinstance(x, Variable):
+                    yield x
+                elif isinstance(x, (IdentifiedNode, Literal)):
+                    pass
+                else:
+                    for y in x.used_variables:
+                        yield y
+        elif isinstance(self._fact_or_atom, Variable):
+            yield self._fact_or_atom
+            
 
     def generate_action(self,
-                        machine: durable_reasoner.machine,
-                        ) -> Tuple[Callable[[BINDING], None], Iterable[Variable]]:
+                        machine: durable_reasoner.Machine,
+                        ) -> Tuple[external | fact, Iterable[Variable]]:
         if getattr(self, "fact", None) is not None:
             return self.fact.generate_retract_action(machine), self.used_variables
         else:
@@ -988,7 +1013,7 @@ class rif_ineg(_rif_check):
         raise NotImplementedError()
 
     def check(self,
-            machine: durable_reasoner.machine,
+            machine: durable_reasoner.Machine,
             bindings: BINDING_WITH_BLANKS = {},
             ) -> bool:
         raise NotImplementedError()
@@ -1002,8 +1027,8 @@ class rif_modify(_action_gen):
         self.fact = fact
 
     def generate_action(self,
-                        machine: durable_reasoner.machine,
-                        ) -> Tuple[Callable[[BINDING], None], Iterable[Variable]]:
+                        machine: durable_reasoner.Machine,
+                        ) -> Tuple[external | fact, Iterable[Variable]]:
         return self.fact.generate_assert_action(machine), self.fact.used_variables
 
     @classmethod
@@ -1028,8 +1053,8 @@ class rif_assert(_action_gen):
         self.fact = fact
 
     def generate_action(self,
-                        machine: durable_reasoner.machine,
-                        ) -> Tuple[Callable[[BINDING], None], Iterable[Variable]]:
+                        machine: durable_reasoner.Machine,
+                        ) -> Tuple[external | fact, Iterable[Variable]]:
         return self.fact.generate_assert_action(machine),\
                 self.fact.used_variables
 
@@ -1047,10 +1072,14 @@ class rif_assert(_action_gen):
     def __repr__(self) -> str:
         return "Assert( %s )" % self.fact
 
-class rif_equal(rif_external):
-    op: Any = special_externals.equality.op
+class rif_equal(_external_gen):
+    op = special_externals.equality.op
     def __init__(self, left: ATOM, right: ATOM):
-        self.args = (left, right)
+        self._args = (left, right)
+
+    @property
+    def args(self) -> Tuple[ATOM, ATOM]:
+        return self._args
 
     @property
     def left(self) -> ATOM:
@@ -1100,9 +1129,6 @@ class rif_list(_resolvable_gen):
             items.append(q)
         return cls(items)
 
-    def as_resolvable(self, machine: durable_reasoner.machine) -> RESOLVABLE:
-        raise NotImplementedError()
-
     def as_machineterm(self) -> external:
         items = list(it.chain.from_iterable(_try_as_machineterm(x)
                                             for x in self.items))
@@ -1115,8 +1141,8 @@ class rif_execute(_action_gen):
         self.target = target
 
     def generate_action(self,
-                        machine: durable_reasoner.machine,
-                        ) -> Tuple[Callable[..., None], Iterable[Variable]]:
+                        machine: durable_reasoner.Machine,
+                        ) -> Tuple[external | fact, Iterable[Variable]]:
         return executable(self.target.op, self.target.args, machine),\
                 self.target.used_variables
 
@@ -1244,9 +1270,9 @@ def _get_variables(targetlist: Iterable[ATOM]) -> Iterable[Variable]:
         else:
             raise NotImplementedError(type(x), x)
 
-def _get_resolveable(x: Union[TRANSLATEABLE_TYPES, _resolvable_gen, Variable], machine: durable_reasoner.machine) -> RESOLVABLE:
+def _get_resolveable(x: Union[TRANSLATEABLE_TYPES, _resolvable_gen, Variable], machine: durable_reasoner.Machine) -> RESOLVABLE:
     if isinstance(x, (IdentifiedNode, Literal, Variable, term_list)):
         return x
     elif isinstance(x, Variable):
         raise NotImplementedError()
-    return x.as_resolvable(machine)
+    raise Exception()

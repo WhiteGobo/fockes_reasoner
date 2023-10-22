@@ -175,6 +175,13 @@ class Machine(abc.ABC):
         ...
 
     @abc.abstractmethod
+    def apply(self, ext_order: abc_external) -> None:
+        """Use given external to execute a groundaction imminently.
+        This used for example for implementing new rules, init-actions 
+        and needed import.
+        """
+
+    @abc.abstractmethod
     def check_statement(self, statement: Union[Collection[Union[fact, abc_external]], fact, abc_external],
                         bindings: BINDING_WITH_BLANKS = {},
                         ) -> bool:
