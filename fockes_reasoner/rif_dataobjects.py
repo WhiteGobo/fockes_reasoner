@@ -10,7 +10,7 @@ import rdflib
 from rdflib import IdentifiedNode, Graph, Variable, Literal, URIRef, BNode
 from rdflib.collection import Collection
 import typing as typ
-from typing import Union, Iterable, Any, Callable, MutableMapping, List, Tuple, Optional, Mapping, Set, overload, cast, Hashable, TypeVar, Generic
+from typing import Union, Iterable, Any, Callable, MutableMapping, List, Tuple, Optional, Mapping, Set, overload, cast, Hashable, TypeVar, Generic, TypeAlias, Protocol
 from .shared import RIF, pred, XSD
 from rdflib import RDF
 from . import durable_reasoner
@@ -19,6 +19,16 @@ from .durable_reasoner import BINDING, RESOLVABLE, BINDING_WITH_BLANKS
 from .durable_reasoner import special_externals 
 from dataclasses import dataclass
 from collections.abc import Sequence
+
+_R = TypeVar('_R', covariant=True)
+
+RIFGEN: TypeAlias = Callable[[Graph, IdentifiedNode], _R]
+#class RIFGEN(Protocol[_R]):
+#    def __call__(self,
+#                 graph: Graph,
+#                 rootnode: IdentifiedNode,
+#                 **kwargs: Any,
+#                 ) -> _R: ...
 
 ATOM = Union[TRANSLATEABLE_TYPES, Variable, "rif_external", "rif_list"]
 SLOT = Tuple[ATOM, ATOM]
@@ -43,19 +53,27 @@ class NotPossibleAction(SyntaxError):
 class RIFSyntaxError(Exception):
     """The given RIF Document has syntaxerrors"""
 
-class _rule_gen(abc.ABC):
+class _rif_class(abc.ABC):
+    @classmethod
+    @abc.abstractmethod
+    def from_rdf(cls: type[_R], infograph: rdflib.Graph,
+                 rootnode: rdflib.IdentifiedNode,
+                 **kwargs: Any) -> _R: ...
+
+
+class _rule_gen(_rif_class):
     @abc.abstractmethod
     def create_rules(self, machine: durable_reasoner.Machine) -> None:
         ...
 
-class _action_gen(abc.ABC):
+class _action_gen(_rif_class):
     @abc.abstractmethod
     def generate_action(self,
                         machine: durable_reasoner.Machine,
                         ) -> Tuple[external | fact, Iterable[Variable]]:
         ...
 
-class _rif_check(pattern_generator, abc.ABC):
+class _rif_check(pattern_generator, _rif_class):
     """Class that has everything to do with checking if some type of statement
     holds true or not.
     """
@@ -67,7 +85,7 @@ class _rif_check(pattern_generator, abc.ABC):
         ...
 
 
-class _resolvable_gen(abc.ABC):
+class _resolvable_gen(_rif_class):
     """Subclass can be used to retrieve a :term:`translateable object` as
     described in bridge-rdflib. Is equal to a :term:`formula` in :term:`RIF`
     """
@@ -78,8 +96,10 @@ class _resolvable_gen(abc.ABC):
         """
         ...
 
+
 class _rif_formula(_resolvable_gen, _rif_check):
-    ...
+    """All :term:`formulas<RIF formula>` can be used as condition for rules.
+    """
 
 
 class rif_fact(_rif_check, _action_gen, _rule_gen):
@@ -210,7 +230,7 @@ def slot2node(infograph: Graph, x: IdentifiedNode) -> ATOM:
     else:
         raise NotImplementedError(t)
 
-class rif_document:
+class rif_document(_rif_class):
     payload: Optional["rif_group"]
     directives: Iterable["rif_import"]
     def __init__(self, payload: Optional["rif_group"] = None,
@@ -314,7 +334,7 @@ class rif_import:
 
 class rif_group(_rule_gen):
     sentences: tuple[Union["rif_forall", "rif_frame", "rif_group", "rif_implies"], ...]
-    _sentence_generators: Mapping[IdentifiedNode, Callable[[Graph, IdentifiedNode], Any]]
+    _sentence_generators: Mapping[IdentifiedNode, RIFGEN[Any]]
     def __init__(self,
                  sentences: Iterable[Union["rif_forall", "rif_frame", "rif_group", "rif_implies"]],
                  ) -> None:
@@ -389,7 +409,8 @@ class rif_forall(_rule_gen):
 
     @classmethod
     def from_rdf(cls, infograph: rdflib.Graph,
-                 rootnode: IdentifiedNode) -> "rif_forall":
+                 rootnode: IdentifiedNode,
+                 **kwargs: Any) -> "rif_forall":
         formula_node: IdentifiedNode
         info = dict(infograph.predicate_objects(rootnode))
         try:
@@ -415,12 +436,14 @@ class rif_forall(_rule_gen):
 
 
 class rif_implies(_rule_gen):
-    if_: Union["rif_frame"]
-    then_: Union["rif_do"]
+    if_: Union[_rif_formula, rif_fact, "rif_ineg", "rif_external"]
+    then_: Union[rif_fact, "rif_do"]
     #is set at end of file
-    _if_generators: Mapping[IdentifiedNode, Callable[[Graph, IdentifiedNode], Any]]
-    _then_generators: Mapping[IdentifiedNode, Callable[[Graph, IdentifiedNode], Any]]
-    def __init__(self, if_: Union["rif_frame"], then_: Union["rif_do"]):
+    _if_generators: Mapping[IdentifiedNode, RIFGEN[Union[_rif_formula, rif_fact, "rif_ineg", "rif_external"]]]
+    _then_generators: Mapping[IdentifiedNode, RIFGEN[Union[rif_fact, "rif_do"]]]
+    def __init__(self,
+                 if_: Union[_rif_formula, rif_fact, "rif_ineg", "rif_external"],
+                 then_: Union[rif_fact, "rif_do"]):
         self.if_ = if_
         self.then_ = then_
 
@@ -481,6 +504,7 @@ class rif_implies(_rule_gen):
     @classmethod
     def from_rdf(cls, infograph: rdflib.Graph,
                  rootnode: rdflib.IdentifiedNode,
+                 **kwargs: Any,
                  ) -> "rif_implies":
         if_node: IdentifiedNode
         then_node: IdentifiedNode
@@ -501,7 +525,7 @@ class rif_implies(_rule_gen):
 class rif_exists(_rif_check):
     formula: rif_fact
     blank_vars: Iterable[Variable]
-    _formula_generators: Mapping[IdentifiedNode, Callable[[Graph, IdentifiedNode], rif_fact]]
+    _formula_generators: Mapping[IdentifiedNode, RIFGEN[rif_fact]]
     def __init__(self, formula: rif_fact, blank_vars: Iterable[Variable]):
         self.formula = formula
         self.blank_vars = list(blank_vars)
@@ -527,6 +551,7 @@ class rif_exists(_rif_check):
     @classmethod
     def from_rdf(cls, infograph: rdflib.Graph,
                  rootnode: IdentifiedNode,
+                 **kwargs: Any,
                  ) -> "rif_exists":
         vars_node, = infograph.objects(rootnode, RIF.vars)
         var_list = rdflib.collection.Collection(infograph, vars_node)
@@ -542,9 +567,9 @@ class rif_exists(_rif_check):
                                    cls._formula_generators)
         return cls(formula, blank_vars)
 
-class rif_and(_resolvable_gen, _rif_check):
+class rif_and(_rif_formula):
     formulas: Iterable[_rif_check]
-    _formulas_generators: Mapping[IdentifiedNode, Callable[[Graph, IdentifiedNode], _rif_check]]
+    _formulas_generators: Mapping[IdentifiedNode, RIFGEN[_rif_check]]
     def __init__(self, formulas: Iterable[_rif_check | rif_fact]):
         self.formulas = list(formulas)
 
@@ -574,6 +599,7 @@ class rif_and(_resolvable_gen, _rif_check):
     @classmethod
     def from_rdf(cls, infograph: rdflib.Graph,
                  rootnode: IdentifiedNode,
+                 **kwargs: Any,
                  ) -> "rif_and":
         try:
             formula_list_node, = infograph.objects(rootnode, RIF.formulas)
@@ -608,6 +634,7 @@ class rif_do(_action_gen):
     @classmethod
     def from_rdf(cls, infograph: rdflib.Graph,
                  rootnode: IdentifiedNode,
+                 **kwargs: Any,
                  ) -> "rif_do":
         try:
             target_list_node, = infograph.objects(rootnode, RIF.actions)
@@ -755,9 +782,9 @@ class rif_external(_external_gen):
         return cls(op, args)
 
 class rif_or(_external_gen, _rif_formula):
-    _formulas_generators: Mapping[IdentifiedNode, Callable[[Graph, IdentifiedNode], _rif_formula]]
+    _formulas_generators: Mapping[IdentifiedNode, RIFGEN[_rif_check]]
     op: Hashable = special_externals.condition_or.op
-    def __init__(self, formulas: Iterable[_rif_formula]):
+    def __init__(self, formulas: Iterable[_rif_check]):
         self._args = list(formulas)
 
     @property
@@ -780,6 +807,7 @@ class rif_or(_external_gen, _rif_formula):
     @classmethod
     def from_rdf(cls, infograph: rdflib.Graph,
                  rootnode: IdentifiedNode,
+                 **kwargs: Any,
                  ) -> "rif_or":
         try:
             formula_list_node, = infograph.objects(rootnode, RIF.formulas)
@@ -796,10 +824,8 @@ class rif_or(_external_gen, _rif_formula):
 class rif_member(rif_fact):
     cls: ATOM
     instance: ATOM
-    _instance_generators: Mapping[IdentifiedNode,
-                                  Callable[[Graph, IdentifiedNode], ATOM]]
-    _class_generators: Mapping[IdentifiedNode,
-                               Callable[[Graph, IdentifiedNode], ATOM]]
+    _instance_generators: Mapping[IdentifiedNode, RIFGEN[ATOM]]
+    _class_generators: Mapping[IdentifiedNode, RIFGEN[ATOM]]
 
     @property
     def used_variables(self) -> Iterable[Variable]:
@@ -1128,6 +1154,7 @@ class rif_list(_resolvable_gen):
     def from_rdf(cls, infograph: rdflib.Graph,
                  rootnode: rdflib.IdentifiedNode,
                  extraDocuments: Mapping[IdentifiedNode, Graph] = {},
+                 **kwargs: Any,
                  ) -> "rif_list":
         info = dict(infograph.predicate_objects(rootnode))
         item_list_node, = infograph.objects(rootnode, RIF.items)
@@ -1187,10 +1214,10 @@ rif_implies._then_generators = {
         RIF.Frame: rif_frame.from_rdf,
         RIF.Do: rif_do.from_rdf,
         RIF.Atom: rif_atom.from_rdf,
+        RIF.Subclass: rif_subclass.from_rdf,
         }
 
-_formulas: Mapping[IdentifiedNode, Callable[[Graph, IdentifiedNode],
-                                            _rif_check]]\
+rif_and._formulas_generators\
         = {RIF.External: rif_external.from_rdf,
            RIF.Frame: rif_frame.from_rdf,
            RIF.Equal: rif_equal.from_rdf,
@@ -1199,7 +1226,6 @@ _formulas: Mapping[IdentifiedNode, Callable[[Graph, IdentifiedNode],
            RIF.And: rif_and.from_rdf,
            RIF.Or: rif_or.from_rdf,
            }
-rif_and._formulas_generators = dict(_formulas)
 rif_or._formulas_generators = dict(rif_and._formulas_generators)
 rif_exists._formula_generators = {#RIF.External: rif_external.from_rdf,
                                   RIF.Frame: rif_frame.from_rdf,
