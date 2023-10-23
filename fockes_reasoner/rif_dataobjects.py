@@ -73,6 +73,10 @@ class _action_gen(_rif_class):
                         ) -> Tuple[external | fact, Iterable[Variable]]:
         ...
 
+
+class RIF_ACTION(_action_gen):
+    """Metaclass for action that are done within a :term:`production rule`."""
+
 class _rif_check(pattern_generator, _rif_class):
     """Class that has everything to do with checking if some type of statement
     holds true or not.
@@ -102,7 +106,7 @@ class _rif_formula(_resolvable_gen, _rif_check):
     """
 
 
-class rif_fact(_rif_check, _action_gen, _rule_gen):
+class rif_fact(_rif_check, RIF_ACTION, _action_gen, _rule_gen):
     @abc.abstractmethod
     def _create_facts(self) -> Iterable[fact]:
         ...
@@ -153,6 +157,41 @@ class rif_fact(_rif_check, _action_gen, _rule_gen):
         action = self.generate_assert_action(machine)
         machine.add_init_action(action)
 
+
+class _external_gen(_resolvable_gen, _rif_check):
+    @property
+    @abc.abstractmethod
+    def args(self) -> Iterable[ATOM | "_external_gen" | rif_fact]:
+        ...
+
+    @property
+    @abc.abstractmethod
+    def op(self) -> Hashable | URIRef:
+        ...
+
+    def check(self,
+            machine: durable_reasoner.Machine,
+            bindings: BINDING_WITH_BLANKS = {},
+            ) -> bool:
+        args = list(it.chain.from_iterable(_try_as_machineterm(arg)
+                                           for arg in self.args))
+        q = external(self.op, args)
+        return machine.check_statement([q], bindings)
+
+    def as_machineterm(self) -> external:
+        args = list(it.chain.from_iterable(_try_as_machineterm(arg)
+                                           for arg in self.args))
+        return external(self.op, args)
+
+    def _add_pattern(self, rule: durable_reasoner.rule) -> None:
+        m = self.as_machineterm()
+        rule.orig_pattern.append(m)
+
+
+    def __repr__(self) -> str:
+        return "external %s (%s)" % (self.op, ", ".join(str(x) for x in self.args))
+
+
 @overload
 def _try_as_machineterm(
         x: Union[rif_fact],
@@ -196,10 +235,11 @@ def _generate_object(infograph: Graph, target: IdentifiedNode,
     return gen(infograph, target)
 
 
-def slot2node(infograph: Graph, x: IdentifiedNode) -> ATOM:
-    """Transform
+def slot2node(infograph: Graph, x: IdentifiedNode,
+              ) -> Union[IdentifiedNode, Literal, Variable]:
+    """Transforms const and variables to nodes
     :TODO: Local variables are not correctly transformed but instead
-        just Literals are used.
+        just BNodes are used.
     """
     val_info = dict(infograph.predicate_objects(x))
     t = val_info[RDF.type]
@@ -223,10 +263,6 @@ def slot2node(infograph: Graph, x: IdentifiedNode) -> ATOM:
                      _prefix=str(infograph.identifier))
     elif t == RIF.Const:
         raise NotImplementedError(val_info)
-    elif t == RIF.External:
-        return rif_external.from_rdf(infograph, x)
-    elif t == RIF.List:
-        return rif_list.from_rdf(infograph, x)
     else:
         raise NotImplementedError(t)
 
@@ -567,21 +603,16 @@ class rif_exists(_rif_check):
                                    cls._formula_generators)
         return cls(formula, blank_vars)
 
-class rif_and(_rif_formula):
-    formulas: Iterable[_rif_check]
-    _formulas_generators: Mapping[IdentifiedNode, RIFGEN[_rif_check]]
-    def __init__(self, formulas: Iterable[_rif_check | rif_fact]):
+class rif_and(_external_gen, _rif_formula):
+    formulas: Iterable[_external_gen | rif_fact]
+    _formulas_generators: Mapping[IdentifiedNode, RIFGEN[_external_gen | rif_fact]]
+    op: Hashable = special_externals.condition_and.op
+    def __init__(self, formulas: Iterable[_external_gen | rif_fact]):
         self.formulas = list(formulas)
 
-    def as_machineterm(self) -> Union[external, TRANSLATEABLE_TYPES]:
-        facts_: List[rif_fact] = []
-        for x in self.formulas:
-            assert isinstance(x, rif_fact)
-            facts_.append(x)
-        args = list(it.chain.from_iterable(_try_as_machineterm(x)
-                                           for x in facts_))
-        return external(special_externals.condition_and.op, args)
-        #return machine_and(RIF.And, args)
+    @property
+    def args(self) -> Iterable[_external_gen | rif_fact]:
+        return self.formulas
 
     def __repr__(self) -> str:
         return "(%s)" % " & ".join(repr(x) for x in self.formulas)
@@ -591,10 +622,6 @@ class rif_and(_rif_formula):
             bindings: BINDING_WITH_BLANKS = {},
             ) -> bool:
         return all(f.check(machine, bindings) for f in self.formulas)
-
-    def _add_pattern(self, rule: durable_reasoner.rule) -> None:
-        for form in self.formulas:
-            rule.orig_pattern.append(form)
 
     @classmethod
     def from_rdf(cls, infograph: rdflib.Graph,
@@ -606,16 +633,16 @@ class rif_and(_rif_formula):
         except ValueError as err:
             raise Exception("Syntaxerror of RIF document") from err
         formula_list: Iterable[IdentifiedNode] = rdflib.collection.Collection(infograph, formula_list_node) #type: ignore[assignment]
-        formulas: list[Union["_rif_check"]] = []
+        formulas: list[Union["_external_gen", rif_fact]] = []
         for formula_node in formula_list:
             next_formula = _generate_object(infograph, formula_node, cls._formulas_generators)
             formulas.append(next_formula)
         return cls(formulas)
 
 class rif_do(_action_gen):
-    target: List[Union["rif_assert", "rif_retract", "rif_modify", "rif_execute"]]
-    _do_action_generator: Mapping[IdentifiedNode, Callable[[Graph, IdentifiedNode], ATOM]]
-    def __init__(self, actions: Iterable[Union["rif_assert", "rif_retract", "rif_modify", "rif_execute"]]):
+    target: List[RIF_ACTION]
+    _do_action_generator: Mapping[IdentifiedNode, Callable[[Graph, IdentifiedNode], RIF_ACTION]]
+    def __init__(self, actions: Iterable[RIF_ACTION]):
         self.actions = list(actions)
 
     def generate_action(self,
@@ -704,45 +731,6 @@ class rif_atom(rif_fact):
     def __repr__(self) -> str:
         return "%s (%s)" % (self.op, ", ".join(str(x) for x in self.args))
 
-class _external_gen(_resolvable_gen, _rif_check):
-    @property
-    @abc.abstractmethod
-    def args(self) -> Iterable[ATOM | _rif_formula]:
-        ...
-
-    @property
-    @abc.abstractmethod
-    def op(self) -> Hashable | URIRef:
-        ...
-
-    def check(self,
-            machine: durable_reasoner.Machine,
-            bindings: BINDING_WITH_BLANKS = {},
-            ) -> bool:
-        args = list(it.chain.from_iterable(_try_as_machineterm(arg)
-                                           for arg in self.args))
-        q = external(self.op, args)
-        return machine.check_statement([q], bindings)
-
-    def as_machineterm(self) -> external:
-        args = list(it.chain.from_iterable(_try_as_machineterm(arg)
-                                           for arg in self.args))
-        return external(self.op, args)
-
-    def get_replacement_node(self,
-                      machine: durable_reasoner.Machine,
-            ) -> TRANSLATEABLE_TYPES:
-        args = [_get_resolveable(x, machine) for x in self.args]
-        return machine.get_replacement_node(self.op, args)
-
-    def _add_pattern(self, rule: durable_reasoner.rule) -> None:
-        m = self.as_machineterm()
-        rule.orig_pattern.append(m)
-
-
-    def __repr__(self) -> str:
-        return "external %s (%s)" % (self.op, ", ".join(str(x) for x in self.args))
-
 class rif_external(_external_gen):
     _atom_args_generator: Mapping[IdentifiedNode, Callable[[Graph, IdentifiedNode], ATOM]]
     def __init__(self, op: URIRef, args: Iterable[ATOM]) -> None:
@@ -756,6 +744,12 @@ class rif_external(_external_gen):
     @property
     def op(self) -> URIRef:
         return self._op
+
+    def get_replacement_node(self,
+                      machine: durable_reasoner.Machine,
+            ) -> TRANSLATEABLE_TYPES:
+        args = [_get_resolveable(x, machine) for x in self.args]
+        return machine.get_replacement_node(self.op, args)
 
     @property
     def used_variables(self) -> Iterable[Variable]:
@@ -782,27 +776,22 @@ class rif_external(_external_gen):
         return cls(op, args)
 
 class rif_or(_external_gen, _rif_formula):
-    _formulas_generators: Mapping[IdentifiedNode, RIFGEN[_rif_check]]
+    formulas: Iterable[_external_gen | rif_fact]
+    _formulas_generators: Mapping[IdentifiedNode,
+                                  RIFGEN[_external_gen | rif_fact]]
     op: Hashable = special_externals.condition_or.op
-    def __init__(self, formulas: Iterable[_rif_check]):
-        self._args = list(formulas)
+    def __init__(self, formulas: Iterable[_external_gen | rif_fact]):
+        self.formulas = list(formulas)
 
     @property
-    def args(self) -> Iterable[_rif_formula]:
-        return self._args
-
-    @property
-    def formulas(self) -> Iterable[_rif_formula]:
-        return self.args
+    def args(self) -> Iterable[_external_gen | rif_fact]:
+        return self.formulas
 
     def check(self,
             machine: durable_reasoner.Machine,
             bindings: BINDING_WITH_BLANKS = {},
             ) -> bool:
         return any(f.check(machine, bindings) for f in self.formulas)
-
-    def _add_pattern(self, rule: durable_reasoner.rule) -> None:
-        rule.orig_pattern.append(self.as_machineterm())
 
     @classmethod
     def from_rdf(cls, infograph: rdflib.Graph,
@@ -814,7 +803,7 @@ class rif_or(_external_gen, _rif_formula):
         except ValueError as err:
             raise Exception("Syntaxerror of RIF document") from err
         formula_list: Iterable[IdentifiedNode] = rdflib.collection.Collection(infograph, formula_list_node) #type: ignore[assignment]
-        formulas: list[_rif_formula] = []
+        formulas: list[_external_gen | rif_fact] = []
         for formula_node in formula_list:
             next_formula = _generate_object(infograph, formula_node, cls._formulas_generators)
             formulas.append(next_formula)
@@ -904,6 +893,7 @@ class rif_frame(rif_fact):
     #facts: Iterable[machine_facts.frame]
     obj: ATOM
     slots: Iterable[SLOT]
+    _slot_generator: Mapping[IdentifiedNode, RIFGEN[ATOM]]
     def __init__(self, obj: ATOM,
                  slots: Iterable[SLOT],
                  ) -> None:
@@ -953,7 +943,10 @@ class rif_frame(rif_fact):
             _slotvalue, = infograph.objects(x, RIF.slotvalue)
             assert isinstance(_slotkey, IdentifiedNode)
             assert isinstance(_slotvalue, IdentifiedNode)
-            slotinfo.append((slot2node(infograph, _slotkey), slot2node(infograph, _slotvalue)))
+            _key = _generate_object(infograph, _slotkey, cls._slot_generator)
+            _value = _generate_object(infograph, _slotvalue, cls._slot_generator)
+            slotinfo.append((_key, _value))
+            #slotinfo.append((slot2node(infograph, _slotkey), slot2node(infograph, _slotvalue)))
         _obj, = infograph.objects(rootnode, RIF.object)
         assert isinstance(_obj, IdentifiedNode)
         obj = slot2node(infograph, _obj)
@@ -963,13 +956,13 @@ class rif_frame(rif_fact):
 
 R = TypeVar('R', bound=rif_fact | IdentifiedNode | Variable, covariant=True)
 
-class rif_retract(_action_gen, Generic[R]):
+class rif_retract(RIF_ACTION, _action_gen, Generic[R]):
     #fact: Optional[Union[rif_frame]]
     #atom: Optional[Union[IdentifiedNode]]
     _fact_or_atom: R
     _target_generator: Mapping[IdentifiedNode,
                                Callable[[Graph, IdentifiedNode],
-                                        IdentifiedNode | rif_fact]]
+                                        IdentifiedNode | rif_fact | Variable | Literal]]
     def __init__(self, fact_or_atom: R) -> None:
         self._fact_or_atom = fact_or_atom
         if isinstance(fact_or_atom, rif_fact):
@@ -1016,10 +1009,11 @@ class rif_retract(_action_gen, Generic[R]):
             fact_or_atom = _generate_object(infograph, target, cls._target_generator)
         except KeyError as err:
             raise ValueError("Cant generate 'fact' for %s." % cls) from err
+        assert not isinstance(fact_or_atom, Literal)
         return cls(fact_or_atom, **kwargs) #type: ignore[arg-type]
 
 
-class rif_ineg(_rif_check):
+class rif_ineg(_external_gen):
     formula: FORMULA
     _formula_generator: Mapping[IdentifiedNode, Callable[[Graph, IdentifiedNode], FORMULA]]
     def __init__(self, formula: FORMULA):
@@ -1050,7 +1044,7 @@ class rif_ineg(_rif_check):
     def __repr__(self) -> str:
         return "INeg(%s)" % self.formula
 
-class rif_modify(_action_gen):
+class rif_modify(RIF_ACTION, _action_gen):
     fact: rif_fact
     _target_generator: Mapping[IdentifiedNode,
                                Callable[[Graph, IdentifiedNode], rif_fact]]
@@ -1081,7 +1075,7 @@ class rif_modify(_action_gen):
         return "Modify(%s)" % self.fact
 
 
-class rif_assert(_action_gen):
+class rif_assert(RIF_ACTION, _action_gen):
     fact: rif_fact
     _target_generator: Mapping[IdentifiedNode, Callable[[Graph, IdentifiedNode], rif_fact]]
     def __init__(self, myfact: rif_fact) -> None:
@@ -1109,6 +1103,7 @@ class rif_assert(_action_gen):
 
 class rif_equal(_external_gen):
     op = special_externals.equality.op
+    _side_generator: Mapping[IdentifiedNode, RIFGEN[ATOM]]
     def __init__(self, left: ATOM, right: ATOM):
         self._args = (left, right)
 
@@ -1135,10 +1130,8 @@ class rif_equal(_external_gen):
         rightnode = infograph.value(rootnode, RIF.right)
         assert isinstance(leftnode, IdentifiedNode)
         assert isinstance(rightnode, IdentifiedNode)
-        left = slot2node(infograph, leftnode)
-        right = slot2node(infograph, rightnode)
-        #left = _generate_object(infograph, leftnode, cls._side_generators)
-        #right = _generate_object(infograph, rightnode, cls._side_generators)
+        left = _generate_object(infograph, leftnode, cls._side_generator)
+        right = _generate_object(infograph, rightnode, cls._side_generator)
         return cls(left, right)
 
 
@@ -1174,7 +1167,7 @@ class rif_list(_resolvable_gen):
                                             for x in self.items))
         return external(special_externals.create_list.op, items)
 
-class rif_execute(_action_gen):
+class rif_execute(RIF_ACTION, _action_gen):
     target: rif_atom
     _target_generator: Mapping[IdentifiedNode, Callable[[Graph, IdentifiedNode], rif_atom]]
     def __init__(self, target: rif_atom):
@@ -1248,7 +1241,7 @@ rif_group._sentence_generators = {
 _term_generators: Mapping[IdentifiedNode, Callable[[Graph, IdentifiedNode], ATOM]] = {
         RIF.Const: slot2node,
         RIF.Var: slot2node,
-        RIF.List: slot2node,
+        RIF.List: rif_list.from_rdf,
         RIF.External: rif_external.from_rdf,
         }
 rif_external._atom_args_generator = _term_generators
@@ -1292,6 +1285,13 @@ rif_modify._target_generator = {
         }
 rif_execute._target_generator = {
         RIF.Atom: rif_atom.from_rdf,
+        }
+
+rif_frame._slot_generator = rif_equal._side_generator = {
+        RIF.Const: slot2node,
+        RIF.Var: slot2node,
+        RIF.List: rif_list.from_rdf,
+        RIF.External: rif_external.from_rdf,
         }
 
 
