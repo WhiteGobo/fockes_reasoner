@@ -9,11 +9,11 @@ RIF_ENTAILMENT = Namespace("http://www.w3.org/ns/entailment/")
 class machineWithImport(durableMachine):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
-        q = profileSimpleEntailment()
+        #q = profileSimpleEntailment()
         #self.available_import_profiles[None] = rifImportProfile()
-        self.available_import_profiles[RIF_ENTAILMENT.Simple]\
-                = profileSimpleEntailment()
-        self.available_import_profiles[RIF_ENTAILMENT.RDF]\
-                = profileSimpleEntailment()
-        self.available_import_profiles[RIF_ENTAILMENT.RDFS]\
-                = profileRDFSEntailment()
+        #self.available_import_profiles[RIF_ENTAILMENT.Simple]\
+                #        = profileSimpleEntailment()
+        #self.available_import_profiles[RIF_ENTAILMENT.RDF]\
+                #        = profileSimpleEntailment()
+        #self.available_import_profiles[RIF_ENTAILMENT.RDFS]\
+                #        = profileRDFSEntailment()

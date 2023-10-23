@@ -64,14 +64,15 @@ class simpleLogicMachine(PRD_logicMachine):
             self.machine = machineWithImport()
         else:
             self.machine = machine
-        for loc_id, information_graph in extraDocuments.items():
-            q = list(information_graph)
-            def get_graph() -> rdflib.Graph:
-                g = rdflib.Graph()
-                for x in q: 
-                    g.add(x)
-                return g
-            self.machine.register_information(loc_id, get_graph)
+        if extraDocuments is not None:
+            for loc_id, information_graph in extraDocuments.items():
+                q = list(information_graph)
+                def get_graph() -> rdflib.Graph:
+                    g = rdflib.Graph()
+                    for x in q: 
+                        g.add(x)
+                    return g
+                self.machine.register_information(loc_id, get_graph)
         try:
             self.document.create_rules(self.machine)
         except VariableNotBoundError as err:
