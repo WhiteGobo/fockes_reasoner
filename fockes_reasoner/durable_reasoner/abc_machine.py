@@ -164,6 +164,7 @@ class abc_action(abc.ABC):
 class Machine(abc.ABC):
     logger: logging.Logger
     errors: list
+    inconsistent_information: bool
 
     _imported_locations: list[str]
     available_import_profiles: Mapping[Optional[str], IMPORTPROFILE]
@@ -173,6 +174,12 @@ class Machine(abc.ABC):
     def load_external_resource(self, location: Union[str, IdentifiedNode],
                                ) -> rdflib.Graph:
         ...
+
+    @abc.abstractmethod
+    def register_information(self,
+                             location: Union[str, Literal],
+                             graph_getter: Callable[[], rdflib.Graph],
+                             ) -> None: ...
 
     @abc.abstractmethod
     def apply(self, ext_order: abc_external) -> None:

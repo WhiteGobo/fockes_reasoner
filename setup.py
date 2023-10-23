@@ -2,7 +2,7 @@ import setuptools
 
 setuptools.setup(
     name='fockes_reasoner',
-    version='0.1',
+    version='0.2',
     description='Reasoner that implements interpreter for RIF',
     #long_description="""This module should allow rdflib to load rif.""",
     long_description_content_type="text/markdown",
