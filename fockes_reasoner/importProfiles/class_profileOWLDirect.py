@@ -1,11 +1,11 @@
 from rdflib import Graph, URIRef
 from rdflib.term import Node
-from . import durable_reasoner
-from .durable_reasoner import fact, TRANSLATEABLE_TYPES, member, rdfs_subclass, frame
+from .. import durable_reasoner
+from ..durable_reasoner import fact, TRANSLATEABLE_TYPES, member, rdfs_subclass, frame
 from rdflib import IdentifiedNode, Literal, URIRef, BNode
 from typing import Union, Any, Dict, List
 from dataclasses import dataclass
-from .shared import entailment, OWL, RDF, RDFS
+from ..shared import entailment, OWL, RDF, RDFS
 import logging
 logger = logging.getLogger(__name__)
 

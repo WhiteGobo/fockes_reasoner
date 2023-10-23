@@ -1,6 +1,6 @@
 from rdflib import Graph, IdentifiedNode
 from rdflib.term import Node, Node
-from .durable_reasoner import Machine, fact, frame, TRANSLATEABLE_TYPES, subclass, member, atom, subclass, member
+from ..durable_reasoner import Machine, fact, frame, TRANSLATEABLE_TYPES, subclass, member, atom, subclass, member
 from rdflib import IdentifiedNode, Literal, URIRef, BNode, RDF, RDFS
 from typing import Union, Any, List, Dict, Mapping
 from dataclasses import dataclass

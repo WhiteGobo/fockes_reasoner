@@ -1,8 +1,8 @@
 from typing import Any
 from .durable_reasoner.machine import durableMachine
-from .class_profileSimpleEntailment import profileSimpleEntailment
-from .class_profileRDFSEntailment import profileRDFSEntailment
-#from .class_rifImportProfile import rifImportProfile
+from .importProfiles import import_profileOWLDirect,\
+        import_profileSimpleEntailment,\
+        import_profileRDFSEntailment
 from rdflib import URIRef, Namespace, IdentifiedNode
 RIF_ENTAILMENT = Namespace("http://www.w3.org/ns/entailment/")
 

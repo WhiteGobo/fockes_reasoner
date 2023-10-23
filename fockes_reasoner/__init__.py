@@ -3,4 +3,4 @@
 from .asdf import simpleLogicMachine
 from .abc_logicMachine import logicMachine, AlgorithmRejection, PRD_logicMachine, BLD_logicMachine, ImportReject, SyntaxReject, StuckWithIncosistentInformation
 
-from .class_machineWithImport import machineWithImport
+from .durable_reasoner import Machine, durableMachine

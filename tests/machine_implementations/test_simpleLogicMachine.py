@@ -48,7 +48,7 @@ Document(
             args = tuple(_resolve(x, bindings) for x in self.args)
             asd.append(True)
 
-    mymachine = fockes_reasoner.machineWithImport()
+    mymachine = fockes_reasoner.durableMachine()
     mymachine.register(act.save,
             asnormalaction=myact,
             #asassign=,

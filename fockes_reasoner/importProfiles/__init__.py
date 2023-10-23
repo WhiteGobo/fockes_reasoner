@@ -1,0 +1,3 @@
+from .class_profileOWLDirect import import_profileOWLDirect
+from .class_profileRDFSEntailment import import_profileRDFSEntailment, export_profileRDFEntailment
+from .class_profileSimpleEntailment import import_profileSimpleEntailment

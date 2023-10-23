@@ -15,9 +15,10 @@ import rdflib
 from rdflib import URIRef, Variable, Literal, BNode, Graph, IdentifiedNode, XSD
 from . import abc_machine
 from .abc_machine import TRANSLATEABLE_TYPES, FACTTYPE, BINDING, BINDING_WITH_BLANKS, VARIABLE_LOCATOR, NoPossibleExternal, IMPORTPROFILE, RESOLVABLE, ATOM_ARGS, abc_external, RESOLVER, RuleNotComplete, pattern_generator, VariableNotBoundError, abc_pattern, _resolve, ASSIGNMENT, StopRunning, EXTERNAL_ARG, ACTIONGENERATOR, ACTION, INDIPENDENTACTIONGENERATOR
-from ..class_profileOWLDirect import import_profileOWLDirect
-from ..class_profileSimpleEntailment import import_profileSimpleEntailment
-from ..class_profileRDFSEntailment import import_profileRDFSEntailment
+
+from ..importProfiles import import_profileOWLDirect,\
+        import_profileSimpleEntailment,\
+        import_profileRDFSEntailment
 
 from .bridge_rdflib import rdflib2string, string2rdflib, term_list
 

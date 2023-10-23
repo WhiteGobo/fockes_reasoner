@@ -1,5 +1,5 @@
 from rdflib import Graph
-from .durable_reasoner import Machine, fact, frame, TRANSLATEABLE_TYPES
+from ..durable_reasoner import Machine, fact, frame, TRANSLATEABLE_TYPES
 from rdflib import IdentifiedNode, Literal, URIRef, BNode
 from typing import Union, Any
 from dataclasses import dataclass
